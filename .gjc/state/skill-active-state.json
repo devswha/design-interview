@@ -3,17 +3,17 @@
   "active": true,
   "skill": "ralplan",
   "phase": "architect",
-  "updated_at": "2026-06-12T19:04:49.471Z",
+  "updated_at": "2026-06-12T19:10:14.231Z",
   "active_skills": [
     {
       "skill": "ralplan",
       "phase": "architect",
       "active": true,
-      "activated_at": "2026-06-12T19:04:49.471Z",
-      "updated_at": "2026-06-12T19:04:49.471Z",
+      "activated_at": "2026-06-12T19:10:14.231Z",
+      "updated_at": "2026-06-12T19:10:14.231Z",
       "hud": {
         "version": 1,
-        "summary": "persisted architect stage 4",
+        "summary": "persisted architect stage 5",
         "chips": [
           {
             "label": "stage",
@@ -22,62 +22,11 @@
           },
           {
             "label": "iter",
-            "value": "4",
+            "value": "5",
             "priority": 30
           }
         ],
-        "updated_at": "2026-06-12T19:04:49.469Z"
-      }
-    },
-    {
-      "skill": "ultragoal",
-      "phase": "blocked",
-      "active": true,
-      "activated_at": "2026-06-12T18:55:28.263Z",
-      "updated_at": "2026-06-12T18:55:28.263Z",
-      "session_id": "019ebcfa-18bf-7000-b7e2-b15d86abdbd5",
-      "hud": {
-        "version": 1,
-        "chips": [
-          {
-            "label": "blocked",
-            "value": "2",
-            "priority": 5,
-            "severity": "blocked"
-          },
-          {
-            "label": "goals",
-            "value": "0/5",
-            "priority": 10
-          },
-          {
-            "label": "current",
-            "value": "G003:E2E 파이프라인 검증 + 문서 마감",
-            "priority": 20
-          },
-          {
-            "label": "status",
-            "value": "blocked",
-            "priority": 30
-          }
-        ],
-        "updated_at": "2026-06-12T18:55:28.262Z"
-      },
-      "receipt": {
-        "version": 1,
-        "skill": "ultragoal",
-        "owner": "gjc-runtime",
-        "command": "gjc ultragoal (reconcile)",
-        "state_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019ebcfa-18bf-7000-b7e2-b15d86abdbd5/skill-active-state.json",
-        "storage_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019ebcfa-18bf-7000-b7e2-b15d86abdbd5/ultragoal-state.json",
-        "mutated_at": "2026-06-12T18:55:28.255Z",
-        "fresh_until": "2026-06-12T19:25:28.255Z",
-        "status": "fresh",
-        "mutation_id": "ultragoal:reconcile:2026-06-12T18:55:28.255Z",
-        "verb": "reconcile",
-        "forced": true,
-        "from_phase": "blocked",
-        "to_phase": "blocked"
+        "updated_at": "2026-06-12T19:10:14.227Z"
       }
     }
   ],

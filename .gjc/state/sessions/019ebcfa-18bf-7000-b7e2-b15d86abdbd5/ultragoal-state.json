@@ -1,49 +1,49 @@
 {
   "skill": "ultragoal",
-  "status": "blocked",
-  "current_phase": "blocked",
-  "active": true,
+  "status": "complete",
+  "current_phase": "complete",
+  "active": false,
   "goals": [
     {
       "id": "G001",
       "title": "M3 비주얼 레인 완성",
-      "status": "review_blocked"
+      "status": "complete"
     },
     {
       "id": "G002",
       "title": "M4 소스 인테이크 파이프라인",
-      "status": "review_blocked"
+      "status": "complete"
     },
     {
       "id": "G003",
       "title": "E2E 파이프라인 검증 + 문서 마감",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "G004",
       "title": "Resolve G001 review blockers",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "G005",
       "title": "Resolve intake security blockers",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "counts": {
-    "pending": 3,
+    "pending": 0,
     "active": 0,
-    "complete": 0,
+    "complete": 5,
     "failed": 0,
     "blocked": 0,
-    "review_blocked": 2,
+    "review_blocked": 0,
     "superseded": 0
   },
   "ledger_path": "/home/devswha/workspace/design-interview/.gjc/ultragoal/ledger.jsonl",
   "brief_path": "/home/devswha/workspace/design-interview/.gjc/ultragoal/brief.md",
   "goals_path": "/home/devswha/workspace/design-interview/.gjc/ultragoal/goals.json",
   "version": 2,
-  "updated_at": "2026-06-12T18:55:28.255Z",
+  "updated_at": "2026-06-12T19:13:27.685Z",
   "receipt": {
     "version": 1,
     "skill": "ultragoal",
@@ -51,22 +51,21 @@
     "command": "gjc ultragoal (reconcile)",
     "state_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019ebcfa-18bf-7000-b7e2-b15d86abdbd5/skill-active-state.json",
     "storage_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019ebcfa-18bf-7000-b7e2-b15d86abdbd5/ultragoal-state.json",
-    "mutated_at": "2026-06-12T18:55:28.255Z",
-    "fresh_until": "2026-06-12T19:25:28.255Z",
+    "mutated_at": "2026-06-12T19:13:27.685Z",
+    "fresh_until": "2026-06-12T19:43:27.685Z",
     "status": "fresh",
-    "mutation_id": "ultragoal:reconcile:2026-06-12T18:55:28.255Z",
+    "mutation_id": "ultragoal:reconcile:2026-06-12T19:13:27.685Z",
     "verb": "reconcile",
     "forced": true,
-    "from_phase": "blocked",
-    "to_phase": "blocked",
+    "from_phase": "complete",
+    "to_phase": "complete",
     "content_sha256": {
       "algorithm": "sha256",
-      "value": "aa0e3b27dd22b2726071f0e87644b0f5d05e4eb78695a43212c16e6efa2dc046",
+      "value": "4a0d5dd9150da4fb3ff8c643b9f9e09e42d6d0d0ec46b56d604c8538e545ba6f",
       "covered_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019ebcfa-18bf-7000-b7e2-b15d86abdbd5/ultragoal-state.json",
-      "computed_at": "2026-06-12T18:55:28.258Z"
+      "computed_at": "2026-06-12T19:13:27.686Z"
     }
   },
   "session_id": "019ebcfa-18bf-7000-b7e2-b15d86abdbd5",
-  "active_goal_id": "G003",
   "gjc_objective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail."
 }

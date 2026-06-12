@@ -1,0 +1,48 @@
+== audit --visual on slop fixture ==
+design-tell audit — examples/slop-source.html
+  FAIL  C1 purple-gradient  ← linear-gradient(135deg,#667eea,#764ba2)
+  FAIL  T1 emoji-bullets  ← <h1> "✨ 혁신적인 생산성 솔루션"
+  FAIL  T2 hype-adjectives  ← 혁신적인, 완벽한, 손쉽게, 경험하세요, 최적화된
+  FAIL  T4 symmetric-heading-pairs  ← "Simple. Powerful. Seamless."
+  pass  S5 border-radius-uniform
+  pass  L1 uniform-card-grid
+  FAIL  S3 perfect-symmetry  ← 8/8 text blocks render center-aligned
+  slop score: 71% (5/7 tells)
+  납품 불가 — Phase 3으로 돌아가 수정 후 재감사
+exit=1
+
+== audit clean fixture ==
+design-tell audit — tests/fixtures/clean/restaurant.html
+  pass  C1 purple-gradient
+  pass  T1 emoji-bullets
+  pass  T2 hype-adjectives
+  pass  T4 symmetric-heading-pairs
+  pass  S5 border-radius-uniform
+  pass  L1 uniform-card-grid
+  pass  S3 perfect-symmetry
+  slop score: 0% (0/7 tells)
+  machine checks clean — SKILL.md Phase 5 LLM 체크리스트로 계속
+exit=0
+
+== intake claims ==
+## 보존 클레임 (변경 불가) — examples/slop-source.html
+
+| kind | 클레임 | 문맥 |
+|---|---|---|
+| quantity | 30개 | � 더 알아보기 Simple. Powerful. Seamless. 💡 30개의 최적화된 템플릿 🚀 다양한 워크플로우 지원 ✨ 누구나 손쉽게 활용 |
+| feature | Simple. Powerful. Seamless. | Simple. Powerful. Seamless. |
+| feature | 💡 30개의 최적화된 템플릿 | 💡 30개의 최적화된 템플릿 |
+| feature | 🚀 다양한 워크플로우 지원 | 🚀 다양한 워크플로우 지원 |
+| feature | ✨ 누구나 손쉽게 활용 | ✨ 누구나 손쉽게 활용 |
+exit=0
+
+== intake ssrf ==
+intake failed: blocked: 169.254.169.254 is a private address
+exit=1
+intake failed: blocked: only http/https allowed (got ftp:)
+exit=1
+
+== shot ==
+desktop	/home/devswha/workspace/design-interview/examples/slop-source.desktop.png
+mobile	/home/devswha/workspace/design-interview/examples/slop-source.mobile.png
+exit=0
