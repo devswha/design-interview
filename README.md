@@ -24,28 +24,38 @@ slop 소스
 /skill:design-interview --standard ./slop-draft.md
 ```
 
+인테이크 CLI (Phase 0 — 클레임 동결):
+
+```bash
+node src/cli.js intake slop-source.html --json   # 가격·수량·기간·기능 클레임 구조화
+node src/cli.js intake https://example.com/page  # URL은 SSRF 가드 통과 필수
+```
+
 프리뷰 CLI (Phase 4):
 
 ```bash
 node src/cli.js preview built.html --against slop-source.html
 # → built.preview.html  (브라우저로 열어 built/original/both 토글 검수)
+node src/cli.js shot built.html                  # desktop/mobile 풀페이지 캡처 → 자기검수
 ```
 
 슬롭 감사 CLI (Phase 5, 결정론적):
 
 ```bash
-node src/cli.js audit built.html
+node src/cli.js audit built.html --visual
 # design-tell audit — built.html
-#   FAIL  C1 purple-gradient  ← linear-gradient(135deg,#667eea,#764ba2)
+#   FAIL  C1 purple-gradient        ← linear-gradient(135deg,#667eea,#764ba2)  (정적: CSS 파싱)
+#   FAIL  S3 perfect-symmetry       ← 8/8 text blocks render center-aligned   (시각: 렌더 기하)
 #   ...
-#   slop score: 80% (4/5 tells)   ← exit 1, 납품 불가
+#   slop score: 71% (5/7 tells)     ← exit 1, 납품 불가
+# --visual은 puppeteer 필요; 미설치면 정적 텔만 판정
 ```
 
 벤치마크 (텔 수정 시 회귀 게이트):
 
 ```bash
 npm run benchmark
-# 3/3 fixtures match baseline — miss(탐지 후퇴)/fp(오탐 후퇴) 발생 시 exit 1
+# 4/4 fixtures match baseline — miss(탐지 후퇴)/fp(오탐 후퇴) 발생 시 exit 1
 ```
 
 ## Layout
@@ -56,9 +66,12 @@ npm run benchmark
 | `core/interview.md` | 6차원 인터뷰 프레임워크 + 명료도 점수 모델 |
 | `core/design-tells.md` | AI 디자인 텔 금지 목록 (빌드 규율 + 납품 감사 체크리스트) |
 | `templates/concept-sheet.md` | Phase 2 컨셉 시트 양식 |
+| `src/intake.js` | 클레임 추출기 + SSRF 가드 URL fetch |
 | `src/preview.js` | inert 프리뷰 빌더 — CSP + 무스크립트 radio 토글 |
-| `src/audit.js` | 결정론적 design-tell 감사기 — LLM 자기 채점 없이 코드로 판정 |
-| `src/cli.js` | `preview` / `audit` 진입점 |
+| `src/audit.js` | 정적 design-tell 감사기 — LLM 자기 채점 없이 코드로 판정 |
+| `src/geometry.js` | 시각 텔(L1/S3) — 렌더된 박스 기하 판정 |
+| `src/screenshot.js` | desktop/mobile 풀페이지 캡처 (puppeteer 선택 의존) |
+| `src/cli.js` | `intake` / `preview` / `audit` / `shot` 진입점 |
 
 ## Principles
 
@@ -69,5 +82,6 @@ npm run benchmark
 ## Test
 
 ```bash
-npm test
+npm test            # unit + e2e (e2e는 intake→audit→preview→shot 실CLI 파이프라인)
+npm run benchmark   # baseline 회귀 게이트
 ```

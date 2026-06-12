@@ -26,24 +26,32 @@ LLM 자기 채점 제거.
 - [x] `tests/fixtures/{slop,clean}/` 픽스처 코퍼스
 - [x] `tests/quality/baseline.json` — 픽스처별 기대 판정
 - [x] `npm run benchmark` — baseline 대비 탐지 누락(miss)·오탐(false positive) 회귀 시 exit 1
-- [ ] 코퍼스 확장: 실제 AI 생성 랜딩 10종+ (v0/lovable/bolt 산출물 수집)
+- [ ] 코퍼스 확장: 실제 AI 생성 랜딩 10종+ (v0/lovable/bolt 산출물 수집) — `tests/redteam/` 적대 픽스처 8종은 확보됨
 
-## M3 — 비주얼 레인
+## M3 — 비주얼 레인 ✅
 
-레이아웃 텔(L1~L4, S3)을 기계 레인으로 승격. 모델이 자기 산출물을 *눈으로* 검수.
+레이아웃 텔(L1, S3)을 기계 레인으로 승격. 모델이 자기 산출물을 *눈으로* 검수.
 
-- [x] `src/screenshot.js` — puppeteer 동적 로드, 미설치 시 명확한 안내 (선택 의존성)
-- [ ] Phase 4에 스크린샷 자기검수 단계 추가 (렌더 → 모델이 이미지 검토 → 수정)
-- [ ] 기하 기반 탐지: 렌더된 박스 좌표로 L1(균일 그리드)·S3(완전 대칭) 판정
+- [x] `src/screenshot.js` — puppeteer 동적 로드, 미설치 시 명확한 안내 (선택 의존성, typed error)
+- [x] Phase 4에 스크린샷 자기검수 단계 추가 (shot → 모델이 이미지 검토 → 수정)
+- [x] 기하 기반 탐지: `src/geometry.js` — 렌더된 박스 좌표로 L1(균일 그리드)·S3(완전 대칭) 판정, `audit --visual` 합류
+- [ ] L2(전부 중앙 단일컬럼)·L3(균일 섹션 리듬) 기하 판정 추가 승격
 - [ ] viewport 2종(모바일/데스크탑) 캡처를 감사 리포트에 첨부
 
-## M4 — 소스 인테이크 파이프라인
+## M4 — 소스 인테이크 파이프라인 ✅ (스냅샷 동결만 잔여)
 
 Phase 0의 URL 경로를 코드로.
 
-- [ ] URL → 스냅샷 수집 (patina `freezeSnapshotAssets` 축소판: same-origin CSS 인라인, SSRF 가드)
-- [ ] 클레임 추출기 — 숫자·가격·기능 클레임을 구조화해 Phase 5 대조표 자동 생성
-- [ ] `intake` CLI 레인
+- [x] 클레임 추출기 — 가격·수량·백분율·기간·기능 클레임 구조화, Phase 5 대조표 자동 생성
+- [x] `intake` CLI 레인 — 파일/URL 입력, `--json`
+- [x] SSRF 가드 — private/loopback/link-local/메타데이터 대역 차단, DNS 해석 검증, 리다이렉트 hop별 재검증, 5MB/30s 캡
+- [ ] URL → 에셋 동결 스냅샷 (patina `freezeSnapshotAssets` 축소판: same-origin CSS 인라인)
+
+## M4.5 — E2E 파이프라인 검증 ✅
+
+- [x] `tests/e2e/pipeline.test.js` — intake→audit(--visual)→preview→shot 실CLI 호출 검증
+- [x] `npm test` = unit + e2e, `npm run test:e2e` 분리 실행
+- [x] CLI 에러 규율: 입력 오류 exit 2(스택트레이스 금지), 감사 fail exit 1, 시각 폴백은 puppeteer 미설치 한정
 
 ## M5 — 패키징 / 판매
 
