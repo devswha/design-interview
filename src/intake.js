@@ -3,10 +3,16 @@
 // Phase 0에서 클레임(숫자·가격·기능)을 동결 자산으로 잡아두고,
 // Phase 5에서 빌드 산출물과 대조한다 (patina MPS 원칙: 디자인이 바뀌어도
 // 숫자·사실·인과는 불변). URL 입력은 SSRF 가드를 통과해야 한다.
+//
+// SSRF 가드는 2단이다: ①사전 검증(assertSafeUrl — 스킴/호스트/DNS),
+// ②연결 시점 검증(node http/https의 lookup 훅) — 검증과 연결 사이에
+// DNS 응답이 바뀌는 리바인딩을 차단한다.
 
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import { stripTags } from './audit.js';
+import { request as httpsRequest } from 'node:https';
+import { request as httpRequest } from 'node:http';
+import { stripTags } from './text.js';
 
 // ---------------------------------------------------------------- 클레임 추출
 
@@ -20,6 +26,21 @@ const CLAIM_PATTERNS = [
   // 수량: 30개, 30개의 템플릿, 30 templates, 12종
   { kind: 'quantity', re: /\d[\d,]*\s?(?:개|종|가지|명|곳|templates?|items?|features?|users?|projects?)/giu },
 ];
+
+// 숫자 폭탄 방어: 실제 클레임에 16자리+ 숫자 연속이나 2000자+ 라인은 없다.
+// 캡 없이 matchAll을 돌리면 1MB 숫자 라인에서 O(n²)로 행이 걸린다.
+const MAX_DIGIT_RUN = 15;
+const MAX_SCAN_LINE = 2000;
+const MAX_SCAN_BYTES = 2 * 1024 * 1024;
+
+function boundForScan(text) {
+  return String(text)
+    .slice(0, MAX_SCAN_BYTES)
+    .split('\n')
+    .map((line) => line.slice(0, MAX_SCAN_LINE))
+    .join('\n')
+    .replace(/\d{16,}/g, (run) => run.slice(0, MAX_DIGIT_RUN));
+}
 
 function contextAround(text, index, length, span = 40) {
   const start = Math.max(0, index - span);
@@ -37,11 +58,11 @@ function extractFeatureClaims(source) {
   if (looksLikeHtml(source)) {
     for (const [, , inner] of source.matchAll(/<(li|h2|h3)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi)) {
       const text = stripTags(inner).replace(/\s+/g, ' ').trim();
-      if (text.length >= 4) features.push(text);
+      if (text.length >= 4) features.push(text.slice(0, MAX_SCAN_LINE));
     }
   } else {
     for (const line of source.split('\n')) {
-      const m = /^\s*(?:[-*•]|\d+\.)\s+(.+)$/.exec(line);
+      const m = /^\s*(?:[-*•]|\d+\.)\s+(.+)$/.exec(line.slice(0, MAX_SCAN_LINE));
       if (m && m[1].trim().length >= 4) features.push(m[1].trim());
     }
   }
@@ -51,9 +72,9 @@ function extractFeatureClaims(source) {
 // 소스(HTML/마크다운/플레인텍스트)에서 보존 클레임을 추출한다.
 // 반환: { claims: [{ kind, value, context }] } — kind: price|percent|duration|quantity|feature
 export function extractClaims(source) {
-  const text = looksLikeHtml(source)
-    ? stripTags(source).replace(/\s+/g, ' ')
-    : String(source);
+  const text = boundForScan(
+    looksLikeHtml(source) ? stripTags(source).replace(/\s+/g, ' ') : String(source),
+  );
   const claims = [];
   const seen = new Set();
   for (const { kind, re } of CLAIM_PATTERNS) {
@@ -65,7 +86,7 @@ export function extractClaims(source) {
       claims.push({ kind, value, context: contextAround(text, m.index, m[0].length) });
     }
   }
-  for (const feature of extractFeatureClaims(source)) {
+  for (const feature of extractFeatureClaims(String(source).slice(0, MAX_SCAN_BYTES))) {
     const key = `feature:${feature}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -95,7 +116,14 @@ const FETCH_MAX_BYTES = 5 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 30000;
 const MAX_REDIRECTS = 3;
 
+// CLI 라우팅용: scheme:// 형태면 전부 URL로 취급해 가드를 태운다.
+// (http/https만 정규식으로 거르면 ftp://가 파일 경로로 새는 구멍이 생긴다.)
+export function looksLikeUrl(target) {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(target);
+}
+
 // private/loopback/link-local/메타데이터 대역 차단.
+// IPv4-mapped IPv6(::ffff:a.b.c.d)는 IPv4 검사로 환원한다.
 export function isPrivateAddress(addr) {
   if (isIP(addr) === 4) {
     const [a, b] = addr.split('.').map(Number);
@@ -105,12 +133,13 @@ export function isPrivateAddress(addr) {
       || (a === 169 && b === 254);
   }
   const v6 = addr.toLowerCase();
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(v6);
+  if (mapped) return isPrivateAddress(mapped[1]);
   return v6 === '::1' || v6 === '::' || v6.startsWith('fc') || v6.startsWith('fd')
-    || v6.startsWith('fe80') || v6.startsWith('::ffff:127.') || v6.startsWith('::ffff:10.')
-    || v6.startsWith('::ffff:192.168.') || v6.startsWith('::ffff:169.254.');
+    || v6.startsWith('fe80');
 }
 
-// URL 한 개를 검증한다 — 스킴, 호스트명, DNS 해석 결과까지.
+// URL 한 개를 사전 검증한다 — 스킴, 호스트명, DNS 해석 결과까지.
 export async function assertSafeUrl(rawUrl, { lookupImpl = dnsLookup } = {}) {
   let url;
   try {
@@ -138,36 +167,71 @@ export async function assertSafeUrl(rawUrl, { lookupImpl = dnsLookup } = {}) {
   return url;
 }
 
-async function readCappedBody(res, cap) {
-  const reader = res.body.getReader();
-  const chunks = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > cap) {
-      await reader.cancel();
-      throw new Error(`response exceeds ${cap} byte cap`);
-    }
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks).toString('utf8');
+// 연결 시점 lookup 훅 — 소켓이 실제로 붙을 주소를 다시 검증한다.
+// 사전 검증(assertSafeUrl)과 연결 사이에 DNS 응답이 바뀌어도(리바인딩)
+// private 주소로는 연결되지 않는다.
+function guardedLookup(lookupImpl) {
+  return (hostname, options, callback) => {
+    const cb = typeof options === 'function' ? options : callback;
+    const opts = typeof options === 'function' ? {} : options ?? {};
+    lookupImpl(hostname, { all: true }).then((addrs) => {
+      const bad = addrs.find((a) => isPrivateAddress(a.address));
+      if (bad) {
+        cb(new Error(`blocked: ${hostname} resolves to private address ${bad.address}`));
+        return;
+      }
+      if (opts.all) cb(null, addrs);
+      else cb(null, addrs[0].address, addrs[0].family);
+    }, (err) => cb(err));
+  };
+}
+
+function requestOnce(url, { lookupImpl, signal }) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const mod = url.protocol === 'https:' ? httpsRequest : httpRequest;
+    const req = mod(url, { lookup: guardedLookup(lookupImpl), signal }, resolvePromise);
+    req.on('error', rejectPromise);
+    req.end();
+  });
+}
+
+function readCappedBody(res, cap) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const chunks = [];
+    let total = 0;
+    res.on('data', (chunk) => {
+      total += chunk.length;
+      if (total > cap) {
+        res.destroy();
+        rejectPromise(new Error(`response exceeds ${cap} byte cap`));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    res.on('end', () => resolvePromise(Buffer.concat(chunks).toString('utf8')));
+    res.on('error', rejectPromise);
+  });
 }
 
 // SSRF 가드를 통과한 URL을 텍스트로 가져온다. 리다이렉트는 매 hop 재검증.
-export async function fetchSource(rawUrl, { fetchImpl = fetch, lookupImpl = dnsLookup } = {}) {
+// requestImpl은 테스트 주입용 — 형태는 requestOnce와 동일.
+export async function fetchSource(rawUrl, { requestImpl = requestOnce, lookupImpl = dnsLookup } = {}) {
   let url = await assertSafeUrl(rawUrl, { lookupImpl });
   const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const res = await fetchImpl(url.href, { redirect: 'manual', signal });
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get('location');
+    const res = await requestImpl(url, { lookupImpl, signal });
+    const status = res.statusCode;
+    if (status >= 300 && status < 400) {
+      const location = res.headers?.location;
+      res.resume?.();
       if (!location) throw new Error(`redirect without location from ${url.href}`);
       url = await assertSafeUrl(new URL(location, url).href, { lookupImpl });
       continue;
     }
-    if (!res.ok) throw new Error(`fetch failed: ${res.status} ${res.statusText}`);
+    if (status < 200 || status >= 300) {
+      res.resume?.();
+      throw new Error(`fetch failed: ${status} ${res.statusMessage ?? ''}`.trim());
+    }
     return readCappedBody(res, FETCH_MAX_BYTES);
   }
   throw new Error(`too many redirects (max ${MAX_REDIRECTS})`);

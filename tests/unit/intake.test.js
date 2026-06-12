@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { extractClaims, buildClaimTable, assertSafeUrl, isPrivateAddress, fetchSource } from '../../src/intake.js';
+import { extractClaims, buildClaimTable, assertSafeUrl, isPrivateAddress, fetchSource, looksLikeUrl } from '../../src/intake.js';
 
 const byKind = (claims, kind) => claims.filter((c) => c.kind === kind).map((c) => c.value);
 
@@ -57,21 +57,58 @@ test('ssrf: scheme, localhost, literal-ip, and dns-resolved blocks', async () =>
   );
 });
 
-test('ssrf: redirect hops are re-validated', async () => {
+test('ssrf: redirect hops are re-validated, private target never requested', async () => {
   const okLookup = async () => [{ address: '93.184.216.34', family: 4 }];
-  const fetchImpl = async (href) => {
-    assert.ok(!href.includes('127.0.0.1'), 'private redirect target must never be fetched');
-    return { status: 302, ok: false, headers: new Map([['location', 'http://127.0.0.1/internal']]), statusText: 'Found' };
+  const requested = [];
+  const requestImpl = async (url) => {
+    requested.push(url.href);
+    assert.ok(!url.href.includes('127.0.0.1'), 'private redirect target must never be requested');
+    return { statusCode: 302, headers: { location: 'http://127.0.0.1/internal' }, resume() {} };
   };
-  fetchImpl.headersFix = true;
   await assert.rejects(
-    () => fetchSource('http://public.example.com/', {
-      fetchImpl: async (href) => {
-        const r = await fetchImpl(href);
-        return { ...r, headers: { get: (k) => r.headers.get(k) } };
-      },
-      lookupImpl: okLookup,
-    }),
+    () => fetchSource('http://public.example.com/', { requestImpl, lookupImpl: okLookup }),
     /private address/,
   );
+  assert.deepEqual(requested, ['http://public.example.com/']);
+});
+
+test('ssrf: connect-time guarded lookup blocks dns rebinding', async () => {
+  // 사전 검증은 공인 IP를 돌려주고, 연결 시점 lookup은 private을 돌려준다.
+  let calls = 0;
+  const rebindingLookup = async () => {
+    calls += 1;
+    return calls === 1
+      ? [{ address: '93.184.216.34', family: 4 }]
+      : [{ address: '10.0.0.7', family: 4 }];
+  };
+  // 실제 requestOnce 경로를 태우되 소켓 연결 전에 lookup 훅에서 막혀야 한다.
+  await assert.rejects(
+    () => fetchSource('http://rebind.example.com/', { lookupImpl: rebindingLookup }),
+    /resolves to private address 10\.0\.0\.7/,
+  );
+});
+
+test('ssrf: ipv4-mapped ipv6 ranges reduce to ipv4 rules', () => {
+  for (const addr of ['::ffff:172.16.0.1', '::ffff:172.31.9.9', '::ffff:10.1.2.3', '::ffff:169.254.169.254', '::ffff:0.0.0.0']) {
+    assert.equal(isPrivateAddress(addr), true, addr);
+  }
+  assert.equal(isPrivateAddress('::ffff:8.8.8.8'), false);
+});
+
+test('looksLikeUrl routes every scheme to the guard', () => {
+  for (const u of ['http://x', 'https://x', 'ftp://x', 'file:///etc/passwd', 'gopher://x']) {
+    assert.equal(looksLikeUrl(u), true, u);
+  }
+  for (const p of ['./page.html', 'examples/slop.html', 'C:no', 'plain text']) {
+    assert.equal(looksLikeUrl(p), false, p);
+  }
+});
+
+test('number bomb: 1MB digit line completes fast and bounded', () => {
+  const bomb = '9'.repeat(1024 * 1024);
+  const started = Date.now();
+  const { claims } = extractClaims(bomb);
+  const elapsed = Date.now() - started;
+  assert.ok(elapsed < 3000, `took ${elapsed}ms`);
+  assert.ok(claims.length < 50, 'no claim explosion');
 });

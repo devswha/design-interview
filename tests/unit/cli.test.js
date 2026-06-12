@@ -46,6 +46,15 @@ test('preview on directory --against: clean EISDIR error, exit 2', async () => {
   assert.ok(!r.stderr.includes('node:internal'));
 });
 
+test('intake ftp:// and file:// rejected by URL guard, not file path', async () => {
+  for (const url of ['ftp://example.test/resource', 'file:///etc/passwd']) {
+    const r = await invoke('intake', url);
+    assert.equal(r.code, 1, url);
+    assert.match(r.stderr, /intake failed: blocked: only http\/https/);
+    assert.ok(!r.stderr.includes('node:internal'));
+  }
+});
+
 test('preview on missing --against file: clean error, exit 2', async () => {
   const r = await invoke('preview', 'examples/slop-source.html', '--against', 'nope.html');
   assert.equal(r.code, 2);

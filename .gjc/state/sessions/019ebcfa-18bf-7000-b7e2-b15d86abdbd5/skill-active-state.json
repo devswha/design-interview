@@ -3,33 +3,33 @@
   "active": true,
   "skill": "ultragoal",
   "phase": "blocked",
-  "updated_at": "2026-06-12T18:39:29.824Z",
+  "updated_at": "2026-06-12T18:55:28.263Z",
   "session_id": "019ebcfa-18bf-7000-b7e2-b15d86abdbd5",
   "active_skills": [
     {
       "skill": "ultragoal",
       "phase": "blocked",
       "active": true,
-      "activated_at": "2026-06-12T18:39:29.824Z",
-      "updated_at": "2026-06-12T18:39:29.824Z",
+      "activated_at": "2026-06-12T18:55:28.263Z",
+      "updated_at": "2026-06-12T18:55:28.263Z",
       "session_id": "019ebcfa-18bf-7000-b7e2-b15d86abdbd5",
       "hud": {
         "version": 1,
         "chips": [
           {
             "label": "blocked",
-            "value": "1",
+            "value": "2",
             "priority": 5,
             "severity": "blocked"
           },
           {
             "label": "goals",
-            "value": "0/4",
+            "value": "0/5",
             "priority": 10
           },
           {
             "label": "current",
-            "value": "G002:M4 소스 인테이크 파이프라인",
+            "value": "G003:E2E 파이프라인 검증 + 문서 마감",
             "priority": 20
           },
           {
@@ -38,7 +38,7 @@
             "priority": 30
           }
         ],
-        "updated_at": "2026-06-12T18:39:29.822Z"
+        "updated_at": "2026-06-12T18:55:28.262Z"
       },
       "receipt": {
         "version": 1,
@@ -47,10 +47,10 @@
         "command": "gjc ultragoal (reconcile)",
         "state_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019ebcfa-18bf-7000-b7e2-b15d86abdbd5/skill-active-state.json",
         "storage_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019ebcfa-18bf-7000-b7e2-b15d86abdbd5/ultragoal-state.json",
-        "mutated_at": "2026-06-12T18:39:29.815Z",
-        "fresh_until": "2026-06-12T19:09:29.815Z",
+        "mutated_at": "2026-06-12T18:55:28.255Z",
+        "fresh_until": "2026-06-12T19:25:28.255Z",
         "status": "fresh",
-        "mutation_id": "ultragoal:reconcile:2026-06-12T18:39:29.815Z",
+        "mutation_id": "ultragoal:reconcile:2026-06-12T18:55:28.255Z",
         "verb": "reconcile",
         "forced": true,
         "from_phase": "blocked",

@@ -7,6 +7,9 @@
 // 여기서 다루는 텔: C1, T1, T2, T4, S5.
 // 나머지(L1~L4, S1~S4 등 의미 판단이 필요한 항목)는 SKILL.md Phase 5의
 // LLM 체크리스트로 남는다. 감사기는 통과해도 LLM 감사를 대체하지 않는다.
+// 시각 텔(L1/S3)은 src/geometry.js, 텍스트 유틸은 src/text.js 참조.
+
+import { stripTags } from './text.js';
 
 const HYPE_LEXICON = [
   // ko — patina lexicon/ai-ko.md 계열
@@ -20,12 +23,6 @@ function extractCss(html) {
   const blocks = [...String(html).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)].map((m) => m[1]);
   const attrs = [...String(html).matchAll(/\sstyle\s*=\s*("([^"]*)"|'([^']*)')/gi)].map((m) => m[2] ?? m[3]);
   return [...blocks, ...attrs].join('\n');
-}
-
-export function stripTags(html) {
-  return String(html)
-    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ');
 }
 
 function hexToHsl(hex) {

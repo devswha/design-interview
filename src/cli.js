@@ -40,9 +40,10 @@ if (!['intake', 'preview', 'audit', 'shot'].includes(cmd) || rest.length === 0) 
 if (cmd === 'intake') {
   const json = rest.includes('--json');
   const target = rest.filter((a) => a !== '--json')[0];
-  const { extractClaims, buildClaimTable, fetchSource } = await import('./intake.js');
+  const { extractClaims, buildClaimTable, fetchSource, looksLikeUrl } = await import('./intake.js');
   let source;
-  if (/^https?:\/\//i.test(target)) {
+  // scheme:// 형태는 전부 URL 가드로 — ftp:// 등이 파일 경로로 새면 안 된다.
+  if (looksLikeUrl(target)) {
     try {
       source = await fetchSource(target);
     } catch (err) {

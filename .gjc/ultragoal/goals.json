@@ -18,9 +18,10 @@
       "id": "G002",
       "title": "M4 소스 인테이크 파이프라인",
       "objective": "src/intake.js — 클레임 추출기: HTML/마크다운/플레인텍스트 slop 소스에서 숫자·가격·기능 클레임을\n구조화(JSON)로 추출하고 Phase 5 클레임 대조표(마크다운)를 생성한다.\nintake CLI 레인 추가: `design-interview intake <file-or-url> [--json|--table]`.\nURL 입력은 SSRF 가드 필수 — private/loopback/link-local IP 차단, 리다이렉트 재검증, 5MB/30s 캡 (patina security.js 원칙 축소판).\n단위 테스트: 추출 정확성(국문 가격 \"9,000원\", 영문 \"$8/user/month\", 수량 \"30개\"), SSRF 차단 케이스.\nSKILL.md Phase 0의 URL 경로를 intake CLI 사용으로 갱신한다.",
-      "status": "pending",
+      "status": "review_blocked",
       "createdAt": "2026-06-12T18:24:35.790Z",
-      "updatedAt": "2026-06-12T18:24:35.790Z"
+      "updatedAt": "2026-06-12T18:55:28.241Z",
+      "evidence": "architect BLOCK: fetchSource re-resolves DNS at fetch time (rebinding bypass, intake.js:163), ::ffff:172.16/12 mapped range unblocked (intake.js:108). red-team B1: ftp:///file:// routed to fs read exit 2 instead of guard exit 1. B2: 1MB digit line hangs extraction >30s SIGKILL."
     },
     {
       "id": "G003",
@@ -41,8 +42,20 @@
         "kind": "review_blocker",
         "blockedGoalId": "G001"
       }
+    },
+    {
+      "id": "G005",
+      "title": "Resolve intake security blockers",
+      "objective": "1) DNS 리바인딩 차단: 연결 시점 lookup 훅에서 주소 검증 (node http/https lookup 옵션). 2) ::ffff: mapped IPv4를 IPv4 검사로 환원(172.16/12 포함). 3) CLI에서 모든 scheme:// URL을 가드로 라우팅(ftp/file → exit 1). 4) 숫자 폭탄 방어: 스캔 전 digit-run/라인 길이 캡으로 추출 시간 바운드. 5) advisory: stripTags를 중립 모듈로 분리, 죽은 테스트 마커 제거. 각 항목 회귀 테스트.",
+      "status": "pending",
+      "createdAt": "2026-06-12T18:55:28.247Z",
+      "updatedAt": "2026-06-12T18:55:28.247Z",
+      "steering": {
+        "kind": "review_blocker",
+        "blockedGoalId": "G002"
+      }
     }
   ],
   "createdAt": "2026-06-12T18:24:35.790Z",
-  "updatedAt": "2026-06-12T18:37:50.190Z"
+  "updatedAt": "2026-06-12T18:55:28.247Z"
 }
