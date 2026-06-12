@@ -13,15 +13,19 @@ export const VIEWPORTS = {
 };
 
 // 공유 puppeteer 로더 — geometry.js도 사용한다. feature는 에러 안내용.
+// 미설치는 ERR_PUPPETEER_MISSING typed error — 호출부가 폴백 가능한 유일한
+// 케이스로 구분한다. 그 외 시각 레인 에러는 폴백 대상이 아니다.
 export async function loadPuppeteer(feature = 'visual lane (M3)') {
   try {
     return (await import('puppeteer')).default;
   } catch {
-    throw new Error(
+    const err = new Error(
       `puppeteer is not installed. ${feature} requires it:\n` +
       '  npm install puppeteer\n' +
       'audit/preview/benchmark (M0–M2) work without it.',
     );
+    err.code = 'ERR_PUPPETEER_MISSING';
+    throw err;
   }
 }
 

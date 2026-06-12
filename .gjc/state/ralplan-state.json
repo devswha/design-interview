@@ -1,0 +1,26 @@
+{
+  "run_id": "2026-06-12-1834-8444",
+  "skill": "ralplan",
+  "active": true,
+  "current_phase": "planner",
+  "version": 2,
+  "updated_at": "2026-06-12T18:34:42.961Z",
+  "receipt": {
+    "version": 1,
+    "skill": "ralplan",
+    "owner": "gjc-runtime",
+    "command": "gjc ralplan persist-run-id",
+    "state_path": "/home/devswha/workspace/design-interview/.gjc/state/skill-active-state.json",
+    "storage_path": "/home/devswha/workspace/design-interview/.gjc/state/ralplan-state.json",
+    "mutated_at": "2026-06-12T18:34:42.961Z",
+    "fresh_until": "2026-06-12T19:04:42.961Z",
+    "status": "fresh",
+    "mutation_id": "ralplan:2026-06-12T18:34:42.961Z",
+    "content_sha256": {
+      "algorithm": "sha256",
+      "value": "6423409b577a4a11f91a19ca6900f1d7a08818771cc487b21e0e266dd9ef2e53",
+      "covered_path": "/home/devswha/workspace/design-interview/.gjc/state/ralplan-state.json",
+      "computed_at": "2026-06-12T18:34:42.961Z"
+    }
+  }
+}

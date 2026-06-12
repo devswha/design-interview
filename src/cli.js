@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// design-interview CLI — Phase 4 프리뷰 진입점.
-//
-//   design-interview preview <built.html> [--against <slop.html>] [--out <file>]
+// design-interview CLI — 검수 레인 진입점.
 //
 // 인터뷰/빌드는 스킬(SKILL.md)이 담당한다. CLI는 검수 산출물 생성만 한다.
+// 에러 규율: 사용자 입력 문제(없는 파일 등)는 스택트레이스 없이 메시지 + exit 2,
+// 감사 fail은 exit 1, 시각 레인 폴백은 puppeteer 미설치(ERR_PUPPETEER_MISSING)만.
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -18,6 +18,21 @@ function usage() {
   process.exit(2);
 }
 
+function fail(message, code = 2) {
+  console.error(message);
+  process.exit(code);
+}
+
+async function readInput(path) {
+  try {
+    return await readFile(resolve(path), 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') fail(`cannot read ${path}: no such file`);
+    if (err.code === 'EISDIR') fail(`cannot read ${path}: is a directory`);
+    fail(`cannot read ${path}: ${err.message}`);
+  }
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (!['preview', 'audit', 'shot'].includes(cmd) || rest.length === 0) usage();
 
@@ -25,12 +40,15 @@ if (cmd === 'audit') {
   const visual = rest.includes('--visual');
   const files = rest.filter((a) => a !== '--visual');
   const file = resolve(files[0]);
-  let result = auditHtml(await readFile(file, 'utf8'));
+  let result = auditHtml(await readInput(file));
   if (visual) {
     const { analyzeVisualTells } = await import('./geometry.js');
     try {
       result = combineAudits(result, await analyzeVisualTells(file));
     } catch (err) {
+      // 폴백은 미설치 단 하나. 렌더 크래시 등 다른 시각 레인 에러를
+      // 정적 전용으로 강등하면 감사 결과가 조용히 약해진다 — 즉시 실패.
+      if (err.code !== 'ERR_PUPPETEER_MISSING') fail(`visual lane failed: ${err.message}`, 1);
       console.error(`visual lane skipped: ${err.message}\n`);
     }
   }
@@ -45,8 +63,7 @@ if (cmd === 'shot') {
     for (const s of shots) console.log(`${s.viewport}\t${s.path}`);
     process.exit(0);
   } catch (err) {
-    console.error(err.message);
-    process.exit(1);
+    fail(err.message, 1);
   }
 }
 
@@ -59,8 +76,8 @@ for (let i = 0; i < rest.length; i++) {
 if (args._.length !== 1) usage();
 
 const builtPath = resolve(args._[0]);
-const builtHtml = await readFile(builtPath, 'utf8');
-const originalHtml = args.against ? await readFile(resolve(args.against), 'utf8') : null;
+const builtHtml = await readInput(builtPath);
+const originalHtml = args.against ? await readInput(args.against) : null;
 
 const preview = buildPreviewHtml({ builtHtml, originalHtml, title: `preview — ${args._[0]}` });
 const outPath = resolve(args.out ?? builtPath.replace(/\.html?$/i, '') + '.preview.html');

@@ -8,10 +8,11 @@
       "id": "G001",
       "title": "M3 비주얼 레인 완성",
       "objective": "puppeteer를 devDependency로 설치하고 shot CLI 실캡처를 검증한다(examples/slop-source.html → desktop/mobile PNG 생성 확인).\n렌더된 박스 기하 기반 기계 판정을 추가한다: src/geometry.js — puppeteer로 렌더 후 요소 박스 좌표를 수집해\nL1(균일 카드 그리드: 형제 3개+ 동일 크기·등간격)과 S3(완전 대칭: 주요 블록이 전부 수평 중앙정렬)를 판정한다.\naudit CLI에 --visual 플래그를 추가해 기하 판정을 기계 감사에 합류시킨다 (puppeteer 미설치 시 명확한 안내 후 정적 검사만).\nslop 픽스처 중 하나에서 L1 또는 S3가 실제로 잡혀야 한다 (필요 시 균일 그리드 slop 픽스처 추가 + baseline 갱신).\nSKILL.md Phase 4에 스크린샷 자기검수 단계를 통합하고 Phase 5 기계 감사에 --visual 경로를 문서화한다.\ncore/design-tells.md의 감사 레인 표기를 갱신한다 (L1/S3 기계 레인 승격).",
-      "status": "active",
+      "status": "review_blocked",
       "createdAt": "2026-06-12T18:24:35.790Z",
-      "updatedAt": "2026-06-12T18:24:43.126Z",
-      "startedAt": "2026-06-12T18:24:43.126Z"
+      "updatedAt": "2026-06-12T18:37:50.183Z",
+      "startedAt": "2026-06-12T18:24:43.126Z",
+      "evidence": "architect BLOCK: visual-lane error masking + Node engines mismatch (>=18 vs puppeteer 25 needs >=22.12). red-team blocker: audit --visual missing file exposes node:internal stack trace (cli.js:28). full matrix otherwise pass (16 cases)."
     },
     {
       "id": "G002",
@@ -28,8 +29,20 @@
       "status": "pending",
       "createdAt": "2026-06-12T18:24:35.790Z",
       "updatedAt": "2026-06-12T18:24:35.790Z"
+    },
+    {
+      "id": "G004",
+      "title": "Resolve G001 review blockers",
+      "objective": "1) audit --visual은 puppeteer 미설치(typed error)만 정적 폴백하고 그 외 시각 레인 에러는 메시지+exit 1로 실패. 2) engines.node를 puppeteer 25 요구(>=22.12)와 정합. 3) CLI 파일 입력 ENOENT 시 스택트레이스 없이 사용자용 에러+exit 2. 회귀 테스트 포함.",
+      "status": "pending",
+      "createdAt": "2026-06-12T18:37:50.190Z",
+      "updatedAt": "2026-06-12T18:37:50.190Z",
+      "steering": {
+        "kind": "review_blocker",
+        "blockedGoalId": "G001"
+      }
     }
   ],
   "createdAt": "2026-06-12T18:24:35.790Z",
-  "updatedAt": "2026-06-12T18:24:43.126Z"
+  "updatedAt": "2026-06-12T18:37:50.190Z"
 }
