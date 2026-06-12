@@ -13,18 +13,31 @@ import { auditHtml, formatAuditReport } from './audit.js';
 function usage() {
   console.error(`usage: design-interview <command>
   preview <built.html> [--against <slop.html>] [--out <file>]
-  audit   <page.html>            # 결정론적 design-tell 감사 (exit 1 on fail)`);
+  audit   <page.html>            # 결정론적 design-tell 감사 (exit 1 on fail)
+  shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)`);
   process.exit(2);
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
-if (!['preview', 'audit'].includes(cmd) || rest.length === 0) usage();
+if (!['preview', 'audit', 'shot'].includes(cmd) || rest.length === 0) usage();
 
 if (cmd === 'audit') {
   const file = resolve(rest[0]);
   const result = auditHtml(await readFile(file, 'utf8'));
   console.log(formatAuditReport(result, { source: rest[0] }));
   process.exit(result.pass ? 0 : 1);
+}
+
+if (cmd === 'shot') {
+  const { captureFile } = await import('./screenshot.js');
+  try {
+    const shots = await captureFile(rest[0]);
+    for (const s of shots) console.log(`${s.viewport}\t${s.path}`);
+    process.exit(0);
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
 }
 
 const args = { _: [] };

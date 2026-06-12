@@ -41,6 +41,13 @@ node src/cli.js audit built.html
 #   slop score: 80% (4/5 tells)   ← exit 1, 납품 불가
 ```
 
+벤치마크 (텔 수정 시 회귀 게이트):
+
+```bash
+npm run benchmark
+# 3/3 fixtures match baseline — miss(탐지 후퇴)/fp(오탐 후퇴) 발생 시 exit 1
+```
+
 ## Layout
 
 | 경로 | 역할 |

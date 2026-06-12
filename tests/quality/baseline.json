@@ -1,0 +1,8 @@
+{
+  "comment": "픽스처별 기대 기계 판정. 텔 추가/수정 시 이 파일을 같은 커밋에서 갱신한다 (ROADMAP 운영 원칙).",
+  "fixtures": {
+    "examples/slop-source.html": { "failed": ["C1", "T1", "T2", "T4"] },
+    "tests/fixtures/slop/saas-landing.html": { "failed": ["T2", "T4", "S5"] },
+    "tests/fixtures/clean/restaurant.html": { "failed": [] }
+  }
+}

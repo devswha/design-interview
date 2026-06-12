@@ -8,7 +8,8 @@
     "design-interview": "src/cli.js"
   },
   "scripts": {
-    "test": "node --test tests/unit/*.test.js"
+    "test": "node --test tests/unit/*.test.js",
+    "benchmark": "node tests/quality/benchmark.mjs"
   },
   "files": [
     "SKILL.md",
