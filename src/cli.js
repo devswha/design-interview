@@ -8,14 +8,24 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { buildPreviewHtml } from './preview.js';
+import { auditHtml, formatAuditReport } from './audit.js';
 
 function usage() {
-  console.error('usage: design-interview preview <built.html> [--against <slop.html>] [--out <file>]');
+  console.error(`usage: design-interview <command>
+  preview <built.html> [--against <slop.html>] [--out <file>]
+  audit   <page.html>            # 결정론적 design-tell 감사 (exit 1 on fail)`);
   process.exit(2);
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
-if (cmd !== 'preview' || rest.length === 0) usage();
+if (!['preview', 'audit'].includes(cmd) || rest.length === 0) usage();
+
+if (cmd === 'audit') {
+  const file = resolve(rest[0]);
+  const result = auditHtml(await readFile(file, 'utf8'));
+  console.log(formatAuditReport(result, { source: rest[0] }));
+  process.exit(result.pass ? 0 : 1);
+}
 
 const args = { _: [] };
 for (let i = 0; i < rest.length; i++) {

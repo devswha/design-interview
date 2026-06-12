@@ -31,6 +31,16 @@ node src/cli.js preview built.html --against slop-source.html
 # → built.preview.html  (브라우저로 열어 built/original/both 토글 검수)
 ```
 
+슬롭 감사 CLI (Phase 5, 결정론적):
+
+```bash
+node src/cli.js audit built.html
+# design-tell audit — built.html
+#   FAIL  C1 purple-gradient  ← linear-gradient(135deg,#667eea,#764ba2)
+#   ...
+#   slop score: 80% (4/5 tells)   ← exit 1, 납품 불가
+```
+
 ## Layout
 
 | 경로 | 역할 |
@@ -40,7 +50,8 @@ node src/cli.js preview built.html --against slop-source.html
 | `core/design-tells.md` | AI 디자인 텔 금지 목록 (빌드 규율 + 납품 감사 체크리스트) |
 | `templates/concept-sheet.md` | Phase 2 컨셉 시트 양식 |
 | `src/preview.js` | inert 프리뷰 빌더 — CSP + 무스크립트 radio 토글 |
-| `src/cli.js` | `design-interview preview` 진입점 |
+| `src/audit.js` | 결정론적 design-tell 감사기 — LLM 자기 채점 없이 코드로 판정 |
+| `src/cli.js` | `preview` / `audit` 진입점 |
 
 ## Principles
 

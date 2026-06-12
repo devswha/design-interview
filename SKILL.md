@@ -102,10 +102,11 @@ node src/cli.js preview <built.html> [--against <slop-source.html>]
 
 납품 전 최종 감사:
 
-1. `core/design-tells.md` 체크리스트 전 항목 통과 확인 — 위반 발견 시 Phase 3으로 되돌아가 수정
-2. 카피 감사: patina가 설치되어 있으면 본문 텍스트에 `patina --score`를 돌려 AI 카피 점수를 확인하고 결과를 보고한다. 없으면 `core/design-tells.md`의 카피 섹션으로 수동 감사
-3. 클레임 대조: 소스의 숫자·기능·가격이 산출물에 전부 보존되었는지 표로 대조
-4. 납품: 최종 HTML + 컨셉 시트 + 감사 결과 요약
+1. **기계 감사 (결정론적)**: `node src/cli.js audit <built.html>` 실행. C1/T1/T2/T4/S5를 코드로 판정한다 — exit 1이면 납품 불가, Phase 3으로 돌아가 수정 후 재실행. LLM 자기 채점으로 이 단계를 대체하지 않는다.
+2. **LLM 체크리스트 감사**: 기계 감사가 못 보는 의미 판단 항목(L1~L4, S1~S4, T3, T5)을 `core/design-tells.md` 기준으로 점검 — 위반 발견 시 Phase 3으로 되돌아가 수정
+3. 카피 감사: patina가 설치되어 있으면 본문 텍스트에 `patina --score`를 돌려 AI 카피 점수를 확인하고 결과를 보고한다. 없으면 `core/design-tells.md`의 카피 섹션으로 수동 감사
+4. 클레임 대조: 소스의 숫자·기능·가격이 산출물에 전부 보존되었는지 표로 대조
+5. 납품: 최종 HTML + 컨셉 시트 + 감사 결과(기계 slop score 포함) 요약
 
 ---
 
