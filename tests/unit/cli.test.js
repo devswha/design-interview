@@ -32,6 +32,20 @@ test('audit --visual on missing file: same clean error before visual lane', asyn
   assert.ok(!r.stderr.includes('node:internal'));
 });
 
+test('audit on directory path: clean EISDIR error, exit 2, no stack trace', async () => {
+  const r = await invoke('audit', 'examples');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /cannot read .*examples: is a directory/);
+  assert.ok(!r.stderr.includes('node:internal'), 'no stack trace');
+});
+
+test('preview on directory --against: clean EISDIR error, exit 2', async () => {
+  const r = await invoke('preview', 'examples/slop-source.html', '--against', 'core');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /cannot read core: is a directory/);
+  assert.ok(!r.stderr.includes('node:internal'));
+});
+
 test('preview on missing --against file: clean error, exit 2', async () => {
   const r = await invoke('preview', 'examples/slop-source.html', '--against', 'nope.html');
   assert.equal(r.code, 2);
