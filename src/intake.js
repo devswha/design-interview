@@ -122,8 +122,38 @@ export function looksLikeUrl(target) {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(target);
 }
 
+// IPv6 주소를 8개 16비트 그룹으로 정식 전개한다. 끝의 dotted IPv4 표기는
+// 두 그룹으로 환산. 실패 시 null.
+function expandV6Groups(addr) {
+  let a = addr.toLowerCase();
+  const dotted = /^(.*):(\d+\.\d+\.\d+\.\d+)$/.exec(a);
+  if (dotted) {
+    const o = dotted[2].split('.').map(Number);
+    if (o.some((n) => n > 255)) return null;
+    a = `${dotted[1]}:${((o[0] << 8) | o[1]).toString(16)}:${((o[2] << 8) | o[3]).toString(16)}`;
+  }
+  const hasCompress = a.includes('::');
+  const [headStr, tailStr = ''] = hasCompress ? a.split('::') : [a];
+  const head = headStr ? headStr.split(':').filter(Boolean) : [];
+  const tail = hasCompress && tailStr ? tailStr.split(':').filter(Boolean) : [];
+  const fill = 8 - head.length - tail.length;
+  if (!hasCompress && head.length !== 8) return null;
+  if (hasCompress && fill < 1) return null;
+  const groups = [...head, ...Array(hasCompress ? fill : 0).fill('0'), ...tail];
+  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return null;
+  return groups.map((g) => parseInt(g, 16));
+}
+
+// IPv4-mapped IPv6(::ffff:0:0/96)이면 내장된 IPv4를 돌려준다.
+// dotted(::ffff:172.16.0.1)와 hex(::ffff:ac10:1) 표기 모두 잡는다.
+function mappedV4(addr) {
+  const g = expandV6Groups(addr);
+  if (!g || !g.slice(0, 5).every((x) => x === 0) || g[5] !== 0xffff) return null;
+  return `${g[6] >> 8}.${g[6] & 255}.${g[7] >> 8}.${g[7] & 255}`;
+}
+
 // private/loopback/link-local/메타데이터 대역 차단.
-// IPv4-mapped IPv6(::ffff:a.b.c.d)는 IPv4 검사로 환원한다.
+// IPv4-mapped IPv6는 모든 표기를 IPv4 검사로 환원한다.
 export function isPrivateAddress(addr) {
   if (isIP(addr) === 4) {
     const [a, b] = addr.split('.').map(Number);
@@ -133,8 +163,8 @@ export function isPrivateAddress(addr) {
       || (a === 169 && b === 254);
   }
   const v6 = addr.toLowerCase();
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(v6);
-  if (mapped) return isPrivateAddress(mapped[1]);
+  const v4 = mappedV4(v6);
+  if (v4) return isPrivateAddress(v4);
   return v6 === '::1' || v6 === '::' || v6.startsWith('fc') || v6.startsWith('fd')
     || v6.startsWith('fe80');
 }

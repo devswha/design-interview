@@ -88,11 +88,20 @@ test('ssrf: connect-time guarded lookup blocks dns rebinding', async () => {
   );
 });
 
-test('ssrf: ipv4-mapped ipv6 ranges reduce to ipv4 rules', () => {
-  for (const addr of ['::ffff:172.16.0.1', '::ffff:172.31.9.9', '::ffff:10.1.2.3', '::ffff:169.254.169.254', '::ffff:0.0.0.0']) {
+test('ssrf: ipv4-mapped ipv6 ranges reduce to ipv4 rules (dotted and hex forms)', () => {
+  for (const addr of [
+    '::ffff:172.16.0.1', '::ffff:172.31.9.9', '::ffff:10.1.2.3', '::ffff:169.254.169.254', '::ffff:0.0.0.0',
+    '::ffff:ac10:1', '::ffff:7f00:1', '0:0:0:0:0:ffff:ac10:1', '0000:0000:0000:0000:0000:ffff:a9fe:a9fe',
+  ]) {
     assert.equal(isPrivateAddress(addr), true, addr);
   }
-  assert.equal(isPrivateAddress('::ffff:8.8.8.8'), false);
+  for (const addr of ['::ffff:8.8.8.8', '::ffff:808:808', '2606:4700::1111']) {
+    assert.equal(isPrivateAddress(addr), false, addr);
+  }
+});
+
+test('ssrf: hex-mapped literal in URL is blocked', async () => {
+  await assert.rejects(() => assertSafeUrl('http://[::ffff:ac10:1]/x'), /private address/);
 });
 
 test('looksLikeUrl routes every scheme to the guard', () => {
