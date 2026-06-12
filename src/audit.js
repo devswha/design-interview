@@ -128,6 +128,13 @@ export function auditHtml(html) {
   };
 }
 
+// 정적 감사 결과에 시각 레인(geometry.js) findings를 합류시킨다.
+export function combineAudits(staticResult, visualFindings) {
+  const findings = [...staticResult.findings, ...visualFindings];
+  const failed = findings.filter((f) => !f.pass).map((f) => f.id);
+  return { findings, failed, slopScore: failed.length / findings.length, pass: failed.length === 0 };
+}
+
 export function formatAuditReport(result, { source = '' } = {}) {
   const lines = [`design-tell audit${source ? ` — ${source}` : ''}`];
   for (const f of result.findings) {
@@ -135,7 +142,7 @@ export function formatAuditReport(result, { source = '' } = {}) {
   }
   lines.push(`  slop score: ${(result.slopScore * 100).toFixed(0)}% (${result.failed.length}/${result.findings.length} tells)`);
   lines.push(result.pass
-    ? '  machine checks clean — SKILL.md Phase 5 LLM 체크리스트(L1~L4, S1~S4)로 계속'
+    ? '  machine checks clean — SKILL.md Phase 5 LLM 체크리스트로 계속'
     : '  납품 불가 — Phase 3으로 돌아가 수정 후 재감사');
   return lines.join('\n');
 }

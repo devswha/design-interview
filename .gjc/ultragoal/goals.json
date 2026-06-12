@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "brief": "design-interview(~/workspace/design-interview)를 테스트 가능한 완성 상태로 끌어올린다.\n\n공통 제약:\n- 현재 상태: M0~M2 완료 (스킬 + inert 프리뷰, 결정론적 감사 엔진 C1/T1/T2/T4/S5, 벤치마크 회귀 게이트 3/3 green, 테스트 15개).\n- 새 기계 텔 추가 시 픽스처 + tests/quality/baseline.json 갱신을 같은 커밋으로 (ROADMAP 운영 원칙).\n- 기계 레인이 커버하게 된 텔은 SKILL.md/core LLM 체크리스트에서 제거 (이중 채점 금지).\n- puppeteer는 devDependency. 미설치 환경에서 M0~M2 기능과 단위 테스트는 계속 동작해야 한다 (puppeteer 필요 테스트는 skip 분기).\n- 의미·숫자·극성·인과 보존(patina MPS 원칙)은 모든 단계에서 불변.\n- 각 스토리 완료 시 npm test + npm run benchmark green 후 커밋.\n\n@goal: M3 비주얼 레인 완성\npuppeteer를 devDependency로 설치하고 shot CLI 실캡처를 검증한다(examples/slop-source.html → desktop/mobile PNG 생성 확인).\n렌더된 박스 기하 기반 기계 판정을 추가한다: src/geometry.js — puppeteer로 렌더 후 요소 박스 좌표를 수집해\nL1(균일 카드 그리드: 형제 3개+ 동일 크기·등간격)과 S3(완전 대칭: 주요 블록이 전부 수평 중앙정렬)를 판정한다.\naudit CLI에 --visual 플래그를 추가해 기하 판정을 기계 감사에 합류시킨다 (puppeteer 미설치 시 명확한 안내 후 정적 검사만).\nslop 픽스처 중 하나에서 L1 또는 S3가 실제로 잡혀야 한다 (필요 시 균일 그리드 slop 픽스처 추가 + baseline 갱신).\nSKILL.md Phase 4에 스크린샷 자기검수 단계를 통합하고 Phase 5 기계 감사에 --visual 경로를 문서화한다.\ncore/design-tells.md의 감사 레인 표기를 갱신한다 (L1/S3 기계 레인 승격).\n\n@goal: M4 소스 인테이크 파이프라인\nsrc/intake.js — 클레임 추출기: HTML/마크다운/플레인텍스트 slop 소스에서 숫자·가격·기능 클레임을\n구조화(JSON)로 추출하고 Phase 5 클레임 대조표(마크다운)를 생성한다.\nintake CLI 레인 추가: `design-interview intake <file-or-url> [--json|--table]`.\nURL 입력은 SSRF 가드 필수 — private/loopback/link-local IP 차단, 리다이렉트 재검증, 5MB/30s 캡 (patina security.js 원칙 축소판).\n단위 테스트: 추출 정확성(국문 가격 \"9,000원\", 영문 \"$8/user/month\", 수량 \"30개\"), SSRF 차단 케이스.\nSKILL.md Phase 0의 URL 경로를 intake CLI 사용으로 갱신한다.\n\n@goal: E2E 파이프라인 검증 + 문서 마감\ntests/e2e/pipeline.test.js — examples/slop-source.html을 입력으로 intake(클레임 추출) → audit(기계 감사 fail 검증)\n→ preview(--against 토글 생성) → shot(PNG 생성, puppeteer 있을 때) 전체 파이프라인을 CLI 실호출(node src/cli.js)로 검증한다.\npackage.json에 test:e2e 스크립트 추가, npm test는 unit+e2e 모두 커버.\nREADME(usage에 intake/--visual 추가, Layout 표 갱신)와 ROADMAP(M3/M4 상태 갱신, 남은 항목 정리)을 마감한다.\n최종: npm test + npm run benchmark 전부 green, 커밋 완료.",
+  "gjcGoalMode": "aggregate",
+  "gjcObjective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.",
+  "goals": [
+    {
+      "id": "G001",
+      "title": "M3 비주얼 레인 완성",
+      "objective": "puppeteer를 devDependency로 설치하고 shot CLI 실캡처를 검증한다(examples/slop-source.html → desktop/mobile PNG 생성 확인).\n렌더된 박스 기하 기반 기계 판정을 추가한다: src/geometry.js — puppeteer로 렌더 후 요소 박스 좌표를 수집해\nL1(균일 카드 그리드: 형제 3개+ 동일 크기·등간격)과 S3(완전 대칭: 주요 블록이 전부 수평 중앙정렬)를 판정한다.\naudit CLI에 --visual 플래그를 추가해 기하 판정을 기계 감사에 합류시킨다 (puppeteer 미설치 시 명확한 안내 후 정적 검사만).\nslop 픽스처 중 하나에서 L1 또는 S3가 실제로 잡혀야 한다 (필요 시 균일 그리드 slop 픽스처 추가 + baseline 갱신).\nSKILL.md Phase 4에 스크린샷 자기검수 단계를 통합하고 Phase 5 기계 감사에 --visual 경로를 문서화한다.\ncore/design-tells.md의 감사 레인 표기를 갱신한다 (L1/S3 기계 레인 승격).",
+      "status": "active",
+      "createdAt": "2026-06-12T18:24:35.790Z",
+      "updatedAt": "2026-06-12T18:24:43.126Z",
+      "startedAt": "2026-06-12T18:24:43.126Z"
+    },
+    {
+      "id": "G002",
+      "title": "M4 소스 인테이크 파이프라인",
+      "objective": "src/intake.js — 클레임 추출기: HTML/마크다운/플레인텍스트 slop 소스에서 숫자·가격·기능 클레임을\n구조화(JSON)로 추출하고 Phase 5 클레임 대조표(마크다운)를 생성한다.\nintake CLI 레인 추가: `design-interview intake <file-or-url> [--json|--table]`.\nURL 입력은 SSRF 가드 필수 — private/loopback/link-local IP 차단, 리다이렉트 재검증, 5MB/30s 캡 (patina security.js 원칙 축소판).\n단위 테스트: 추출 정확성(국문 가격 \"9,000원\", 영문 \"$8/user/month\", 수량 \"30개\"), SSRF 차단 케이스.\nSKILL.md Phase 0의 URL 경로를 intake CLI 사용으로 갱신한다.",
+      "status": "pending",
+      "createdAt": "2026-06-12T18:24:35.790Z",
+      "updatedAt": "2026-06-12T18:24:35.790Z"
+    },
+    {
+      "id": "G003",
+      "title": "E2E 파이프라인 검증 + 문서 마감",
+      "objective": "tests/e2e/pipeline.test.js — examples/slop-source.html을 입력으로 intake(클레임 추출) → audit(기계 감사 fail 검증)\n→ preview(--against 토글 생성) → shot(PNG 생성, puppeteer 있을 때) 전체 파이프라인을 CLI 실호출(node src/cli.js)로 검증한다.\npackage.json에 test:e2e 스크립트 추가, npm test는 unit+e2e 모두 커버.\nREADME(usage에 intake/--visual 추가, Layout 표 갱신)와 ROADMAP(M3/M4 상태 갱신, 남은 항목 정리)을 마감한다.\n최종: npm test + npm run benchmark 전부 green, 커밋 완료.",
+      "status": "pending",
+      "createdAt": "2026-06-12T18:24:35.790Z",
+      "updatedAt": "2026-06-12T18:24:35.790Z"
+    }
+  ],
+  "createdAt": "2026-06-12T18:24:35.790Z",
+  "updatedAt": "2026-06-12T18:24:43.126Z"
+}

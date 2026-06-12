@@ -37,8 +37,11 @@ patina의 패턴 팩에 해당하는 시각 도메인 금지 목록. 빌드(Phas
 
 두 레인으로 나뉜다:
 
-- **기계 레인** (`node src/cli.js audit <built.html>`): C1, T1, T2, T4, S5는 `src/audit.js`가 코드로 판정한다. LLM이 이 항목을 자기 채점하지 않는다.
-- **LLM 레인**: 의미 판단이 필요한 나머지(L1~L4, S1~S4, T3, T5)는 Phase 5에서 체크리스트로 점검한다.
+- **기계 레인 (정적)** (`node src/cli.js audit <built.html>`): C1, T1, T2, T4, S5는 `src/audit.js`가 HTML/CSS 파싱으로 판정한다.
+- **기계 레인 (시각)** (`--visual` 플래그, requires puppeteer): L1, S3는 `src/geometry.js`가 렌더된 박스 좌표·계산 스타일로 판정한다.
+- **LLM 레인**: 의미 판단이 필요한 나머지(L2~L4, S1/S2/S4, T3, T5)는 Phase 5에서 체크리스트로 점검한다.
+
+기계 레인이 커버하는 텔은 LLM이 자기 채점하지 않는다 (이중 채점 금지).
 
 fail 1개라도 있으면 납품 불가 — Phase 3 수정 후 재감사.
 컨셉 시트의 "하지 않을 것" 목록에 오른 항목은 Phase 4 프리뷰마다 우선 점검한다.

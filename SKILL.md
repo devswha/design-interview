@@ -95,6 +95,7 @@ node src/cli.js preview <built.html> [--against <slop-source.html>]
 
 - `src/preview.js`가 검수용 프리뷰 HTML을 생성: 빌드 결과를 그대로 보여주고, `--against`가 있으면 원본 slop과 토글 비교 (rewritten/original/both 3-state, 스크립트 없는 radio-hack — patina PREVIEW_CSS 방식)
 - 프리뷰는 inert: 스크립트 제거, CSP로 실행 차단 (검수 화면이 산출물을 오염시키지 않게)
+- **스크린샷 자기검수 (사용자에게 보여주기 전에 수행)**: `node src/cli.js shot <built.html>`로 desktop/mobile 풀페이지 PNG를 캡처하고, 그 이미지를 직접 읽어 검토한다 — 컨셉 시트의 시각 언어(팔레트·밀도·구조) 일치 여부와 design-tells 레이아웃 항목(L2, L3, L4)을 눈으로 확인. 위반을 발견하면 사용자에게 보여주기 전에 수정한다. puppeteer 미설치면 이 단계를 건너뛰고 그 사실을 보고한다.
 - 사용자 피드백 → 컨셉 시트 위반 여부 먼저 판정 → 시트 안이면 즉시 수정, 시트 밖이면 시트 개정 승인부터
 - 수정 후 재프리뷰. 사용자가 승인할 때까지 반복
 
@@ -102,8 +103,8 @@ node src/cli.js preview <built.html> [--against <slop-source.html>]
 
 납품 전 최종 감사:
 
-1. **기계 감사 (결정론적)**: `node src/cli.js audit <built.html>` 실행. C1/T1/T2/T4/S5를 코드로 판정한다 — exit 1이면 납품 불가, Phase 3으로 돌아가 수정 후 재실행. LLM 자기 채점으로 이 단계를 대체하지 않는다.
-2. **LLM 체크리스트 감사**: 기계 감사가 못 보는 의미 판단 항목(L1~L4, S1~S4, T3, T5)을 `core/design-tells.md` 기준으로 점검 — 위반 발견 시 Phase 3으로 되돌아가 수정
+1. **기계 감사 (결정론적)**: `node src/cli.js audit <built.html> --visual` 실행. 정적 텔(C1/T1/T2/T4/S5)은 CSS/HTML 파싱으로, 시각 텔(L1 균일 그리드, S3 완전 대칭)은 렌더된 박스 기하로 판정한다 — exit 1이면 납품 불가, Phase 3으로 돌아가 수정 후 재실행. LLM 자기 채점으로 이 단계를 대체하지 않는다. puppeteer 미설치면 시각 레인은 자동 생략되고 정적 텔만 판정된다.
+2. **LLM 체크리스트 감사**: 기계 감사가 못 보는 의미 판단 항목(L2~L4, S1/S2/S4, T3, T5)을 `core/design-tells.md` 기준으로 점검 — 위반 발견 시 Phase 3으로 되돌아가 수정
 3. 카피 감사: patina가 설치되어 있으면 본문 텍스트에 `patina --score`를 돌려 AI 카피 점수를 확인하고 결과를 보고한다. 없으면 `core/design-tells.md`의 카피 섹션으로 수동 감사
 4. 클레임 대조: 소스의 숫자·기능·가격이 산출물에 전부 보존되었는지 표로 대조
 5. 납품: 최종 HTML + 컨셉 시트 + 감사 결과(기계 slop score 포함) 요약

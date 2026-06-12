@@ -8,12 +8,12 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { buildPreviewHtml } from './preview.js';
-import { auditHtml, formatAuditReport } from './audit.js';
+import { auditHtml, formatAuditReport, combineAudits } from './audit.js';
 
 function usage() {
   console.error(`usage: design-interview <command>
   preview <built.html> [--against <slop.html>] [--out <file>]
-  audit   <page.html>            # 결정론적 design-tell 감사 (exit 1 on fail)
+  audit   <page.html> [--visual]  # 결정론적 design-tell 감사 (exit 1 on fail)
   shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)`);
   process.exit(2);
 }
@@ -22,9 +22,19 @@ const [cmd, ...rest] = process.argv.slice(2);
 if (!['preview', 'audit', 'shot'].includes(cmd) || rest.length === 0) usage();
 
 if (cmd === 'audit') {
-  const file = resolve(rest[0]);
-  const result = auditHtml(await readFile(file, 'utf8'));
-  console.log(formatAuditReport(result, { source: rest[0] }));
+  const visual = rest.includes('--visual');
+  const files = rest.filter((a) => a !== '--visual');
+  const file = resolve(files[0]);
+  let result = auditHtml(await readFile(file, 'utf8'));
+  if (visual) {
+    const { analyzeVisualTells } = await import('./geometry.js');
+    try {
+      result = combineAudits(result, await analyzeVisualTells(file));
+    } catch (err) {
+      console.error(`visual lane skipped: ${err.message}\n`);
+    }
+  }
+  console.log(formatAuditReport(result, { source: files[0] }));
   process.exit(result.pass ? 0 : 1);
 }
 

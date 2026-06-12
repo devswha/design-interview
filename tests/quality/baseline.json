@@ -3,6 +3,7 @@
   "fixtures": {
     "examples/slop-source.html": { "failed": ["C1", "T1", "T2", "T4"] },
     "tests/fixtures/slop/saas-landing.html": { "failed": ["T2", "T4", "S5"] },
+    "tests/fixtures/slop/feature-grid.html": { "failed": [], "note": "정적 레인은 통과 — L1은 시각 레인(geometry.test.js)에서 잡힌다" },
     "tests/fixtures/clean/restaurant.html": { "failed": [] }
   }
 }
