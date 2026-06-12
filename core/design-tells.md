@@ -1,0 +1,39 @@
+# AI 디자인 텔 (design tells)
+
+patina의 패턴 팩에 해당하는 시각 도메인 금지 목록. 빌드(Phase 3) 중 생성 규율로,
+감사(Phase 5)에서 체크리스트로 쓴다. 각 항목은 `id / 신호 / 대체` 구조.
+
+## 레이아웃
+
+- `L1 uniform-card-grid` — 3열 균일 카드 그리드 + 아이콘 + 제목 + 두 줄 설명 반복. → 항목 중요도에 따라 크기·배치를 차등하라. 하나는 크게, 나머지는 목록으로.
+- `L2 center-everything` — 모든 섹션이 가운데 정렬 단일 컬럼. → 본문 섹션 최소 1곳은 좌정렬 또는 비대칭 2컬럼.
+- `L3 section-rhythm` — 모든 섹션이 동일 패딩·동일 구조(제목/부제/본문)로 반복되는 균일 리듬. → 섹션마다 밀도를 다르게. 좁은 섹션 하나가 리듬을 살린다.
+- `L4 hero-formula` — 거대 제목 + 부제 + CTA 버튼 2개 + 우측 일러스트 공식. → 첫 화면은 컨셉 시트의 structure 답변에서 도출하라. 공식 금지.
+
+## 색·질감
+
+- `C1 purple-gradient` — 보라→파랑 그라데이션 배경, 특히 히어로. 가장 악명 높은 텔. → 컨셉 팔레트의 단색 또는 절제된 동일 계열 톤.
+- `C2 glassmorphism-default` — 이유 없는 반투명 블러 카드. → 표면 구분은 1px 보더나 배경 명도차로.
+- `C3 rainbow-feature-icons` — 기능마다 다른 색 아이콘 배경. → 단일 강조색 원칙.
+- `C4 soft-shadow-everywhere` — 모든 요소에 동일한 box-shadow. → 그림자는 떠 있어야 할 요소 한 종류에만.
+
+## 타이포·카피
+
+- `T1 emoji-bullets` — ✨🚀💡 불릿. 즉시 실격. → 불릿 자체를 줄이고 산문이나 번호로.
+- `T2 hype-adjectives` — "혁신적인", "완벽한", "강력한", "seamless", "effortless". → 클레임의 구체 수치·동작으로 대체. patina lexicon과 동일 원칙.
+- `T3 title-case-headings` — 영문 제목의 기계적 Title Case. → sentence case.
+- `T4 symmetric-heading-pairs` — "Simple. Powerful. Fast." 류 3연속 단문 패턴. → 한 문장으로 풀어 쓰거나 하나만 남긴다.
+- `T5 faq-padding` — 아무도 안 물어본 질문으로 채운 FAQ 섹션. → 실제 구매 저항 지점만. 없으면 섹션 삭제.
+
+## 구조·디테일
+
+- `S1 testimonial-fabrication` — 출처 없는 후기 카드. 신뢰 사기이자 강한 AI 텔. → 실제 후기가 없으면 섹션을 만들지 않는다.
+- `S2 logo-wall-placeholder` — "trusted by" 가짜 로고 월. → 동일.
+- `S3 perfect-symmetry` — 모든 여백·크기가 수학적으로 균일. → 의도적 비대칭 최소 1곳 (SKILL.md Phase 3 규칙).
+- `S4 stock-illustration` — undraw류 일러스트, 의미 없는 3D 블롭. → 실제 제품 스크린샷, 없으면 타이포그래피로 해결.
+- `S5 border-radius-uniform` — 전 요소 동일 radius (특히 12–16px). → 요소 위계별로 다르게, 또는 0.
+
+## 감사 사용법
+
+Phase 5에서 각 id를 pass/fail로 기록한다. fail 1개라도 있으면 납품 불가 — Phase 3 수정 후 재감사.
+컨셉 시트의 "하지 않을 것" 목록에 오른 항목은 Phase 4 프리뷰마다 우선 점검한다.

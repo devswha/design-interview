@@ -1,0 +1,22 @@
+{
+  "name": "design-interview",
+  "version": "0.1.0",
+  "description": "Interview-driven page tailoring skill — turns AI-slop source into landing/detail pages with no AI tells, concept locked with the user before any build",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "design-interview": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test tests/unit/*.test.js"
+  },
+  "files": [
+    "SKILL.md",
+    "core/",
+    "templates/",
+    "src/"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
