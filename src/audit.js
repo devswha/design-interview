@@ -22,7 +22,7 @@ function extractCss(html) {
   return [...blocks, ...attrs].join('\n');
 }
 
-function stripTags(html) {
+export function stripTags(html) {
   return String(html)
     .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, ' ')
     .replace(/<[^>]+>/g, ' ');

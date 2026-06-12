@@ -12,6 +12,7 @@ import { auditHtml, formatAuditReport, combineAudits } from './audit.js';
 
 function usage() {
   console.error(`usage: design-interview <command>
+  intake  <file-or-url> [--json]  # 보존 클레임 추출 (URL은 SSRF 가드 통과 필수)
   preview <built.html> [--against <slop.html>] [--out <file>]
   audit   <page.html> [--visual]  # 결정론적 design-tell 감사 (exit 1 on fail)
   shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)`);
@@ -34,7 +35,26 @@ async function readInput(path) {
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
-if (!['preview', 'audit', 'shot'].includes(cmd) || rest.length === 0) usage();
+if (!['intake', 'preview', 'audit', 'shot'].includes(cmd) || rest.length === 0) usage();
+
+if (cmd === 'intake') {
+  const json = rest.includes('--json');
+  const target = rest.filter((a) => a !== '--json')[0];
+  const { extractClaims, buildClaimTable, fetchSource } = await import('./intake.js');
+  let source;
+  if (/^https?:\/\//i.test(target)) {
+    try {
+      source = await fetchSource(target);
+    } catch (err) {
+      fail(`intake failed: ${err.message}`, 1);
+    }
+  } else {
+    source = await readInput(target);
+  }
+  const result = extractClaims(source);
+  console.log(json ? JSON.stringify(result, null, 2) : buildClaimTable(result, { source: target }));
+  process.exit(0);
+}
 
 if (cmd === 'audit') {
   const visual = rest.includes('--visual');
