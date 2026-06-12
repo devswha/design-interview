@@ -12,12 +12,13 @@ export const VIEWPORTS = {
   mobile: { width: 390, height: 844 },
 };
 
-async function loadPuppeteer() {
+// 공유 puppeteer 로더 — geometry.js도 사용한다. feature는 에러 안내용.
+export async function loadPuppeteer(feature = 'visual lane (M3)') {
   try {
     return (await import('puppeteer')).default;
   } catch {
     throw new Error(
-      'puppeteer is not installed. visual lane (M3) requires it:\n' +
+      `puppeteer is not installed. ${feature} requires it:\n` +
       '  npm install puppeteer\n' +
       'audit/preview/benchmark (M0–M2) work without it.',
     );

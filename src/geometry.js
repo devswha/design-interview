@@ -8,19 +8,8 @@
 
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { VIEWPORTS } from './screenshot.js';
+import { VIEWPORTS, loadPuppeteer } from './screenshot.js';
 
-async function loadPuppeteer() {
-  try {
-    return (await import('puppeteer')).default;
-  } catch {
-    throw new Error(
-      'puppeteer is not installed. visual checks (L1/S3) require it:\n' +
-      '  npm install puppeteer\n' +
-      'static audit (C1/T1/T2/T4/S5) works without it.',
-    );
-  }
-}
 
 // 브라우저 안에서 실행된다 — 외부 스코프 참조 금지.
 function pageAnalyzer() {
@@ -70,7 +59,7 @@ function pageAnalyzer() {
 // 로컬 HTML을 데스크탑 viewport로 렌더해 시각 텔 findings를 돌려준다.
 // 반환 형식은 audit.js findings와 동일: [{ id, name, pass, evidence }]
 export async function analyzeVisualTells(htmlPath) {
-  const puppeteer = await loadPuppeteer();
+  const puppeteer = await loadPuppeteer('visual checks (L1/S3)');
   const browser = await puppeteer.launch({ headless: 'new' });
   try {
     const page = await browser.newPage();
