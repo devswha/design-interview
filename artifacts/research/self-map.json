@@ -1,0 +1,351 @@
+{
+  "source": "design-interview repo self-inventory (core/design-tells.md, core/interview.md, SKILL.md, templates/concept-sheet.md, src/audit.js, src/geometry.js)",
+  "license": "MIT (own repo, package.json; no LICENSE file present)",
+  "notes": "Inventory of existing coverage for dedupe, not new research. All 18 tells (L1-L4, C1-C4, T1-T5, S1-S5) plus SKILL.md phase-gate rules and concept-sheet template disciplines. Lane assignment per design-tells.md '감사 사용법': static machine lane = C1,T1,T2,T4,S5 (src/audit.js); visual machine lane = L1,S3 (src/geometry.js, --visual, puppeteer); LLM lane = L2-L4, S1/S2/S4, T3, T5. COVERAGE GAP: C2/C3/C4 are defined as tells but appear in neither the machine-lane list nor the explicit LLM-checklist enumeration in design-tells.md L42 and SKILL.md Phase 5 step 2 — they are de facto LLM-lane via the Phase 3 generation rule only. Existing tells are NEGATIVE (forbidden patterns); positive principles already present are limited to: role-named 3-5 color palette, named fonts with size/line-height, declared density policy, one-role-per-section, single conversion goal, intentional asymmetry >=1, importance-differentiated layout (L1 substitute), single-accent-color (C3 substitute). Synthesizer should treat anything matching these as duplicate. Also out of scope for design principles but present in SKILL.md: SSRF intake guard, no-AI-detection-evasion clause, benchmark regression gate (tests/quality/baseline.json).",
+  "principles": [
+    {
+      "name": "no-purple-gradient (C1)",
+      "rule": "No purple-to-blue gradient backgrounds, especially hero. Replace with a single concept-palette color or restrained same-family tones.",
+      "buildApplication": "design-tells C1; Phase 3 generation rule + Phase 5 static machine audit.",
+      "category": "color",
+      "evidence": "core/design-tells.md C1; src/audit.js checkPurpleGradient",
+      "machineCheckable": "yes — static lane: any linear-gradient() containing a hex stop with HSL hue in [230,300] and saturation >= 0.25 fails."
+    },
+    {
+      "name": "no-default-glassmorphism (C2)",
+      "rule": "No translucent blur cards without reason. Surface separation via 1px border or background lightness difference instead.",
+      "buildApplication": "design-tells C2; Phase 3 generation rule. NOTE: not listed in any audit lane enumeration (gap).",
+      "category": "color",
+      "evidence": "core/design-tells.md C2",
+      "machineCheckable": "no current lane (backdrop-filter+alpha background would be parser-checkable; not implemented)."
+    },
+    {
+      "name": "single-accent-color (C3)",
+      "rule": "No different-colored icon background per feature. One accent color across the page.",
+      "buildApplication": "design-tells C3; Phase 3 generation rule. NOTE: not listed in any audit lane enumeration (gap).",
+      "category": "color",
+      "evidence": "core/design-tells.md C3",
+      "machineCheckable": "no current lane (distinct accent-hue count would be parser-checkable; not implemented)."
+    },
+    {
+      "name": "shadow-restraint (C4)",
+      "rule": "No identical box-shadow on every element. Shadow only on the one element class that must float.",
+      "buildApplication": "design-tells C4; Phase 3 generation rule. NOTE: not listed in any audit lane enumeration (gap).",
+      "category": "detail",
+      "evidence": "core/design-tells.md C4",
+      "machineCheckable": "no current lane (identical box-shadow declaration count would be parser-checkable; not implemented)."
+    },
+    {
+      "name": "importance-differentiated-layout (L1)",
+      "rule": "No 3-column uniform card grid (icon + title + 2-line description repeated). Size and place items by importance: one large, the rest as a list.",
+      "buildApplication": "design-tells L1; Phase 3 generation rule + Phase 5 visual machine audit.",
+      "category": "layout",
+      "evidence": "core/design-tells.md L1; src/geometry.js pageAnalyzer",
+      "machineCheckable": "yes — visual lane (puppeteer): >=3 visible siblings >=60x60px with identical width/height (+-2px), same row top (+-2px), equal horizontal pitch (+-3px) fails."
+    },
+    {
+      "name": "break-center-alignment (L2)",
+      "rule": "Not every section center-aligned single column. At least one body section left-aligned or asymmetric 2-column.",
+      "buildApplication": "design-tells L2; Phase 3 generation rule + Phase 4 screenshot self-review + Phase 5 LLM checklist.",
+      "category": "layout",
+      "evidence": "core/design-tells.md L2; SKILL.md Phase 4/5",
+      "machineCheckable": "no — LLM lane (S3 geometry check partially overlaps via 80% center-aligned text-block ratio)."
+    },
+    {
+      "name": "varied-section-density (L3)",
+      "rule": "Sections must not repeat identical padding and identical title/subtitle/body structure. Vary density per section; one narrow section breaks the rhythm.",
+      "buildApplication": "design-tells L3; Phase 3 generation rule + Phase 4 screenshot self-review + Phase 5 LLM checklist.",
+      "category": "spacing",
+      "evidence": "core/design-tells.md L3",
+      "machineCheckable": "no — LLM lane (section padding variance would be geometry-checkable; not implemented)."
+    },
+    {
+      "name": "no-hero-formula (L4)",
+      "rule": "No giant-title + subtitle + 2 CTA buttons + right illustration hero formula. First screen derives from the concept sheet's structure answer.",
+      "buildApplication": "design-tells L4; Phase 3 generation rule + Phase 4 screenshot self-review + Phase 5 LLM checklist.",
+      "category": "layout",
+      "evidence": "core/design-tells.md L4",
+      "machineCheckable": "no — LLM lane."
+    },
+    {
+      "name": "no-emoji-bullets (T1)",
+      "rule": "No pictographic bullets (sparkles/rocket/bulb). Reduce bullets overall; prefer prose or numbered lists.",
+      "buildApplication": "design-tells T1; Phase 3 generation rule + Phase 5 static machine audit.",
+      "category": "typography",
+      "evidence": "core/design-tells.md T1; src/audit.js checkEmojiBullets",
+      "machineCheckable": "yes — static lane: any li/h1-h6/button whose stripped text starts or ends with \\p{Extended_Pictographic} fails."
+    },
+    {
+      "name": "no-hype-adjectives (T2)",
+      "rule": "Hype lexicon forbidden (ko: 혁신적인/완벽한/강력한/손쉽게/경험하세요/극대화/새로운 패러다임/최적화된; en: seamless/effortless/revolutionary/game-changing/supercharge/unleash/elevate your/transform your/innovative solution). Replace with the claim's concrete number or behavior.",
+      "buildApplication": "design-tells T2; Phase 3 copy rule + Phase 5 static machine audit.",
+      "category": "content",
+      "evidence": "core/design-tells.md T2; src/audit.js HYPE_LEXICON",
+      "machineCheckable": "yes — static lane: case-insensitive lexicon scan over tag-stripped body text."
+    },
+    {
+      "name": "sentence-case-headings (T3)",
+      "rule": "English headings in sentence case, never mechanical Title Case.",
+      "buildApplication": "design-tells T3; Phase 3 generation rule + Phase 5 LLM checklist.",
+      "category": "typography",
+      "evidence": "core/design-tells.md T3",
+      "machineCheckable": "no — LLM lane (capitalized-word ratio in headings would be parser-checkable; not implemented)."
+    },
+    {
+      "name": "no-staccato-triads (T4)",
+      "rule": "No 'Simple. Powerful. Fast.' style 3+ consecutive short fragments in a heading. Write one full sentence or keep one fragment.",
+      "buildApplication": "design-tells T4; Phase 3 copy rule + Phase 5 static machine audit.",
+      "category": "content",
+      "evidence": "core/design-tells.md T4; src/audit.js checkSymmetricHeadingPairs",
+      "machineCheckable": "yes — static lane: heading text split on [.!] into >=3 segments each <=2 words fails."
+    },
+    {
+      "name": "no-faq-padding (T5)",
+      "rule": "FAQ section only for real purchase objections; if none exist, delete the section entirely.",
+      "buildApplication": "design-tells T5; Phase 3 generation rule + Phase 5 LLM checklist.",
+      "category": "content",
+      "evidence": "core/design-tells.md T5",
+      "machineCheckable": "no — LLM lane (semantic judgment)."
+    },
+    {
+      "name": "no-fabricated-testimonials (S1)",
+      "rule": "No testimonial cards without verifiable source. If there are no real testimonials, the section does not exist.",
+      "buildApplication": "design-tells S1; Phase 3 generation rule + Phase 5 LLM checklist.",
+      "category": "content",
+      "evidence": "core/design-tells.md S1",
+      "machineCheckable": "no — LLM lane (truth judgment)."
+    },
+    {
+      "name": "no-placeholder-logo-walls (S2)",
+      "rule": "No fake 'trusted by' logo walls. Same omission rule as testimonials.",
+      "buildApplication": "design-tells S2; Phase 3 generation rule + Phase 5 LLM checklist.",
+      "category": "content",
+      "evidence": "core/design-tells.md S2",
+      "machineCheckable": "no — LLM lane."
+    },
+    {
+      "name": "intentional-asymmetry (S3)",
+      "rule": "Spacing/sizes must not be mathematically uniform everywhere; include at least one deliberate asymmetry; fewer than 80% of text blocks may render center-aligned.",
+      "buildApplication": "design-tells S3 + SKILL.md Phase 3 explicit rule ('의도적 비대칭 최소 1곳') + Phase 5 visual machine audit.",
+      "category": "layout",
+      "evidence": "core/design-tells.md S3; SKILL.md Phase 3; src/geometry.js pageAnalyzer s3",
+      "machineCheckable": "yes (negative side) — visual lane: >=4 visible text blocks (h1-h6,p,li,button,figcaption) with >=80% computed text-align:center fails. The positive '>=1 asymmetry' itself is build discipline, not separately measured."
+    },
+    {
+      "name": "real-imagery-or-typography (S4)",
+      "rule": "No undraw-style stock illustration or meaningless 3D blobs. Use real product screenshots; if none exist, solve the section typographically.",
+      "buildApplication": "design-tells S4; Phase 3 generation rule + Phase 5 LLM checklist.",
+      "category": "imagery",
+      "evidence": "core/design-tells.md S4",
+      "machineCheckable": "no — LLM lane."
+    },
+    {
+      "name": "hierarchy-varied-border-radius (S5)",
+      "rule": "Not all elements with the same border-radius (especially 12-16px). Vary radius by element hierarchy, or use 0.",
+      "buildApplication": "design-tells S5; Phase 3 generation rule + Phase 5 static machine audit.",
+      "category": "detail",
+      "evidence": "core/design-tells.md S5; src/audit.js checkUniformRadius",
+      "machineCheckable": "yes — static lane: >=3 non-zero border-radius declarations all identical fails."
+    },
+    {
+      "name": "interview-before-design gate",
+      "rule": "No HTML/CSS is generated before the concept is locked (Phase 2 approval). Design decisions come from the user interview, never from AI defaults alone.",
+      "buildApplication": "SKILL.md core principle 1 + Phase 2 hard gate (process discipline, not a page property).",
+      "category": "proposal",
+      "evidence": "SKILL.md 핵심 원칙 1, Phase 2",
+      "machineCheckable": "no — orchestration gate."
+    },
+    {
+      "name": "six-dimension-clarity-gating",
+      "rule": "Interview clarity measured on 6 weighted dimensions: audience 0.20, mood 0.20, brand 0.10, structure 0.20, conversion 0.20, reference 0.10. Build proceeds only at weighted score >= 0.80 (--quick: average 0.75 over audience/mood/conversion only; greenfield reference starts at 0.5).",
+      "buildApplication": "core/interview.md scoring model; SKILL.md Phase 1 gating.",
+      "category": "content",
+      "evidence": "core/interview.md 차원과 가중치 table",
+      "machineCheckable": "no — LLM-scored rubric with defined numeric thresholds."
+    },
+    {
+      "name": "one-question-weakest-dimension",
+      "rule": "One question per interview round, aimed at the lowest-scoring dimension; show the score table each round; offer 2-4 multiple-choice options that act as designer suggestions.",
+      "buildApplication": "core/interview.md 라운드 운영; SKILL.md Phase 1 rules + core principle 2.",
+      "category": "content",
+      "evidence": "core/interview.md 라운드 운영; SKILL.md 핵심 원칙 2",
+      "machineCheckable": "no — interview process rule."
+    },
+    {
+      "name": "audience-as-arrival-context",
+      "rule": "Audience is defined as arrival path + cognitive state at arrival in one sentence ('where do they click this link from?'), never demographics.",
+      "buildApplication": "core/interview.md audience question design; feeds concept sheet audience row.",
+      "category": "content",
+      "evidence": "core/interview.md 차원별 질문 설계 요령 — audience",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "contrast-forced-mood",
+      "rule": "Mood elicited by forcing a trade-off ('luxury vs friendly — which do you give up?') and recorded as 2-3 adjectives plus a contrast statement of the form 'X but not Y'.",
+      "buildApplication": "core/interview.md mood question design; concept sheet mood row.",
+      "category": "content",
+      "evidence": "core/interview.md mood row + 질문 설계 요령",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "above-fold-priority-three",
+      "rule": "Structure dimension elicited as ranked priorities: 'if only three things remain visible without scrolling?'. This answer, not a formula, generates the hero.",
+      "buildApplication": "core/interview.md structure question; design-tells L4 substitute; concept sheet structure row.",
+      "category": "hierarchy",
+      "evidence": "core/interview.md structure; design-tells L4",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "single-conversion-goal",
+      "rule": "Exactly one conversion action and one CTA copy direction per page. Plural conversion goals are immediately forced singular: 'if you measured only one click, which?'.",
+      "buildApplication": "core/interview.md conversion dimension; concept sheet conversion row.",
+      "category": "hierarchy",
+      "evidence": "core/interview.md conversion",
+      "machineCheckable": "no current lane (distinct CTA-target count would be parser-checkable; not implemented)."
+    },
+    {
+      "name": "reference-with-reason",
+      "rule": "Reference dimension requires >=1 real URL/product plus WHY it looked good; in --deep, collect both liked and disliked examples — disliked examples set design-tells priority.",
+      "buildApplication": "core/interview.md reference dimension; informs concept sheet do-not list.",
+      "category": "content",
+      "evidence": "core/interview.md reference",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "source-confirmation-over-questions",
+      "rule": "Dimensions already inferable from the slop source are confirmed with cited evidence instead of asked; confirmations may be batched in one round (they are verification, not questions).",
+      "buildApplication": "core/interview.md 소스 선반영 규칙; SKILL.md Phase 1.",
+      "category": "content",
+      "evidence": "core/interview.md 소스 선반영 규칙",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "explicit-defaults-declaration",
+      "rule": "If the user says 'just build it', the designer's defaults for each unresolved dimension are declared explicitly before proceeding — never silently assumed.",
+      "buildApplication": "SKILL.md Phase 1 last rule.",
+      "category": "content",
+      "evidence": "SKILL.md Phase 1",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "concept-sheet-lock",
+      "rule": "Interview output condenses into one approved concept sheet; after approval the build cannot deviate. Feedback is first judged in/out of sheet: in-sheet fixes apply immediately, out-of-sheet changes require sheet revision approval first.",
+      "buildApplication": "SKILL.md Phase 2 + Phase 4 feedback rule; templates/concept-sheet.md.",
+      "category": "proposal",
+      "evidence": "SKILL.md Phase 2, Phase 4; templates/concept-sheet.md header",
+      "machineCheckable": "no — process gate (sheet field presence is template-checkable)."
+    },
+    {
+      "name": "one-line-direction-statement",
+      "rule": "Concept opens with a single direction sentence of the form 'looks like X and reads like Y' ('○○처럼 보이고 ○○처럼 읽히는 페이지').",
+      "buildApplication": "templates/concept-sheet.md 방향 선언; SKILL.md Phase 2 format.",
+      "category": "proposal",
+      "evidence": "templates/concept-sheet.md, SKILL.md Phase 2",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "role-named-palette-3-5",
+      "rule": "Palette is 3-5 colors, each with an explicit role (background / body text / accent / border). Single accent color principle (ties to C3).",
+      "buildApplication": "templates/concept-sheet.md 시각 언어 — 팔레트; SKILL.md Phase 2.",
+      "category": "color",
+      "evidence": "templates/concept-sheet.md 시각 언어; SKILL.md Phase 2",
+      "machineCheckable": "no current lane (distinct color count in built CSS would be parser-checkable; not implemented)."
+    },
+    {
+      "name": "named-fonts-with-metrics",
+      "rule": "Typography specified with real font names: heading font + weight; body font + size + line-height. No generic 'clean sans-serif'.",
+      "buildApplication": "templates/concept-sheet.md 시각 언어 — 타이포; SKILL.md Phase 2.",
+      "category": "typography",
+      "evidence": "templates/concept-sheet.md 시각 언어",
+      "machineCheckable": "no — concept-sheet field discipline; built-page font-family presence is parser-checkable but not audited."
+    },
+    {
+      "name": "declared-density-policy",
+      "rule": "Whitespace density is declared up front as one of dense/standard/sparse ('빽빽/표준/성김') WITH rationale, and the build follows it.",
+      "buildApplication": "templates/concept-sheet.md 시각 언어 — 밀도·여백; ties to L3 varied density.",
+      "category": "spacing",
+      "evidence": "templates/concept-sheet.md 시각 언어",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "one-role-per-section",
+      "rule": "Section structure is listed top-to-bottom and every section is assigned exactly one role ('역할: 단 하나'). A section without a single role does not exist.",
+      "buildApplication": "templates/concept-sheet.md 섹션 구조; SKILL.md Phase 2.",
+      "category": "hierarchy",
+      "evidence": "templates/concept-sheet.md 섹션 구조",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "specified-copy-voice",
+      "rule": "Copy voice pinned before build: sentence endings (어미), distance/formality (거리감), sentence length. Source claims are rewritten in that voice.",
+      "buildApplication": "templates/concept-sheet.md 카피 보이스; SKILL.md Phase 3 copy rule.",
+      "category": "content",
+      "evidence": "templates/concept-sheet.md 카피 보이스",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "per-concept-risk-list",
+      "rule": "Concept sheet names 3-5 design-tells most dangerous for THIS concept ('하지 않을 것'); these get priority re-check at every Phase 4 preview.",
+      "buildApplication": "templates/concept-sheet.md 하지 않을 것; design-tells.md 감사 사용법 last line.",
+      "category": "proposal",
+      "evidence": "templates/concept-sheet.md; core/design-tells.md L47",
+      "machineCheckable": "no."
+    },
+    {
+      "name": "claim-freeze",
+      "rule": "Prices, quantities, percentages, durations, and features extracted at intake are immutable assets: meaning, numbers, polarity, and causality survive the redesign unchanged. Delivery includes a claim-by-claim diff table against the source.",
+      "buildApplication": "SKILL.md Phase 0 (node src/cli.js intake --json) + concept sheet 보존 클레임 section + Phase 5 step 4 대조표.",
+      "category": "content",
+      "evidence": "SKILL.md Phase 0/Phase 5; templates/concept-sheet.md 보존 클레임; src/intake.js",
+      "machineCheckable": "partial — extraction is deterministic (intake lane); the built-page diff is currently an LLM/manual table, not coded."
+    },
+    {
+      "name": "single-file-no-framework",
+      "rule": "Deliverable is one HTML file with inline or single CSS; no framework, no build chain, no unrequested dependencies — it renders when opened directly.",
+      "buildApplication": "SKILL.md Phase 3 first rule + '하지 않는 것' list.",
+      "category": "detail",
+      "evidence": "SKILL.md Phase 3, 하지 않는 것",
+      "machineCheckable": "yes in principle (parser: no external <script src>/framework artifacts); not currently audited."
+    },
+    {
+      "name": "screenshot-self-review-before-user",
+      "rule": "Before showing the user, capture desktop + mobile full-page PNGs (cli shot) and visually verify (a) concept-sheet visual language: palette/density/structure and (b) layout tells L2/L3/L4. Violations are fixed before the user sees the page. If puppeteer is missing, skip and report the skip.",
+      "buildApplication": "SKILL.md Phase 4 스크린샷 자기검수; node src/cli.js shot.",
+      "category": "layout",
+      "evidence": "SKILL.md Phase 4",
+      "machineCheckable": "capture is deterministic (src/screenshot.js); the visual review itself is LLM-judged."
+    },
+    {
+      "name": "inert-preview-review-loop",
+      "rule": "Review happens in an inert preview: scripts/inline handlers/javascript: URLs stripped, CSP script-src 'none', no-script radio-hack 3-state toggle (rewritten/original/both) against the slop source, review chrome dsiv- prefixed with !important.",
+      "buildApplication": "SKILL.md Phase 4; node src/cli.js preview --against; src/preview.js.",
+      "category": "detail",
+      "evidence": "SKILL.md Phase 4; src/preview.js",
+      "machineCheckable": "yes — implementation covered by unit tests; not a page-design rule but a review-safety rule."
+    },
+    {
+      "name": "machine-audit-delivery-gate",
+      "rule": "Delivery is blocked while `node src/cli.js audit <built.html> --visual` exits 1; any failed tell sends the build back to Phase 3. LLM self-grading may NOT substitute machine results. The visual lane degrades to static-only on exactly one error (ERR_PUPPETEER_MISSING); any other visual error fails the audit.",
+      "buildApplication": "SKILL.md Phase 5 step 1; src/cli.js exit-code discipline; design-tells.md 'fail 1개라도 있으면 납품 불가'.",
+      "category": "detail",
+      "evidence": "SKILL.md Phase 5; core/design-tells.md L46; CLAUDE.md exit-code section",
+      "machineCheckable": "yes — exit code 1 = not deliverable; deterministic."
+    },
+    {
+      "name": "no-double-scoring",
+      "rule": "Each tell is judged in exactly one lane: a tell covered by a machine lane is removed from the LLM Phase 5 checklist. Promoting a tell to a machine lane updates design-tells.md, SKILL.md, and the benchmark baseline together.",
+      "buildApplication": "core/design-tells.md 감사 사용법; CLAUDE.md invariant.",
+      "category": "detail",
+      "evidence": "core/design-tells.md L44; CLAUDE.md",
+      "machineCheckable": "organizational invariant — enforced by docs + tests/quality/baseline.json, not at page level."
+    },
+    {
+      "name": "external-copy-score-audit",
+      "rule": "If patina is installed, run `patina --score` on the built page's body text and report the AI-copy score at delivery; otherwise audit copy manually against the T-series tells.",
+      "buildApplication": "SKILL.md Phase 5 step 3.",
+      "category": "content",
+      "evidence": "SKILL.md Phase 5",
+      "machineCheckable": "yes when patina present (external deterministic scorer); manual fallback otherwise."
+    }
+  ]
+}

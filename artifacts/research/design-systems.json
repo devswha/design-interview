@@ -1,0 +1,135 @@
+{
+  "source": "awesome-design-systems index (github.com/alexpate/awesome-design-systems, Unlicense/public domain) -> IBM Carbon (github.com/carbon-design-system/carbon-website, Apache-2.0), GOV.UK Design System (github.com/alphagov/govuk-design-system, MIT/Crown Copyright), GitHub Primer (github.com/primer/design, MIT)",
+  "license": "ideas-only (sources: Apache-2.0 Carbon, MIT GOV.UK, MIT Primer, Unlicense index)",
+  "notes": "Positive principles extracted from written design guidelines of three craft-famous systems. All numbers verified against the cloned docs at /tmp/carbon-website, /tmp/govuk-design-system, /tmp/primer-design. Filtered against core/design-tells.md (L1-L4, C1-C4, T1-T5, S1-S5) to avoid restating forbidden patterns; these are the constructive counterparts and disciplines design-tells does not cover.",
+  "principles": [
+    {
+      "name": "single-formula-type-scale",
+      "rule": "All font sizes come from one declared modular scale. Carbon generates its scale from a single equation (X1=12px, Xn = Xn-1 + (floor((n-2)/4)+1)*2 => 12,14,16,18,20,24,28,32,36,42,48,54,60,68,76). GOV.UK uses a sparse hand-tuned scale: 16,19,24,27,36,48,80px, with 27 and 80 reserved for 'exceptional circumstances'. Senior systems use 5-7 sizes per page, never arbitrary values.",
+      "buildApplication": "Define --fs-* custom properties in :root from one scale (e.g. 16,19,24,36,48 or 14,16,20,28,42). Every font-size declaration references a token. Total distinct rendered font sizes on the page <= 7.",
+      "category": "typography",
+      "evidence": "carbon-website src/pages/elements/typography/overview.mdx (Scale section, formula); govuk-design-system src/styles/type-scale/index.md (large-screen table)",
+      "machineCheckable": "yes: collect computed font-size of all text nodes; assert cardinality <= 7 and every value is a member of the page's declared scale set (parse :root custom properties or accept the GOV.UK/Carbon sets)"
+    },
+    {
+      "name": "line-height-on-grid-tightens-with-size",
+      "rule": "Every line-height in px is a multiple of a base grid (GOV.UK: 5px, Primer: 4px) to create vertical rhythm, and the ratio shrinks as size grows: GOV.UK pairs are 16/20 (1.25), 19/25 (1.32), 24/30 (1.25), 36/40 (1.11), 48/50 (1.04), 80/80 (1.0). Body ~1.25-1.5, display headings 1.0-1.1.",
+      "buildApplication": "Set explicit px-resolving line-heights: body 1.3-1.5, h2/h3 ~1.15-1.25, h1/display 1.05-1.1. Make computed line-height divisible by 4 or 5 (e.g. 19px/25px body, 48px/50px h1).",
+      "category": "typography",
+      "evidence": "govuk-design-system src/styles/type-scale/index.md ('every point on the type scale uses a line height in a multiple of 5px'); primer-design content/foundations/typography.mdx ('line height values... align to the 4px grid')",
+      "machineCheckable": "yes: computed line-height % 4 === 0 (or % 5 === 0) for all text styles; and computed(h1 line-height/font-size) <= 1.2 while computed(p line-height/font-size) >= 1.25"
+    },
+    {
+      "name": "measure-cap-75ch-via-two-thirds",
+      "rule": "Body copy line length never exceeds ~75 characters (GOV.UK) / ~80 characters (Primer). GOV.UK achieves it structurally: text lives in a 'two-thirds' column of a 1020px container (~640-680px) even when the page is wider. The text column is narrower than the page container by design.",
+      "buildApplication": "Give running-text blocks max-width: 66ch (or ~660px at 19px body). The page wrapper can be 1020-1280px, but p/li/blockquote containers get their own tighter cap. Asymmetric two-thirds + one-third layout is the named pattern for body + aside.",
+      "category": "typography",
+      "evidence": "govuk-design-system src/styles/layout/index.md ('no more than 75 characters per line', two-thirds layout); primer-design content/foundations/typography.mdx (Readability: ~80 chars, W3 cite)",
+      "machineCheckable": "yes (rendered geometry): for each paragraph, clientWidth / computed font-size <= 38 (~75ch since average glyph ~0.5em)"
+    },
+    {
+      "name": "spacing-token-scale",
+      "rule": "All margin/padding/gap values are members of one declared spacing scale. Carbon: 2,4,8,12,16,24,32,40,48,64,80,96,160px (13 tokens, multiples of 2/4/8). Primer spacers: 4,8,16,24,32,40,48,64,80,96,112,128px. GOV.UK: 5,10,15,20,25,30,40,50,60px. Off-scale values are explicit exceptions, not habit ('deviating from the spacing scales should be avoided whenever possible').",
+      "buildApplication": "Define --space-1..--space-9 custom properties from an 8-based scale (4,8,12,16,24,32,48,64,96,160). Every margin/padding/gap references a token; 0 and auto allowed.",
+      "category": "spacing",
+      "evidence": "carbon-website src/pages/elements/spacing/overview.mdx (spacing scale table + FAQ); primer-design content/foundations/css-utilities/margin.mdx (spacer table); govuk-design-system src/styles/spacing/index.md",
+      "machineCheckable": "yes: parse computed margin/padding/gap of all elements; assert every non-zero value is in the scale set (union of 4/8-multiples up to 160), flag arbitrary values like 13px, 27px, 35px"
+    },
+    {
+      "name": "space-encodes-hierarchy-and-grouping",
+      "rule": "Spacing is the primary grouping and importance signal: elements with more surrounding space read as more important; space between groups must exceed space within groups; sections are separated by space, not divider graphics. Headings carry more space above than below so they bind to the content they introduce.",
+      "buildApplication": "h2/h3 margin-top >= 2x margin-bottom (e.g. 48px above / 16px below). Gap between sections >= 2x gap between items inside a section (e.g. 96px section gap vs 24-32px item gap). High-importance elements (key claim, price) get extra surrounding whitespace instead of decoration.",
+      "category": "hierarchy",
+      "evidence": "carbon-website src/pages/elements/spacing/overview.mdx ('Designing with space': creating relationships, creating hierarchy)",
+      "machineCheckable": "yes: computed margin-top/margin-bottom ratio >= 1.5 on h2/h3; rendered geometry: median inter-section vertical gap / median intra-section gap >= 2"
+    },
+    {
+      "name": "dense-sections-whitespace-rest",
+      "rule": "Sections of a page may be dense, but the whole page must not be crowded — budget at least one large empty band so the eye can rest. Carbon's two largest spacing tokens (96px, 160px) exist precisely 'to control the density of a design' between major areas.",
+      "buildApplication": "Allow one information-dense section (spec table, tight list) but flank it with >= 96px of pure vertical whitespace. At least one inter-section gap on the page uses the top of the spacing scale (96-160px) while intra-component gaps stay at 8-24px — deliberate density contrast, not uniform padding.",
+      "category": "spacing",
+      "evidence": "carbon-website src/pages/elements/spacing/overview.mdx ('White space' subsection; large increments 'control the density of a design')",
+      "machineCheckable": "partially: rendered geometry can verify max inter-section vertical gap >= 96px and that gap variance across sections is non-zero (complements existing L3/S3 checks from the positive side)"
+    },
+    {
+      "name": "responsive-type-headings-shrink-body-stays",
+      "rule": "Below the tablet breakpoint (GOV.UK: 640px), heading sizes drop to ~0.66-0.88x (48->32, 36->27, 24->21, 80->53) while body sizes 19px and 16px do not change. Carbon: expressive headings are fluid across breakpoints, productive body is fixed. Body text is never reduced below 16px to fit.",
+      "buildApplication": "One media query at ~640px scales only h1-h3 (multiply by ~0.7-0.85, keeping results on-scale); p/li font-size identical at both widths and >= 16px.",
+      "category": "typography",
+      "evidence": "govuk-design-system src/styles/type-scale/index.md (large vs small screen tables); carbon-website src/pages/elements/typography/type-sets.mdx (fixed productive vs fluid expressive headings)",
+      "machineCheckable": "yes: render at 1280px and 375px; assert h1 size ratio (mobile/desktop) between 0.6 and 0.9, and p computed size equal at both widths and >= 16px"
+    },
+    {
+      "name": "responsive-spacing-steps-down-same-scale",
+      "rule": "Mobile spacing is produced by stepping down the same scale, not inventing values: GOV.UK responsive units shrink 20->15, 25->15, 30->20, 40->25, 50->30, 60->40 below 640px (small units 0-15px stay fixed). Carbon: 'it is acceptable at page breakpoints to jump a step(s) on the spacing scale' (e.g. spacing-05 -> spacing-03).",
+      "buildApplication": "In the mobile media query, replace large section paddings with a token 1-2 steps lower (e.g. 96px -> 64px, 48px -> 32px); micro-spacing (<= 16px) unchanged. Resulting values must still be scale members.",
+      "category": "spacing",
+      "evidence": "govuk-design-system src/styles/spacing/index.md (responsive spacing table); carbon-website src/pages/elements/spacing/overview.mdx (FAQ 'Are the spacing tokens responsive?')",
+      "machineCheckable": "yes: render at two widths; mobile computed section paddings <= desktop values, both on the scale set; small paddings (<=16px) equal at both widths"
+    },
+    {
+      "name": "color-roles-not-raw-hexes",
+      "rule": "Every color is assigned through a named functional role, never a raw value at point of use. Primer's taxonomy: fgColor/bgColor/borderColor x default/muted/emphasis/onEmphasis, plus semantic roles (accent=links+focus+selected, success=primary positive, danger, attention). GOV.UK: 'use govuk-functional-colour(\"brand\") rather than #1d70b8'. Carbon: $text-primary/$text-secondary/$layer/$border-subtle. A full page needs ~8-12 roles.",
+      "buildApplication": "Declare in :root: --fg-default, --fg-muted, --bg-default, --bg-subtle, --border-default, --border-muted, --accent, --accent-fg-on (plus optional --success/--danger). All other CSS uses var() only. One accent role covers links, focus and selection; semantic colors appear only with semantic meaning.",
+      "category": "color",
+      "evidence": "primer-design content/foundations/color/overview.mdx (token categories, color roles table); govuk-design-system src/styles/colour/index.md (functional colours); carbon-website src/pages/elements/color/overview.mdx (token names)",
+      "machineCheckable": "yes: CSS parse — count color literals (hex/rgb/hsl) appearing outside :root declarations (target ~0); count distinct resolved colors <= 12"
+    },
+    {
+      "name": "neutral-running-text-color-means-function",
+      "rule": "Running text is always a neutral (near-zero-chroma) color; colored type appears only where color carries function: links/primary actions (one core accent), error/warning/status text, and code highlights. Carbon's literal don't-example caption: 'I'm a magenta sentence for no reason' / 'Color is not for decoration'. Primer: 'Refrain from utilizing color as a primary method of emphasis.'",
+      "buildApplication": "p/li/h* colors are greys or near-blacks (chroma ~0; e.g. #1a1a1a body, #595959 muted). Colored text only inside a, code, and status elements. Emphasis inside prose uses weight, not color.",
+      "category": "color",
+      "evidence": "carbon-website src/pages/elements/typography/overview.mdx (Type color section + do/dont captions); primer-design content/foundations/typography.mdx (Hierarchy best practice)",
+      "machineCheckable": "yes: computed color of p/li/h* outside a/code/status roles must satisfy max(R,G,B)-min(R,G,B) <= ~16 (near-grey)"
+    },
+    {
+      "name": "surface-layering-one-step",
+      "rule": "Backgrounds follow a strict layering model: base layer + at most 3 layer tones; each nested surface is exactly one step lighter/darker than its parent, never skipping or reversing (in a light theme, never place a component darker than its background outside deliberate high-contrast moments). Surfaces are distinguished by this one-step value shift plus 1px subtle borders. Interaction states derive mechanically: hover = half step, selected = one step, active = two steps on the same ramp.",
+      "buildApplication": "Use at most 3 background tones total (e.g. #fff page, #f4f4f4 layer, #e8e8e8 nested/field). Cards sit on the next tone with a 1px --border-muted line — this is the positive mechanism replacing blur (C2) and shadows (C4). Hover states on links/buttons darken the same ramp slightly, not switch hue.",
+      "category": "color",
+      "evidence": "carbon-website src/pages/elements/color/overview.mdx (layering model, light themes don't, interaction states: 'hover colors are half steps', 'active two steps', 'selected one step'); color/usage.mdx (four layer sets)",
+      "machineCheckable": "yes: count distinct background-color values on container elements <= 4; verify monotone lightness ordering by DOM nesting depth (each nested surface within ~3-8% lightness of parent, same direction)"
+    },
+    {
+      "name": "eight-px-geometry-fixed-padding",
+      "rule": "Layout geometry is built on an 8px mini unit (Carbon 2x Grid): column widths, row heights, boxes, margins and padding are mini-unit multiples. Box padding is constant 16px at all breakpoints; gutters are 32px total (16px each side) when adjacent content is unrelated, and 0 (gutterless) when content is closely related — gutter presence encodes relatedness.",
+      "buildApplication": "Card/section internal padding 16px or 24px, identical across breakpoints. Grid gap 32px between independent items, 0-8px between tightly-related ones. All box dimensions and gaps divisible by 8 (small detail spacing may use 4).",
+      "category": "layout",
+      "evidence": "carbon-website src/pages/elements/2x-grid/overview.mdx (mini unit, padding '16 pixels at all standard breakpoints', gutters, breakpoints table)",
+      "machineCheckable": "yes: computed padding and grid/flex gap values % 8 === 0 (allow 4 for values < 16)"
+    },
+    {
+      "name": "container-max-width-with-side-padding",
+      "rule": "Content lives in a centered container with a hard max-width and fixed side padding: GOV.UK default 1020px max; Primer content max 1280px including 24px padding (1232px visual); Carbon breakpoint margins go 16px (320px screens) -> 24px (1584px screens). Text never runs full-bleed.",
+      "buildApplication": "Wrapper: max-width 1020-1280px; margin-inline auto; padding-inline 16px (mobile) / 24px (desktop). Full-bleed background bands are fine, but their inner content re-enters the container.",
+      "category": "layout",
+      "evidence": "govuk-design-system src/styles/layout/index.md ('default maximum page width is 1020px'); primer-design content/foundations/layout.mdx (breakpoints + padding table, 1280px incl. 24px); carbon-website 2x-grid/overview.mdx (breakpoints table margins)",
+      "machineCheckable": "yes: main content container computed max-width in [960,1320]px and computed padding-inline in {16,20,24}px; rendered text right-edge < viewport width at 1440px"
+    },
+    {
+      "name": "emphasis-via-weight-no-tracking-ragged-right",
+      "rule": "Hierarchy emphasis comes from font weight and size, restricted to light/normal/medium/semibold (300/400/500/600); semibold is for section headers and 'should not be used for long text' (Carbon). Letter-spacing is never altered ('this should be avoided altogether' — Primer). Text is left-aligned ragged-right; justified/centered/right-aligned prose is atypical.",
+      "buildApplication": "Use only weights 400/500/600 (700 at most for strong). letter-spacing: normal everywhere (a slight negative on >=32px display type is the only exception). No text-align: justify. No bold runs longer than a short phrase inside body copy. No all-caps + wide tracking labels as default decoration.",
+      "category": "typography",
+      "evidence": "primer-design content/foundations/typography.mdx (Best practices: font weight, letter spacing, type alignment); carbon-website typography/overview.mdx (Weights: SemiBold for section headers, not long text)",
+      "machineCheckable": "yes: no positive letter-spacing declarations on text < 32px; no text-align: justify; computed font-weights subset of {300,400,500,600,700}; flag elements with font-weight >= 600 containing > 120 chars at body size"
+    },
+    {
+      "name": "lead-paragraph-once",
+      "rule": "A page opens with at most one lead paragraph — an introductory summary set one scale step above body (GOV.UK: 24px lead vs 19px body, 'only use it once per page'). Smaller body (16px) is used sparingly; 'the majority of your body copy should use the standard paragraph size'. This is the senior pattern for openings: h1 + one larger summary sentence, instead of the hero formula.",
+      "buildApplication": "Directly after h1, one p at ~1.25x body size (e.g. 24px/30px when body is 19px/25px), summarizing the offer in the source's own claims. Every other paragraph at standard body size; small text only for captions/legal.",
+      "category": "content",
+      "evidence": "govuk-design-system src/styles/paragraphs/index.md (lead paragraph, body small)",
+      "machineCheckable": "yes: count p elements with computed font-size > body default — must be <= 1 and appear in DOM before the first h2"
+    },
+    {
+      "name": "links-underlined-in-content",
+      "rule": "Links inside running text are underlined and use the accent color by default; underlines may be dropped only where position makes link-ness obvious (header, side navigation). Links on colored backgrounds must keep 4.5:1 contrast; linked text never includes the trailing full stop.",
+      "buildApplication": "a within p/li: text-decoration underline, color var(--accent). Nav/footer links may be underline-free. Do not signal in-content links by color alone.",
+      "category": "detail",
+      "evidence": "govuk-design-system src/styles/links/index.md ('Links are blue and underlined by default'; no-underline only when context tells the user)",
+      "machineCheckable": "yes: computed text-decoration-line of a elements inside p/li contains 'underline' (exempt a inside nav/header/footer)"
+    }
+  ]
+}

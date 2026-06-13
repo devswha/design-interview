@@ -1,0 +1,103 @@
+{
+  "source": "Butterick's Practical Typography (https://practicaltypography.com — summary-of-key-rules, point-size, line-spacing, line-length, headings) + modern-font-stacks (https://github.com/system-fonts/modern-font-stacks, CC0-1.0, cloned to /tmp/modern-font-stacks) + Korean web typography field survey (https://lqez.github.io/blog/hangul-typo-on-web.html) + modular-scale conventions (https://alistapart.com/article/more-meaningful-typography, https://www.modularscale.com, imperavi.com/books/ui-typography) + tabular-nums practice (ant-design PR #11567, MDN font-variant-numeric)",
+  "license": "ideas-only (modern-font-stacks repo is CC0-1.0 so its font stacks are freely copyable; Practical Typography is a proprietary online book — only uncopyrightable numeric rules/facts extracted, no prose; lqez survey: measured data points only)",
+  "principles": [
+    {
+      "name": "body-size-16-21",
+      "rule": "Web body text 16–21px (Butterick's web range is 15–25px; practical consensus narrows to 16–21). Korean content sites cluster at 17px body (Daum News 17, Naver News 17, Publy 18, Medium 21). Never below 16px — also avoids iOS input zoom.",
+      "buildApplication": "Set body { font-size: 17px } (or 1.0625rem with html at 100%); express all other sizes in rem so user zoom scales everything.",
+      "category": "typography",
+      "evidence": "practicaltypography.com/point-size.html (15–25px web); lqez.github.io hangul survey (per-site px values)",
+      "machineCheckable": "yes — computed font-size of <p>/body text nodes must be in [16,21]px (rendered-geometry or CSS parse)"
+    },
+    {
+      "name": "body-line-height-by-script",
+      "rule": "Latin body line-height 1.2–1.45 of font size (Butterick: 120–145%). Hangul body needs visibly more because glyphs are full-square and dense: 1.6–1.9 measured across major Korean sites (Daum 1.625, Naver 27px/17px ≈ 1.59, Publy 1.8, Indiepost 1.9). Longer lines take the upper end of the range.",
+      "buildApplication": "Unitless line-height only: body { line-height: 1.45 } for Latin pages; pages with Korean body copy use 1.6–1.8 on paragraphs (e.g. line-height: 1.7 at 17px).",
+      "category": "typography",
+      "evidence": "practicaltypography.com/line-spacing.html; lqez.github.io hangul survey",
+      "machineCheckable": "yes — computed line-height ÷ font-size on paragraphs: require [1.2,1.5] when text is mostly Latin, [1.55,1.9] when ≥30% of chars are in Hangul ranges (U+AC00–U+D7A3)"
+    },
+    {
+      "name": "measure-45-90ch",
+      "rule": "Line length 45–90 characters including spaces (Butterick); sweet spot 60–75 for Latin prose. Hangul glyphs are full-width, so the comfortable Hangul measure is roughly half the character count — in practice cap a 17px Korean text column near 600–680px (~36em).",
+      "buildApplication": "Wrap running text in a measure container: .prose { max-width: 65ch } for Latin; ~ max-width: 36em for Korean body columns. Never let paragraphs span a full 1200px+ section width.",
+      "category": "typography",
+      "evidence": "practicaltypography.com/line-length.html (45–90 chars)",
+      "machineCheckable": "yes — rendered geometry: average characters per rendered line of <p> blocks in [45,90] for Latin; or static check that ancestors of long text declare max-width in ch/em within range"
+    },
+    {
+      "name": "one-modular-scale",
+      "rule": "Derive every font size from one base size via one ratio: 1.2 (minor third) for dense, text-heavy pages; 1.25 (major third) as the versatile default; 1.333 (perfect fourth) for landing/marketing pages where heading contrast carries the hierarchy. Keep ≤6 steps total on a page (caption, body, 3–4 heading sizes) and round to whole pixels.",
+      "buildApplication": "Define CSS custom properties --step--1 … --step-4 = 17px × ratio^n in :root and use only those variables in font-size declarations. Landing page → ratio 1.25 or 1.333; spec/detail page → 1.2.",
+      "category": "typography",
+      "evidence": "alistapart.com/article/more-meaningful-typography; modularscale.com; imperavi.com/books/ui-typography/principles/modular-scale; ux-republic.com practical guide (ratio-by-project-type)",
+      "machineCheckable": "yes — collect distinct computed font sizes; require count ≤6 and consecutive size ratios within ±5% of a single ratio from {1.2, 1.25, 1.333, 1.414, 1.5}"
+    },
+    {
+      "name": "heading-leading-and-tracking",
+      "rule": "Headings (1–2 lines) take line-height 1.1–1.35, always tighter than body. Display sizes ≥32px take slight negative letter-spacing of −0.01 to −0.02em; body text never gets negative tracking (Latin) — large optical sizes need it because tracking requirements shrink as size grows.",
+      "buildApplication": "h1 { line-height: 1.1; letter-spacing: -0.015em } h2 { line-height: 1.2 } h3 { line-height: 1.25 }; leave body letter-spacing at normal for Latin.",
+      "category": "typography",
+      "evidence": "justinmind.com line-spacing rules (1.1–1.4 headings, 1–1.35 for one/two-line elements); imperavi UI-typography headings; rocketspark letter-spacing guidance",
+      "machineCheckable": "yes — computed line-height ÷ font-size for h1–h3 must be ≤1.35 and strictly less than the body ratio; letter-spacing on h1/h2 in [−0.03em, 0]"
+    },
+    {
+      "name": "real-typographic-characters",
+      "rule": "Use real glyphs: curly quotes “ ” ‘ ’ and apostrophe ’, em dash — (or spaced en dash –) instead of \"--\" or a bare hyphen, ellipsis … not three periods, × not letter x between dimensions, → not \"->\". Straight quotes survive only inside code/pre.",
+      "buildApplication": "Author HTML content with the actual Unicode characters (or entities &ldquo; &mdash; &hellip;); do a final pass replacing straight quotes adjacent to letters.",
+      "category": "detail",
+      "evidence": "practicaltypography.com summary-of-key-rules (curly quotes rule 7; ellipsis rule 24; hyphens-and-dashes rule 19)",
+      "machineCheckable": "yes — static scan of text nodes outside code/pre: U+0022 or U+0027 adjacent to word characters, literal \"--\", or \"...\" sequences → fail"
+    },
+    {
+      "name": "tabular-nums-for-aligned-figures",
+      "rule": "Any vertical run of numbers — price tables, spec sheets, stat blocks, comparison columns — gets font-variant-numeric: tabular-nums so every digit takes equal width and columns align; this is how GitHub and Ant Design solved it after abandoning special 'number fonts'. Proportional (default) figures are fine inside running prose.",
+      "buildApplication": "table, .price, .stat, [data-numeric] { font-variant-numeric: tabular-nums; } — works with system fonts and most webfonts; no extra font needed.",
+      "category": "typography",
+      "evidence": "ant-design PR #11567 (tabular-nums replaced Tahoma number hack); MDN font-variant-numeric; loke.dev / textlab.dev articles",
+      "machineCheckable": "yes — if the page contains a <table> with numeric cells or ≥3 sibling elements whose text is mostly digits (prices/stats), require a matching CSS rule declaring font-variant-numeric: tabular-nums"
+    },
+    {
+      "name": "two-families-max-pair-by-contrast",
+      "rule": "Maximum 2 type families per page: one display/heading + one body, paired by classification contrast (serif headline + sans body, or geometric sans display + transitional serif text) — never two near-identical sans. The safer senior move on a single page: ONE family with 3 weights (400 body / 600 subhead / 700–800 display) doing all hierarchy work. When pairing, match approximate x-heights.",
+      "buildApplication": "Declare exactly two custom properties --font-display and --font-body in :root; every font-family reference uses one of them (plus one monospace for code if needed).",
+      "category": "typography",
+      "evidence": "practicaltypography.com (use as few fonts as possible; bold OR italic, not together); standard pairing convention from UI-typography literature",
+      "machineCheckable": "yes — parse CSS: count distinct first-position family names across all font-family declarations (excluding a monospace stack used only on code/pre) ≤ 2"
+    },
+    {
+      "name": "named-system-stacks-full-chain",
+      "rule": "When no webfont is justified, use a full modern-font-stacks chain (CC0) instead of bare 'Arial' or lone 'sans-serif' — zero network cost, zero FOUT, ideal for a single static file. Named stacks: Transitional serif `Charter, 'Bitstream Charter', 'Sitka Text', Cambria, serif`; Geometric humanist `Avenir, Montserrat, Corbel, 'URW Gothic', source-sans-pro, sans-serif`; Neo-grotesque `Inter, Roboto, 'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif`; Old-style `'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', P052, serif`; Didone display `Didot, 'Bodoni MT', 'Noto Serif Display', 'URW Palladio L', P052, Sylfaen, serif`; Code `ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace`. Every stack ends in a generic keyword.",
+      "buildApplication": "Pick the stack whose classification matches the concept sheet's personality (e.g. editorial → transitional serif body + neo-grotesque UI) and paste the full chain; never ship a font-family with fewer than 2 entries or without a generic fallback.",
+      "category": "typography",
+      "evidence": "/tmp/modern-font-stacks/README.md lines 50–597 (CC0-1.0 LICENSE verified)",
+      "machineCheckable": "yes — every font-family declaration ends with a CSS generic family keyword and (unless it is exactly system-ui/ui-monospace shorthand) lists ≥2 families"
+    },
+    {
+      "name": "hangul-text-settings",
+      "rule": "Pages with Korean copy: (1) word-break: keep-all plus overflow-wrap: break-word on headings and short copy so words never split mid-word (Publy/Ridibooks pattern; word-break: auto-phrase where available); (2) slight negative letter-spacing on gothic body faces, −0.3px to −0.34px at 17px ≈ −0.02em (Naver −0.3px, Daum −0.34px) — Hangul gothic fonts ship loose; (3) stack `Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif`; (4) no italic on Hangul — Korean type has no true italics, browsers fake-slant it (emphasize with weight or color instead).",
+      "buildApplication": ":lang(ko) h1, :lang(ko) h2, :lang(ko) p { word-break: keep-all; overflow-wrap: break-word; } body:lang(ko) { letter-spacing: -0.02em; } and never font-style: italic on Hangul-bearing elements.",
+      "category": "typography",
+      "evidence": "lqez.github.io hangul survey (per-site letter-spacing/stack data); W3C klreq (Hangul layout requirements); typotheque CJK typesetting article",
+      "machineCheckable": "yes — if Hangul chars present: require keep-all (or auto-phrase) on body or heading rules, overflow-wrap: break-word companion, and fail any computed font-style: italic on elements containing Hangul"
+    },
+    {
+      "name": "heading-depth-and-binding",
+      "rule": "Maximum 3 heading levels on a page — 2 is better (Butterick). Differentiate levels with the smallest visible increment plus bold, not italic; emphasize headings with whitespace, putting clearly more space above than below (~2:1) so each heading binds visually to the section it introduces, not the one it follows.",
+      "buildApplication": "Use only h1/h2/h3; h2 { margin: 2.5rem 0 0.75rem } h3 { margin: 2rem 0 0.5rem }; font-weight 700 on headings, no italic heading styles.",
+      "category": "hierarchy",
+      "evidence": "practicaltypography.com/headings.html (≤3 levels, two better; bold not italic; space above/below); 2:1 above:below is standard proximity convention (Gestalt)",
+      "machineCheckable": "yes — count distinct heading tag levels used ≤3 with no skipped levels; computed margin-top > margin-bottom on h2/h3"
+    },
+    {
+      "name": "caps-and-emphasis-discipline",
+      "rule": "ALL CAPS / small caps only for strings shorter than one line (eyebrows, labels, buttons) and always with +5–12% letterspacing (0.05–0.12em); never all-caps full sentences. Bold OR italic for emphasis, never both together, and as little as possible — if everything is emphasized, nothing is.",
+      "buildApplication": ".eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: var(--step--1); font-weight: 600 } and audit content so <strong>/<em> appear at most a few times per section, never nested in each other.",
+      "category": "typography",
+      "evidence": "practicaltypography.com summary-of-key-rules (caps fine for <1 line; 5–12% letterspacing with caps/small caps; bold or italic as little as possible, not together)",
+      "machineCheckable": "yes — any element with text-transform: uppercase must declare letter-spacing in [0.05em, 0.12em] and contain <60 characters; fail any element computing to font-weight ≥600 AND font-style: italic simultaneously"
+    }
+  ],
+  "notes": "Scoped against core/design-tells.md: T1–T5 cover negative copy/typography tells (emoji bullets, hype, Title Case, symmetric triads, FAQ padding) — none of the above duplicates them; these are the positive generative rules. Machine-checkable candidates that fit the existing static lane (src/audit.js): real-typographic-characters, named-system-stacks-full-chain, two-families-max, hangul-text-settings, caps letterspacing pairing. Candidates for the visual lane (src/geometry.js): body-size, line-height ratios, measure-45-90ch, modular-scale ratio detection, heading leading. The lqez survey data is from a point-in-time crawl of Korean sites (Daum/Naver/Publy/Ridibooks values may have drifted) — treat the ranges, not the per-site numbers, as the rule. Heading space 2:1 above:below is convention-grounded (Butterick prescribes space above+below but no ratio)."
+}

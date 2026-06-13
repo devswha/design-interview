@@ -1,0 +1,111 @@
+{
+  "source": "Anthropic official frontend-design plugin (claude-plugins-official marketplace) — /home/devswha/.claude/plugins/marketplaces/claude-plugins-official/plugins/frontend-design/ (SKILL.md + README.md); upstream: github.com/anthropics/claude-code plugins",
+  "license": "Apache-2.0 (plugin LICENSE file)",
+  "principles": [
+    {
+      "name": "named-tone-commitment",
+      "rule": "Before writing any markup, commit to exactly ONE named aesthetic pole from a tone menu — brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian — and derive every CSS decision from it. Key phrase: 'intentionality, not intensity' — bold maximalism and refined minimalism both work; the middle does not.",
+      "buildApplication": "Add a 'tone' field (one value from the enumerated menu) to the concept sheet before Phase 3. Every font, color, spacing, and effect choice in the single HTML/CSS page must be justifiable against the named tone; when two options are equal, pick the one truer to the tone.",
+      "category": "proposal",
+      "evidence": "SKILL.md 'Design Thinking' section (Tone bullet, CRITICAL paragraph)",
+      "machineCheckable": "Partially: a parser can verify the concept sheet contains a tone field whose value is one of the enumerated menu items. Whether the page honors the tone is LLM-lane."
+    },
+    {
+      "name": "display-body-font-pairing",
+      "rule": "Pair one characterful display font (headings) with one refined body font (text) — two distinct families with distinct roles. Never set the whole page in a single generic family. Explicit denylist as primary font: Inter, Roboto, Arial, system font stacks; also avoid converging on trendy defaults (Space Grotesk named as the convergence example).",
+      "buildApplication": "Load exactly 2 font families (Google Fonts <link> or @font-face). Assign the display family to h1–h3 with deliberate weight/letter-spacing; the body family to p/li/small text. Choose the pairing from the named tone (e.g., editorial -> serif display + humanist sans body).",
+      "category": "typography",
+      "evidence": "SKILL.md 'Frontend Aesthetics Guidelines' Typography bullet + NEVER paragraph + anti-convergence paragraph",
+      "machineCheckable": "Yes: parse font-family declarations; require >= 2 distinct non-generic families with heading selectors using a different family than body selectors; fail if the heading font resolves to {Inter, Roboto, Arial, system-ui, -apple-system} (denylist extensible with Space Grotesk)."
+    },
+    {
+      "name": "anti-convergence-across-generations",
+      "rule": "No two generated designs should be the same: vary light vs dark themes, font choices, and aesthetic direction across generations. Never converge on a common default (Space Grotesk cited) run after run.",
+      "buildApplication": "Before building, scan previous session artifacts (e.g., root v0-*.html) for the display font and body background polarity used, and pick a different font family and/or theme polarity for the new page.",
+      "category": "proposal",
+      "evidence": "SKILL.md paragraph: 'No design should be the same. Vary between light and dark themes... NEVER converge on common choices (Space Grotesk, for example) across generations.'",
+      "machineCheckable": "Yes with run history: diff the new page's heading font-family and body background luminance (light/dark) against the last N outputs; fail on exact repeat of the (font, polarity) pair."
+    },
+    {
+      "name": "dominant-plus-sharp-accent-palette",
+      "rule": "Dominant colors with sharp accents outperform timid, evenly-distributed palettes. Structure the palette as: one dominant color family carrying the large surfaces, plus a small number of high-contrast accents reserved for emphasis — not 4–5 colors used in equal measure.",
+      "buildApplication": "Define the palette as CSS custom properties: one dominant surface family (background + section surfaces, covering the clear majority of page area), one sharp accent applied only to the CTA, links, and 1–2 key highlights. No second accent unless the tone demands it.",
+      "category": "color",
+      "evidence": "SKILL.md Color & Theme bullet: 'Dominant colors with sharp accents outperform timid, evenly-distributed palettes.'",
+      "machineCheckable": "Partially: visual lane can compute an area-weighted color histogram of the rendered page and check that the top color family covers a supermajority of pixels (suggested threshold ~70%+) while accent-hue coverage stays small (suggested <10%). Thresholds are our operationalization, not from the source."
+    },
+    {
+      "name": "css-variable-theme-tokens",
+      "rule": "Use CSS variables for color/theme consistency — the palette lives in custom properties, not scattered literals, so the aesthetic stays cohesive.",
+      "buildApplication": "Declare the full palette (surface, text, accent, border) as --tokens on :root of the single page; all color declarations reference var(--token). This also makes the dominant+accent structure auditable.",
+      "category": "detail",
+      "evidence": "SKILL.md Color & Theme bullet: 'Use CSS variables for consistency.'",
+      "machineCheckable": "Yes: parse CSS — :root defines >= 4 color custom properties and a majority share of color/background-color declarations use var() rather than raw literals."
+    },
+    {
+      "name": "orchestrated-load-reveal",
+      "rule": "Concentrate the motion budget into high-impact moments: ONE well-orchestrated page-load sequence with staggered reveals via animation-delay creates more delight than scattered micro-interactions. Prefer CSS-only animation for plain HTML.",
+      "buildApplication": "Define 1 entrance @keyframes (e.g., fade+rise) and apply it to the hero's children with incrementing animation-delay steps (e.g., 0ms / 80ms / 160ms / 240ms). Do not animate every section; below-the-fold content stays static or uses at most subtle hover transitions. Zero JS required.",
+      "category": "detail",
+      "evidence": "SKILL.md Motion bullet: 'one well-orchestrated page load with staggered reveals (animation-delay)... Prioritize CSS-only solutions for HTML.'",
+      "machineCheckable": "Yes: CSS parse — at most 1–2 entrance @keyframes; animation-delay values on sibling selectors form a strictly increasing stagger; total count of load-animated selector groups under a small cap (suggested <= 6)."
+    },
+    {
+      "name": "surprising-hover-states",
+      "rule": "Hover states should surprise — interactive elements respond with more than a color swap (transform, reveal, shadow shift), with a transition so the change is felt.",
+      "buildApplication": "On the primary CTA and nav links of the static page, define :hover rules that change transform/box-shadow/underline geometry in addition to (or instead of) color, paired with a transition declaration on the base selector. Keep it to interactive elements only.",
+      "category": "detail",
+      "evidence": "SKILL.md Motion bullet: 'Use scroll-triggering and hover states that surprise.'",
+      "machineCheckable": "Yes: parse CSS — every <a>/button-like selector with a :hover rule must alter a property beyond color/background (transform, box-shadow, text-decoration geometry) and the base selector must declare transition."
+    },
+    {
+      "name": "grid-breaking-composition",
+      "rule": "Spatial composition vocabulary: unexpected layouts — asymmetry, overlap, diagonal flow, grid-breaking elements. At least one deliberate move where an element escapes the column grid: overlapping a section boundary, rotated, or bleeding off the container.",
+      "buildApplication": "In the single page, implement one named grid-breaking technique: a hero image/blurb pulled across the section seam with negative margin, a transform: rotate(-2deg..-6deg) on one display element, or an element that overlaps a neighbor via grid placement. Exactly one to two such moves — it is a signature, not a system.",
+      "category": "layout",
+      "evidence": "SKILL.md Spatial Composition bullet: 'Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements.'",
+      "machineCheckable": "Yes (visual lane): from rendered geometry, detect at least one pair of overlapping non-parent sibling boxes or one visible element with non-identity computed rotation/translation; static fallback: presence of negative margins or transform rotate in CSS."
+    },
+    {
+      "name": "whitespace-polarity",
+      "rule": "Pick a spacing pole and commit: generous negative space OR controlled density. The undifferentiated middle (moderate padding everywhere) is the generic tell. The pole follows from the named tone.",
+      "buildApplication": "Airy pole: section vertical padding on the order of 96–144px, short line lengths, few elements per viewport. Dense pole: padding on the order of 32–48px, multi-column, information-rich. Apply one pole consistently for the page (a single deliberate counter-density section is allowed per L3's remedy). Numeric bands are our operationalization; the source names the pattern.",
+      "category": "spacing",
+      "evidence": "SKILL.md Spatial Composition bullet: 'Generous negative space OR controlled density.'",
+      "machineCheckable": "Heuristic: visual lane can measure per-section content-box area / section area; flag pages whose density sits uniformly in a mid band (neither airy nor dense). Thresholds would need calibration on fixtures."
+    },
+    {
+      "name": "atmospheric-backgrounds",
+      "rule": "Backgrounds create atmosphere and depth rather than defaulting to flat solid colors. Named techniques: gradient meshes, noise/grain textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors. The technique must match the overall aesthetic, and (per our C1) stay out of the purple-gradient cliche.",
+      "buildApplication": "Give the hero or body at least one non-flat background layer built with pure CSS: an SVG data-URI noise overlay at low opacity, a repeating-linear-gradient geometric pattern, or a radial-gradient mesh in the palette's own hues (avoid hue 230–300 at sat >= 0.25, which trips the C1 machine check). Keep text contrast accessible over it.",
+      "category": "imagery",
+      "evidence": "SKILL.md Backgrounds & Visual Details bullet",
+      "machineCheckable": "Partially: static parse can verify body/hero background uses background-image / multiple background layers / pseudo-element texture rather than a single flat color, and that gradient stops avoid the C1 hue band. 'Matches the aesthetic' remains LLM-lane."
+    },
+    {
+      "name": "dramatic-single-role-shadow",
+      "rule": "Shadows, when used, are dramatic and role-specific — a statement (e.g., hard offset block shadow in a brutalist tone, or one large glow on the single floating element) — never the same timid soft shadow sprinkled everywhere. This is the positive complement of C4.",
+      "buildApplication": "Either zero shadows, or one to two distinct box-shadow values: a hard-offset shadow like '6px 6px 0 <ink>' for brutalist/playful tones, or a single large soft shadow on exactly one floating element class. Never the default '0 1px 3px rgba(0,0,0,.1)' on every card.",
+      "category": "detail",
+      "evidence": "SKILL.md Backgrounds & Visual Details bullet ('dramatic shadows'); read against design-tells C4",
+      "machineCheckable": "Yes: parse CSS — count distinct box-shadow values (<= 2) and count selectors per value (the dramatic one appears on <= 1 element class). Complements the existing C4 uniform-shadow check rather than duplicating it."
+    },
+    {
+      "name": "complexity-matches-vision",
+      "rule": "Match implementation complexity to the aesthetic vision: maximalist designs need elaborate code (extensive animations, layered effects); minimalist/refined designs need restraint, precision, and care in spacing, typography, and subtle details. Elegance comes from executing the vision well — not from adding more.",
+      "buildApplication": "Derive an explicit effect budget from the tone before building the page. Minimal tone: <= 1 animation, <= 2 shadows, flat or single-texture surfaces, effort goes into a strict spacing scale and type tuning. Maximal tone: layered backgrounds, coordinated multi-element animation, dense detail — fully committed, not half-applied.",
+      "category": "hierarchy",
+      "evidence": "SKILL.md IMPORTANT paragraph: 'Match implementation complexity to the aesthetic vision.'",
+      "machineCheckable": "Partially: count effects in CSS (@keyframes, gradient layers, distinct shadows, filters) and compare against the tone declared in the concept sheet (minimal tones get a low cap). Requires the tone field from named-tone-commitment."
+    },
+    {
+      "name": "one-memorable-differentiator",
+      "rule": "Decide up front what makes the page UNFORGETTABLE — the one thing someone will remember — and execute that single signature element fully while everything else stays quiet in support.",
+      "buildApplication": "Designate one signature move for the page (an extreme display-type treatment in the hero, a distinctive background system, or the grid-breaking element) and give it the largest visual budget; all other sections use the restrained baseline so the signature reads clearly.",
+      "category": "hierarchy",
+      "evidence": "SKILL.md Design Thinking 'Differentiation' bullet",
+      "machineCheckable": "no"
+    }
+  ],
+  "notes": "OVERLAPS with core/design-tells.md (do not re-add): the skill's NEVER list ('purple gradients on white backgrounds') == C1; 'predictable layouts and component patterns' == L1/L3/L4; 'cookie-cutter design' is the general thesis behind the whole tell list; its asymmetry/overlap prescription is the positive mirror of S3's remedy ('의도적 비대칭'); its anti-generic-font stance has NO counterpart in design-tells — there is currently no font-family tell at all, making display-body-font-pairing a promotable static machine check. CONFLICTS/TENSIONS: (1) Skill prescribes 'layered transparencies' as a background technique; C2 bans unmotivated glassmorphism — reconcile by permitting transparency only in non-content atmospheric background layers, never as default card surface treatment. (2) Skill prescribes 'dramatic shadows'; C4 bans the same soft shadow everywhere — compatible if dramatic means distinct and single-role (hard-offset or one floating element), which C4's uniformity check already passes. (3) Skill prescribes 'gradient meshes'; the C1 static check (src/audit.js checkPurpleGradient) only flags linear-gradient stops with hue 230–300 and sat >= 0.25, and does not match radial-gradient at all, so non-purple meshes pass the machine lane — but the LLM lane should still confirm the mesh serves the tone. (4) Philosophical conflict: design-tells encodes restraint as fixed rules (C3 single accent, C4 one shadow role), while the skill treats 'maximalist chaos' as an equally valid pole; a genuinely maximalist build could legitimately trip C3/C4 heuristics. design-interview should either make some audit rules tone-conditional or accept that its product is restrained/editorial by design and exclude maximalist tones from the menu. (5) Gap, not conflict: the skill's motion guidance (orchestrated load reveal, surprising hovers, CSS-only) has zero coverage in design-tells or the audit — a candidate positive lane. CAVEAT: the skill is direction-level prose with almost no numbers; every numeric threshold in the machineCheckable/buildApplication fields above is our operationalization, marked as 'suggested', not sourced. License is Apache-2.0 per the plugin's LICENSE file; ideas extracted, no prose copied."
+}

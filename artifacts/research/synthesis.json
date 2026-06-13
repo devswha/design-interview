@@ -1,0 +1,818 @@
+{
+ "stats": {
+  "sources": 10,
+  "rawPrinciples": 207,
+  "adopted": 24,
+  "laneCandidates": 13
+ },
+ "synthesis": {
+  "adopted": [
+   {
+    "id": "TY1",
+    "name": "single-type-scale",
+    "rule": "All font sizes come from ONE declared scale: a modular ratio in {1.2, 1.25, 1.333} or a hand-tuned fixed set (e.g. 16/19/24/36/48). Max 6 distinct sizes per page, hard cap 7. No one-off values (17px, 1.45em). Remaining differentiation comes from weight/color, never a new size.",
+    "buildApplication": "Declare --fs-* custom properties in :root before any section markup; every font-size declaration references a token. Landing pages take ratio 1.25–1.333 (heading contrast carries hierarchy); dense detail/proposal pages take 1.2.",
+    "category": "typography",
+    "sources": [
+     "spark-joy (Hobday/Schoger)",
+     "carbon",
+     "govuk",
+     "polaris",
+     "refactoring-ui",
+     "practical-typography + modularscale",
+     "open-design (nexu-io)"
+    ],
+    "machineCheckable": "yes — visual lane: distinct computed font-sizes of visible text nodes (rounded to 0.5px, sub/sup exempt) <= 7 at a fixed viewport."
+   },
+   {
+    "id": "TY2",
+    "name": "readable-body-setting",
+    "rule": "Body copy 16–21px (17px is the measured Korean-site cluster), never shrunk to fit a layout — fix the layout instead. Running-text measure 45–75 characters: max-width 60–68ch for Latin, ~36em for Hangul columns. Paragraphs never span the full container at desktop widths, even inside wide/full-bleed sections.",
+    "buildApplication": "body { font-size: 1.0625rem } and a .prose wrapper with max-width: 65ch (36em when Korean) applied to every paragraph-bearing block, including under heroes and in footers; wide sections keep their inner <p> blocks constrained.",
+    "category": "typography",
+    "sources": [
+     "spark-joy (Hobday/Kennedy)",
+     "govuk",
+     "primer",
+     "refactoring-ui",
+     "practical-typography (Butterick 45–90)",
+     "open-design (measure-65ch)",
+     "proposal-research (document-measure)",
+     "lqez-hangul-survey"
+    ],
+    "machineCheckable": "yes — visual lane: <p> with >120 chars must have clientWidth/fontSize <= 40; <p> with >80 chars in main must compute >= 16px."
+   },
+   {
+    "id": "TY3",
+    "name": "leading-tracking-inverse-to-size",
+    "rule": "Line-height and tracking scale inversely with size: body 1.4–1.6 (Latin) / 1.6–1.9 (Hangul); display >= 32px at 1.0–1.2 with letter-spacing -0.01 to -0.02em; body letter-spacing 0; uppercase labels (< 1 line, ~10–14px) get +0.05–0.1em tracking. Never positive tracking on headings, never negative on body, never text-align: justify.",
+    "buildApplication": "Pair line-height with each scale step explicitly (48px/1.1, 30px/1.2, 17px/1.6), never one global value; h1 { letter-spacing: -0.015em }; .eyebrow { text-transform: uppercase; letter-spacing: 0.08em }; zero justify anywhere.",
+    "category": "typography",
+    "sources": [
+     "spark-joy (Hobday/Schoger/jgthms)",
+     "govuk (5px lh grid, no justify)",
+     "polaris (tracking-tightens, 4px lh grid)",
+     "primer",
+     "refactoring-ui",
+     "practical-typography (Butterick)",
+     "awesome-design-md (Stripe/Linear tracking tables)"
+    ],
+    "machineCheckable": "yes — visual lane: multi-line p ratio in [1.35,1.95] ([1.5,1.95] when >=30% Hangul); h1/h2 >=32px ratio <= 1.3 with letter-spacing <= 0; uppercase <20px requires letter-spacing >= 0.04em; no text-align: justify."
+   },
+   {
+    "id": "TY4",
+    "name": "two-families-explicit-roles",
+    "rule": "Max 2 type families with distinct roles (display + body), or one family doing all work in exactly 3 weights — plus optional monospace assigned exactly ONE job (code, or eyebrows, or numeric data; never two). Every font-family stack lists >= 2 entries and ends in a CSS generic keyword (full modern-font-stacks chains when no webfont). The pairing is derived from the concept sheet tone via personality class (old-style serif = elegant, neutral grotesque = plain, geometric/squared = technical, rounded = playful) — a neutral grotesque as display is a justified tone choice, never an unexamined default.",
+    "buildApplication": "Declare --font-display and --font-body in :root; assign display to h1–h3 with deliberate weight, body to p/li; match approximate x-heights when pairing; paste the full fallback chain for the chosen classification.",
+    "category": "typography",
+    "sources": [
+     "anthropic-frontend-design-plugin (display-body-pairing)",
+     "spark-joy (fonts-by-personality)",
+     "practical-typography (Butterick)",
+     "modern-font-stacks",
+     "open-design + awesome-design-md (typeface-roles)",
+     "repo: templates/concept-sheet.md named-fonts (dedupe: this adds count/role/fallback discipline)"
+    ],
+    "machineCheckable": "yes — static: distinct first-position families (excluding mono used only on code/pre/kbd) <= 2; every font-family list ends with a generic keyword; mono appears on only one role's selectors."
+   },
+   {
+    "id": "TY5",
+    "name": "hangul-typesetting",
+    "rule": "When the page carries Korean copy: word-break: keep-all + overflow-wrap: break-word on headings and short copy (no mid-word breaks); gothic body faces get -0.01 to -0.02em letter-spacing (measured: Naver -0.3px, Daum -0.34px at 17px); body line-height 1.6–1.8; stack Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; never font-style: italic on Hangul (browsers fake-slant it) — emphasize with weight or ink tier.",
+    "buildApplication": ":lang(ko) h1–h3, :lang(ko) p { word-break: keep-all; overflow-wrap: break-word } body:lang(ko) { letter-spacing: -0.02em; line-height: 1.7 }; audit that no Hangul-bearing element computes italic.",
+    "category": "typography",
+    "sources": [
+     "lqez-hangul-survey + W3C klreq (via practical-typography bundle)"
+    ],
+    "machineCheckable": "yes — conditional static/visual: if Hangul (U+AC00–U+D7A3) present, require keep-all on body or heading rules, fail computed font-style: italic on Hangul-bearing elements, paragraph lh ratio in [1.55,1.9]."
+   },
+   {
+    "id": "SP1",
+    "name": "spacing-token-scale",
+    "rule": "One declared spacing scale, default 4/8-based {4,8,12,16,24,32,48,64,96,128/160}; adjacent steps differ >= 25% so any two values are distinguishable. Every margin/padding/gap is a scale member (0/auto allowed; 1–2px hairline adjustments exempt). A 5px-based GOV.UK-style scale is acceptable only if declared as THE page scale — never two systems mixed.",
+    "buildApplication": "Declare --space-1..--space-9 in :root before building; all spacing references tokens; no 13px/18px/35px one-offs; when something feels cramped, move one step up the scale instead of nudging by 3px.",
+    "category": "spacing",
+    "sources": [
+     "spark-joy (Hobday mathematically-related)",
+     "carbon",
+     "primer",
+     "govuk",
+     "polaris (stepped-space-scale)",
+     "refactoring-ui (geometric scale, >=25% steps)"
+    ],
+    "machineCheckable": "yes with care — static: >= 90% of non-zero px margin/padding/gap literals are members of the declared set (FP from deliberate overlap negatives and optical nudges)."
+   },
+   {
+    "id": "SP2",
+    "name": "proximity-encodes-grouping",
+    "rule": "Space between groups visibly exceeds space within groups, everywhere. Headings bind downward: h2/h3 margin-top >= 1.5–2x margin-bottom (e.g. 48–64px above / 16px below). A container's outer padding >= the max gap between its children (card children 16px apart → card padding >= 16px). Icon/label hugs its content (~8px in, >= 24px out). Inter-section gap >= 2x intra-section gap.",
+    "buildApplication": "Write asymmetric heading margins explicitly (h2 { margin: 64px 0 16px }), never margin: 32px 0; derive card padding from its internal gap +1 step; key claims get extra surrounding whitespace instead of decoration.",
+    "category": "spacing",
+    "sources": [
+     "spark-joy (Hobday outer>=inner)",
+     "carbon (space-encodes-hierarchy)",
+     "refactoring-ui (proximity/ambiguous-spacing)",
+     "practical-typography (heading binding ~2:1)",
+     "polaris (card padding/gap tokens)"
+    ],
+    "machineCheckable": "yes — visual lane: h2–h4 gap(prev-block) >= 1.5x gap(next-block); bordered/filled containers min(edge distance) >= max(inner sibling gap)."
+   },
+   {
+    "id": "SP3",
+    "name": "two-register-rhythm",
+    "rule": "Two spacing registers, never an undifferentiated middle: section register 64–128px desktop vertical padding (one gap may reach 96–160px as a rest band) vs content register 8–24px — outer:inner roughly >= 4:1. Inter-section gaps must vary: max/min >= 1.5. Exactly one deliberately denser zone (spec table, proof strip, tight list) flanked by the largest whitespace bands. The pole (airy 96–144px vs dense 32–48px) follows the concept sheet's declared density policy. This quantifies L3's remedy — numbers, not just 'vary density'.",
+    "buildApplication": "Define a section-padding token pair (e.g. --sec-y: 96px, --sec-y-tight: 40px) and assign the tight one to exactly one section; verify on the desktop screenshot that gaps are visibly unequal and one rest band >= 96px exists.",
+    "category": "spacing",
+    "sources": [
+     "anthropic-frontend-design-plugin (whitespace-polarity)",
+     "carbon (dense-sections-whitespace-rest, 96/160 tokens)",
+     "awesome-design-md (Vercel/Stripe density-contrast)",
+     "open-design (alternating density)",
+     "polaris (density-matched-to-task)",
+     "spark-joy (double your whitespace)",
+     "repo: design-tells L3 + concept-sheet declared-density (dedupe: this is the quantified positive side)"
+    ],
+    "machineCheckable": "partially — visual lane: inter-section gap max/min >= 1.5 and max gap >= 96px at 1440px; this is the positive twin of the L3 promotion and must share its lane (no double scoring)."
+   },
+   {
+    "id": "CO1",
+    "name": "role-token-palette-accent-budget",
+    "rule": "Palette = role-named tokens in :root (--bg --surface --fg --muted --border --accent, plus optional semantic roles), <= 12 resolved colors page-wide and ~0 color literals outside :root. Pixel budget: neutrals carry 70–90% of rendered area; exactly ONE saturated accent family at 5–10%, reserved for the primary CTA, links, focus, selection and 1–2 highlights; <= 2 visible accent uses per viewport; no second accent; semantic colors (success/danger) only with semantic meaning, never promotion. Extends C3 (icon-level single accent) to a quantified page-wide budget.",
+    "buildApplication": "Build the palette as custom properties first; derive accent hover/active as same-hue lightness shifts; when a CTA shares the screen with links, demote links to fg-with-underline so the accent count holds.",
+    "category": "color",
+    "sources": [
+     "anthropic-frontend-design-plugin (dominant+sharp-accent, css-variables)",
+     "spark-joy (Kennedy black-and-white-first)",
+     "govuk (functional colours)",
+     "primer + carbon (color roles)",
+     "polaris (single-brand-fill)",
+     "open-design + awesome-design-md (palette-pixel-budget, accent-rationing)",
+     "repo: concept-sheet role-named-palette-3-5 (dedupe: adds budget numbers + literal cap)"
+    ],
+    "machineCheckable": "yes — static: color literals outside :root <= 12; colors with HSL S >= 25% cluster into <= 2 hue bins (30°)."
+   },
+   {
+    "id": "CO2",
+    "name": "tinted-neutral-ink-ramp",
+    "rule": "Never pure #000-on-#fff. Body ink is a near-black (L* ~10–25%) tinted with the brand hue at 5–15% saturation; neutrals commit to warm OR cool, never both. Exactly 3 neutral text tiers (≈ L 15% / 35–40% / 55–60%) with monotonically decreasing contrast, body tier >= 4.5:1. On saturated backgrounds, secondary text is the SAME hue desaturated/lightened (bg hsl(220 80% 30%) → text hsl(220 40% 80%)), never grey or rgba-white. Hierarchy must survive grayscale conversion.",
+    "buildApplication": "Derive --text-1/2/3 from the accent hue in HSL/oklch; captions, dates, footnotes always take tier 3; verify tier separation on a grayscale screenshot during Phase 4 self-review.",
+    "category": "color",
+    "sources": [
+     "spark-joy (Hobday near-black/saturate-neutrals, Schoger, jgthms)",
+     "polaris (ink-hierarchy #303030/#616161)",
+     "govuk (near-black #0b0c0c)",
+     "refactoring-ui (hsl-palette, no-grey-on-color, 3 tiers)",
+     "open-design + awesome-design-md (no-pure-black-white)"
+    ],
+    "machineCheckable": "yes — visual: body text != rgb(0,0,0) on near-white bg; >= 2 distinct neutral text tiers; text with S < 8% flagged on backgrounds with S > 25%."
+   },
+   {
+    "id": "CO3",
+    "name": "surface-separation-ladder",
+    "rule": "To separate content, reach in this order: (1) more whitespace, (2) background delta — 2–6% lightness shift, <= 3–4 total surface tones, each nested surface exactly one step from its parent in a monotone direction, (3) 1px hairline border (~8–12% luminance from bg), (4) shadow last. 1px row borders are legitimately reserved for data rows (tables, dl key/value lists). Never two hard divides adjacent; never blur/translucency for separation. This is the replacement ladder behind C2's ban, with numbers.",
+    "buildApplication": "Give 1–2 sections a tinted near-white band instead of border-top rules; cards sit on the next surface tone with a --border-muted hairline; keep <hr>/full borders off everything except data rows and inputs; bordered-on-all-sides boxes stay a handful.",
+    "category": "color",
+    "sources": [
+     "refactoring-ui (border-budget)",
+     "spark-joy (Schoger fewer-borders/alternate-backgrounds, Hobday)",
+     "carbon (surface-layering-one-step)",
+     "polaris (three-level-neutral-stack, borders-for-tables-only)",
+     "awesome-design-md (hairline-over-shadow, Linear surface ladder)",
+     "govuk (keyline surfaces, summary-list)"
+    ],
+    "machineCheckable": "partially — static/visual: distinct container background tones <= 4; full-four-side bordered boxes <= 6; hr or 1px horizontal borders outside table/dl/row contexts flagged."
+   },
+   {
+    "id": "LA1",
+    "name": "container-and-content-width",
+    "rule": "Centered wrapper max-width 960–1280px with padding-inline 16px mobile / 24px+ desktop (one-liner: clamp(1rem, 6vw, 3rem)). Each element gets a width optimized for ITS content: prose <= 68ch, forms 480–600px, sidebars px-fixed — never width:100% to fill space. Full-bleed background bands are fine, but their content re-enters the container. Text never runs full-bleed.",
+    "buildApplication": "main { max-width: 1100px; margin-inline: auto; padding-inline: clamp(1rem, 6vw, 3rem) }; inner prose wrappers carry their own tighter cap; a too-narrow-looking block gains a second column (image, aside), it does not widen.",
+    "category": "layout",
+    "sources": [
+     "govuk (1020px)",
+     "primer (1280px incl. 24px)",
+     "carbon (breakpoint margins)",
+     "spark-joy (Material margins, breakout grid)",
+     "refactoring-ui (content-width-discipline, fixed-width sidebars)"
+    ],
+    "machineCheckable": "yes — visual: main text column <= 1320px at 1440px viewport; text content >= 16px side padding at 375px."
+   },
+   {
+    "id": "LA2",
+    "name": "asymmetric-split-single-break",
+    "rule": "Two-column sections use uneven ratios — 7/5 or 8/4 (width ratio 1.5–2.2:1), not 50/50. In any peer group, promote exactly ONE item (>= 1.8–2x area, or inverted background, or one accent edge) while siblings stay quiet. Exactly 1–2 grid-breaking moves per page, chosen from named mechanisms: negative-margin overlap across a section seam (overlapping images get a few px of bg-color 'invisible border'), <= 6° rotation on one display element, or breakout-width promotion. Breaks happen BETWEEN containers: inside any container, children keep <= 3 shared keylines; <= 4–5 distinct left-edge alignment lines page-wide. This is the named-pattern, numbered mechanism behind S3/L2's remedies.",
+    "buildApplication": "grid-template-columns: 7fr 5fr for split sections; one stats card straddling the hero/body boundary via margin-top: -48px doubles as S3's required asymmetry; everything inside each container stays flush to that container's keyline.",
+    "category": "layout",
+    "sources": [
+     "anthropic-frontend-design-plugin (grid-breaking-composition)",
+     "refactoring-ui (overlap-for-depth, accent-on-one)",
+     "awesome-design-md + refero-skill (asymmetric-split 7/5, featured tier)",
+     "govuk (two-thirds default)",
+     "polaris (break-alignment-only-across-containers)",
+     "spark-joy (breakout widths, few alignment lines)",
+     "repo: design-tells S3/L2 (dedupe: this supplies the positive mechanisms)"
+    ],
+    "machineCheckable": "partially — visual: at least one 2-col row with ratio in [1.5,2.2]; <= 1 promoted peer per group (area >= 1.8x or inverted bg); distinct text left-edges (4px tolerance) <= 5."
+   },
+   {
+    "id": "LA3",
+    "name": "disproportionate-responsive-scaling",
+    "rule": "Across the ~640px breakpoint, elements scale disproportionately: display type drops to 0.6–0.85x (48→32, 36→27) while body stays IDENTICAL and >= 16px; section padding steps down 1–2 tokens on the same spacing scale (96→64, 48→32); micro-spacing <= 16px unchanged. Proportional single-multiplier scaling (pure em/vw) is forbidden; fluid display via clamp() must include a rem term to preserve zoom.",
+    "buildApplication": "One media query at ~640px touching only h1–h3 sizes and large section paddings, with resulting values still scale members; verify both shot widths: mobile headline visibly smaller, body identical.",
+    "category": "layout",
+    "sources": [
+     "govuk (responsive collapse tables)",
+     "carbon (fluid headings / fixed body, token step-down)",
+     "refactoring-ui (scale-disproportionately, mobile-first)",
+     "spark-joy (clamp-with-rem, Material margins)"
+    ],
+    "machineCheckable": "yes — dual render 1440/375px: when desktop h1 >= 40px, mobile/desktop h1 ratio in [0.55,0.95]; modal p size delta <= 1px and >= 16px at both."
+   },
+   {
+    "id": "HI1",
+    "name": "weight-and-ink-before-size",
+    "rule": "Inside content blocks, hierarchy comes from weight and ink tier, not size inflation: <= 3 font weights from {400,500,600,700}, never below 400 (de-emphasize via lighter ink or smaller size). Sub-heads may equal body size at +1–2 weight steps; all same-level headings share one weight; <= 3 heading levels page-wide with no skips; never bold + darken + enlarge the same element simultaneously — emphasize by de-emphasizing neighbors. No font-weight >= 600 runs longer than a short phrase; bold characters < 5% of body text.",
+    "buildApplication": "Card titles = body size at weight 600 + tier-1 ink, not an invented 20px; demote metadata to tier 3 instead of shrinking below 12px; check the grayscale screenshot — if hierarchy collapses, fix weight/ink, not color.",
+    "category": "hierarchy",
+    "sources": [
+     "spark-joy (few-sizes-vary-weight, Schoger emphasize-by-de-emphasizing)",
+     "refactoring-ui (hierarchy-weight-color, no <400)",
+     "polaris (weight-before-size)",
+     "primer + carbon (weight discipline, semibold not for long text)",
+     "open-design (three-weight-jump)",
+     "practical-typography (<=3 heading levels)"
+    ],
+    "machineCheckable": "yes — static/visual: computed weights subset of {400,500,600,700}, distinct count <= 3, none < 400; heading tag levels <= 3 without skips; flag >=600-weight elements holding > 120 chars at body size."
+   },
+   {
+    "id": "HI2",
+    "name": "single-entry-action-pyramid",
+    "rule": "One winner at every level. Above the fold: exactly one dominant element (carried by >= 2 hierarchy vectors: scale, weight, spacing, tracking, alignment) and <= 3 visible type-hierarchy levels. Actions: exactly ONE solid accent-filled button per view — secondary actions are outline/ghost/text, destructive never primary; the primary may recur once at page end. Labels are verb + object naming the actual action ('Start the 14-day trial'); banned as primary: OK, Submit, Continue, Get started, Learn more, Click here. Page-wide: one signature move gets the visual budget; every other section holds the quiet baseline (~80/20). Builds the visual layer over the interview's single-conversion-goal.",
+    "buildApplication": ".btn-primary (accent fill, >= 44px hit area, horizontal padding ~2x vertical) used once in the hero region and at most once at page end; .btn-secondary transparent/bordered; pick the signature from the concept sheet's strongest differentiator and mute everything else.",
+    "category": "hierarchy",
+    "sources": [
+     "spark-joy (one-primary-CTA, squint test, button geometry)",
+     "govuk (one button, action-named, left-aligned)",
+     "refactoring-ui (action-pyramid)",
+     "polaris (single-brand-fill-per-area)",
+     "refero-skill + open-design (cta-verb-object, single-entry-point, one-signature)",
+     "anthropic-frontend-design-plugin (one-memorable-differentiator)",
+     "repo: core/interview.md single-conversion-goal (dedupe: this is the build-time styling rule)"
+    ],
+    "machineCheckable": "partially — visual: accent-filled button-likes per 100vh window <= 2 (fail at >= 3); static: primary button text against the banned-label list."
+   },
+   {
+    "id": "CN1",
+    "name": "descriptive-headings-fact-per-section",
+    "rule": "Headings name the content, not the aspiration ('Pricing', 'Works with your stack') — litmus: the h2/h3 chain read alone must convey what the page offers. h1 is benefit-led and <= ~10 words, built from the strongest frozen intake claim phrased as the user's outcome. Every section carries >= 1 falsifiable specific (number, named platform/integration, stated limit) drawn verbatim from frozen claims; a section with zero specifics is cut, not padded. Banned aspiration patterns beyond T2's lexicon: 'Unlock/Supercharge/Elevate your X', 'next level', 'Say goodbye to', 'Introducing the future of'.",
+    "buildApplication": "After building, strip the page to heading text and verify it still summarizes the offer; source one concrete fact per section from the intake claim list; one real stated constraint adds credibility.",
+    "category": "content",
+    "sources": [
+     "refero-skill (descriptive-headings, fact-per-section, dead-copy test)",
+     "spark-joy (Tracy Osborn benefit-led headline)",
+     "govuk (one job per section, unique h2s)",
+     "open-design (no invented metrics)",
+     "repo: claim-freeze (dedupe: claims supply the facts)"
+    ],
+    "machineCheckable": "partially — h1 word count <= 10; per-section digit/unit/proper-noun presence; aspiration regex kept disjoint from T2's lexicon to avoid double scoring."
+   },
+   {
+    "id": "CN2",
+    "name": "document-opening-pattern",
+    "rule": "The page opens caption → h1 → one lead paragraph: an optional small grey context caption directly above the h1 (< 0.55x h1 size, regular weight — section/product family/doc type lives here, never inflated into the h1); then exactly ONE lead paragraph at ~1.25x body size (24px vs 19px class) directly after the h1, summarizing the offer in frozen claims; never repeated later; all other paragraphs at standard body size. A concrete content-derived alternative to the L4 hero formula, not a new formula — the structure interview answer still decides what the opening says.",
+    "buildApplication": "<p class=\"caption\">제안 · 클라이언트명</p><h1>specific subject</h1><p class=\"lead\">…</p>; the lead reuses intake claims; later sections never re-use the large-paragraph treatment.",
+    "category": "content",
+    "sources": [
+     "govuk (lead-paragraph once, caption-over-heading)",
+     "proposal-research (executive-summary-first-screen echoes the pattern)",
+     "repo: design-tells L4 (dedupe: replacement pattern, opening content still interview-derived)"
+    ],
+    "machineCheckable": "yes — count of p at 1.15–1.4x modal body size <= 1 and it precedes the first h2; caption (if present) < 0.55x h1 size and grey-shifted."
+   },
+   {
+    "id": "IM1",
+    "name": "imagery-integrity",
+    "rule": "Three sub-rules, all about not lying with pixels: (1) text over photos requires a named contrast method — full dark overlay at 30–60%, text in its own solid box, blurred region, or bottom scrim to ~rgba(0,0,0,.5) — with the headline holding 4.5:1 against the darkest area; (2) product screenshots sit in panel chrome: 1px hairline border, 12–16px radius, <= 1 subtle shadow recipe (alpha <= 0.08), displayed >= 75% of natural width (crop or use a narrow-breakpoint capture, never CSS-shrink a 1440px shot into a 400px card); (3) icons stay near native 16–24px inside a 40–56px tinted same-hue container — never blown up > 1.5x intrinsic. Operates under S4's real-imagery-only gate.",
+    "buildApplication": "hero photo → ::after overlay before placing the headline; every screenshot wrapped in <figure> with border:1px solid var(--border); border-radius:12–16px; overflow:hidden; icons as inline SVG at 20px in a tinted circle.",
+    "category": "imagery",
+    "sources": [
+     "spark-joy (Kennedy rule 4 overlay methods)",
+     "refactoring-ui (text-on-image, icon-screenshot-scale-integrity)",
+     "awesome-design-md + refero-skill (screenshot-panel-craft)",
+     "repo: design-tells S4 (dedupe: S4 decides IF imagery exists; this governs HOW)"
+    ],
+    "machineCheckable": "yes — visual: text overlapping background-image requires an intermediate layer alpha >= 0.3 / filter / text-shadow / opaque container; img displayed-vs-natural ratios; screenshot containers carry 1px border + 8–20px radius."
+   },
+   {
+    "id": "DE1",
+    "name": "shadow-physics-budget",
+    "rule": "Max 3 distinct box-shadow signatures page-wide, mapped to an elevation ladder (resting card < the one floating element). Soft shadows obey physics: y-offset >= 0, x ≈ 0, blur ≈ 1.5–3x offset, neutral/ink-tinted color (r≈g≈b), alpha <= 0.25–0.3, ideally two-part (tight contact + soft ambient); inset only for wells/inputs. The single sanctioned exception: ONE hard-offset blur-0 signature (e.g. 6px 6px 0 var(--ink)) on one element class for brutalist/playful tones. Complements C4 — C4 bans the uniform sprinkle; this defines what a legal shadow IS.",
+    "buildApplication": "Define --shadow-1/--shadow-2 tokens (e.g. '0 1px 2px rgb(20 24 30 / .10), 0 4px 8px rgb(20 24 30 / .07)'); cards take shadow-1 or a hairline instead; only the genuinely floating element takes shadow-2; nothing else gets a shadow.",
+    "category": "detail",
+    "sources": [
+     "spark-joy (Kennedy light-from-sky, Hobday blur≈2x, Material ladder)",
+     "refactoring-ui (shadow-elevation-system, two-part)",
+     "polaris (shadow ladder, neutral rgba(26,26,26) shadows)",
+     "anthropic-frontend-design-plugin (dramatic-single-role exception)",
+     "awesome-design-md (single shadow recipe)",
+     "repo: design-tells C4 (dedupe: positive physics beyond the ban)"
+    ],
+    "machineCheckable": "yes — static parse: distinct non-inset signatures <= 3; blurred (blur>0) shadows require y >= 0, alpha <= 0.3, near-neutral color (max−min channel <= 30); hard-offset (blur 0) signatures <= 1."
+   },
+   {
+    "id": "DE2",
+    "name": "tabular-figures-for-claims",
+    "rule": "Any table column, spec/pricing row set, or group of >= 3 sibling stat elements carrying digits gets font-variant-numeric: tabular-nums, with numeric cells right-aligned. Frozen intake claims (prices, percentages, quantities) land exactly in these spots and render in tabular figures verbatim. Monospace never fakes the alignment and never decorates — it appears only on actual code (or its single declared TY4 role).",
+    "buildApplication": "table, .price, .stat, dl.facts { font-variant-numeric: tabular-nums } with td.num { text-align: right }; doubly load-bearing here because the claim-diff lane compares these exact digits.",
+    "category": "detail",
+    "sources": [
+     "polaris (tabular-numbers, no mono-as-tnum)",
+     "practical-typography bundle (ant-design PR #11567, MDN)",
+     "awesome-design-md (Stripe tnum signature)",
+     "govuk (font-override tabular numbers)",
+     "repo: claim-freeze (dedupe: rendering discipline for frozen claims)"
+    ],
+    "machineCheckable": "yes — DOM+CSS: tables or >= 3 digit-heavy siblings must compute font-variant-numeric: tabular-nums (or font-feature-settings 'tnum'); flag mono families on non-code elements."
+   },
+   {
+    "id": "DE3",
+    "name": "quality-floor-and-real-characters",
+    "rule": "Ship-floor checks: visible :focus-visible (>= 2px outline + offset, or GOV.UK-class bg+border treatment) — outline:none without a replacement is forbidden; animations/transitions wrapped in @media (prefers-reduced-motion: no-preference); never transition: all; img elements carry width+height (no CLS); no user-scalable=no; contrast 4.5:1 body / 3:1 large text and UI; in-content links underlined (color alone never the distinction; nav/header exempt); accent carried into ::selection / accent-color / ::marker; interactive hit areas >= 44px. Plus real typographic characters: curly quotes “ ” ‘ ’, apostrophe ’, em dash — (not --), ellipsis … (not ...) outside code/pre.",
+    "buildApplication": "One closing pass adds the focus block, reduced-motion wrapper, img dimensions, the 5-line accent-details block (::selection, accent-color, :focus-visible, ::marker, scrollbar-color), and a straight-quote sweep over text nodes.",
+    "category": "detail",
+    "sources": [
+     "refero-skill (craft-details)",
+     "open-design (contrast minimums)",
+     "govuk (designed focus states, underlined links)",
+     "spark-joy (brand-the-browser-details, 44px hit area)",
+     "practical-typography (real characters)"
+    ],
+    "machineCheckable": "yes — all static: outline:none-without-replacement, transition:all, viewport meta, img dimensions, :focus-visible presence, underline on p/li links, straight-quote/--/... scan outside code (ship quote-scan as warn-first)."
+   },
+   {
+    "id": "PR1",
+    "name": "proposal-spine-single-approval",
+    "rule": "Proposal pages are documents, not landings: 6–8 top-level sections in canonical order — addressed cover header → executive summary → problem → approach (with phase timeline + risk block) → evidence → pricing → next steps. Cover = addressed header: prepared-for (client name at >= vendor-name size), prepared-by, date, version, validity date; zero background imagery. Executive summary 100–500 words (~10% of length), conclusion-first, on the first screen. Price appears only AFTER problem and approach in DOM order. Exactly one conversion: the final next-steps section holds the only CTA (mailto/calendar/signature line + named contact + who-does-what-by-when with dates); <= 2 button-like elements page-wide. Navigation is a numbered TOC of in-page anchors (evaluators read in rubric order).",
+    "buildApplication": "Emit <section id=\"summary|problem|approach|evidence|pricing|next-steps\"> in order; CSS-counter-numbered h2s; <nav><ol> of # anchors; repeat the validity date beside pricing; zero buttons before the final section.",
+    "category": "proposal",
+    "sources": [
+     "proposal-research (Proposify 7-section/11-page, Formlio price-after-value, adall evaluator navigation, Minto, shopify-kr cover metadata)",
+     "govuk (costs-before-CTA start-page echo)"
+    ],
+    "machineCheckable": "yes — genre-gated static DOM: section count/order by id, first price-regex match after the approach section, button-likes <= 2, mailto/tel + date pattern in last section, nav with >= 5 resolving # anchors."
+   },
+   {
+    "id": "PR2",
+    "name": "evaluator-weighted-evidence-pricing",
+    "rule": "Space follows the evaluator's scoring weight: approach + evidence >= 50% of body content, company self-intro <= 15%. Client-pronoun count (client name / 귀사 / you·your) >= vendor-pronoun count (vendor name / 저희·당사 / we·our) in problem and approach sections; the problem opens in the client's own RFP/intake words. Evidence is structured rows — project, period, scale, one quantified result — with >= 5 quantified metrics page-wide, every number traceable to frozen claims; no real data → the section shrinks or disappears (S1/S2 spirit). Pricing is a semantic table (item/description/qty/unit/amount + one emphasized total row): <= 3 options with premium anchoring first and the recommended option highlighted by exactly one means, <= 9 line items, round numbers (no 9,900/.99 charm endings), explicit out-of-scope list below. h2s are action titles: assertion sentences of ~6–16 words containing the takeaway.",
+    "buildApplication": "Budget per-section word counts from the rubric before writing; render references and team as identical-field dl/table rows; right-aligned tabular-nums on every money cell; accent spent only on key numbers, recommended option, total row.",
+    "category": "proposal",
+    "sources": [
+     "proposal-research (adall weight/pronoun/evidence rules, Formlio pricing, Proposify tiering data, deckary/think-cell action titles)",
+     "govuk (summary-list key-facts pattern)",
+     "repo: claim-freeze + design-tells S1/S2 (dedupe: evidence authenticity already gated)"
+    ],
+    "machineCheckable": "partially — deterministic: section content share, pronoun token counts, table presence/shape, option <= 3 / rows <= 9, charm-price regex, h2 mean word count >= 6; assertion quality and evidence substance stay LLM-lane."
+   }
+  ],
+  "rejected": [
+   {
+    "name": "named-tone-commitment / personality-lock",
+    "reason": "Duplicate of existing interview + concept-sheet discipline: mood is already elicited as 2–3 adjectives + contrast statement (core/interview.md), and the concept sheet already locks a one-line direction, named fonts, role palette, and density policy. The four-lever agreement check (type genre / hue / radius / copy register must agree) stays in the LLM concept-review lane; adding it as a principle would double-rule the concept gate.",
+    "sources": [
+     "anthropic-frontend-design-plugin",
+     "refactoring-ui (choose-a-personality)"
+    ]
+   },
+   {
+    "name": "dramatic-single-role-shadow",
+    "reason": "inverse of C4 — 'never the same timid shadow sprinkled everywhere / shadow as a statement on one element' restates C4's signal and remedy. The genuinely new part (hard-offset grammar, one-signature cap) was folded into DE1's exception clause.",
+    "sources": [
+     "anthropic-frontend-design-plugin"
+    ]
+   },
+   {
+    "name": "anti-convergence-across-generations",
+    "reason": "Requires cross-session run history (diffing fonts/polarity against previous outputs) — not a property of a single static HTML build, and variation is already forced structurally by deriving every design from a fresh interview-locked concept rather than defaults.",
+    "sources": [
+     "anthropic-frontend-design-plugin"
+    ]
+   },
+   {
+    "name": "motion & hover grammar (orchestrated-load-reveal / surprising-hover-states / press-darkens-rise-lightens)",
+    "reason": "Direct source conflict: Anthropic prescribes surprising transform/shadow hovers and staggered load reveals; Polaris forbids scale transforms and growing shadows on hover and mandates press-darkens physics. Motion grammar is tone-scoped and below the working-memory bar; only the reduced-motion guard survived (into DE3). Concept sheet may opt into either grammar explicitly.",
+    "sources": [
+     "anthropic-frontend-design-plugin",
+     "polaris"
+    ]
+   },
+   {
+    "name": "atmospheric-backgrounds / background-texture-restraint",
+    "reason": "Decoration is tone-dependent, sits adjacent to the C1 hue-band trap, and contradicts the proposal genre's zero-decoration texture. The safe numeric core (1px lines, 16–24px tile, alpha <= 0.1, one texture max) is kept as conditional concept-sheet guidance, not a held-in-memory principle.",
+    "sources": [
+     "anthropic-frontend-design-plugin",
+     "setproduct.com (via mixed source)"
+    ]
+   },
+   {
+    "name": "hero-thesis-with-proof",
+    "reason": "Prescribes a fixed 4-part hero shape (headline/subhead/proof-line/CTA) — a formula, which conflicts with L4's rule that the first screen derives from the interview's structure answer, never a template. The valuable residue (proof line reuses a frozen claim verbatim; one filled button) is preserved in CN1 and HI2.",
+    "sources": [
+     "refero-skill",
+     "anthropic skills frontend-design"
+    ]
+   },
+   {
+    "name": "light-canvas-default",
+    "reason": "Canvas polarity is an interview/brand decision, not a default: adopting 'light unless told otherwise' would silently bypass the explicit-defaults-declaration rule (SKILL.md Phase 1) and contradicts the Anthropic source's variation demand. Resolution: the concept sheet must lock polarity explicitly; neither default adopted.",
+    "sources": [
+     "refero-skill",
+     "anthropic-frontend-design-plugin (conflicting side)"
+    ]
+   },
+   {
+    "name": "logo-strip-spec & testimonial-attribution-spec",
+    "reason": "Both are conditional on S2/S1 preconditions (real logos / real quotes exist) — rare-path rendering specs, not build-time discipline. Moved to conditional guidance: when real assets pass the S1/S2 gate, render logos monochrome at one 20–32px height in a single row, and one fully-attributed result-bearing quote beside the CTA beats a 3-up wall.",
+    "sources": [
+     "awesome-design-md (Vercel/Linear)",
+     "social-proof teardowns (saashero/provesrc/instapage)"
+    ]
+   },
+   {
+    "name": "nested-corner-radius formula (inner = outer − padding / strict decrement)",
+    "reason": "Operationalizes the remedy of S5 ('vary radius by hierarchy') on the exact property S5's static check already audits — adopting it would put a second rule on border-radius and violate the no-double-scoring invariant. Worth folding into S5's remedy text during the next tells revision instead.",
+    "sources": [
+     "spark-joy (Hobday)",
+     "polaris (nested-radius-decrement)"
+    ]
+   },
+   {
+    "name": "card-justification-test",
+    "reason": "Overlaps L1's importance-differentiated-layout remedy and CO3's separation ladder; its deterministic proxy (count non-interactive bordered containers) is flaky — static marketing content in panels is sometimes legitimate (screenshots per IM1). The litmus question ('does the user interact with this container?') joins the Phase 5 LLM checklist notes under L1.",
+    "sources": [
+     "refero-skill",
+     "open-design (nexu-io)"
+    ]
+   },
+   {
+    "name": "labelless-data",
+    "reason": "Direct conflict with GOV.UK summary-list (key/value rows ARE the senior pattern for facts) and the proposal genre's itemized tables. Resolved by genre split rather than adoption: narrative landing sections merge labels into sentences ('12 left in stock'); spec/pricing/evidence zones use labeled dl/table rows with labels at the tier-3 ink level (captured in HI1 + PR2).",
+    "sources": [
+     "refactoring-ui (good-ui)",
+     "govuk (conflicting side)",
+     "polaris (conflicting side)"
+    ]
+   },
+   {
+    "name": "feature-first-greyscale",
+    "reason": "A generation-process ordering rule, not a verifiable page property — the deliverable can't prove which section was designed first. Its checkable residue (hierarchy must survive grayscale; palette tiers need distinct luminance) was folded into CO2 and HI1.",
+    "sources": [
+     "refactoring-ui (elrincondeldev/tigerabrodi)"
+    ]
+   },
+   {
+    "name": "fluid-display-clamp",
+    "reason": "One implementation technique among several for LA3's disproportionate scaling; mandating clamp() specifically over-constrains (explicit per-breakpoint values are equally senior per GOV.UK/Carbon). Kept as the accepted fluid option inside LA3's rule text.",
+    "sources": [
+     "spark-joy"
+    ]
+   },
+   {
+    "name": "complexity-matches-vision / effect budget by tone",
+    "reason": "Checkable only against a tone metadata field the audit doesn't have, and judgment-heavy ('fully committed maximalism'). The enforceable spirit — one signature gets the budget, shadows/accents capped — lives in HI2, DE1, and CO1.",
+    "sources": [
+     "anthropic-frontend-design-plugin"
+    ]
+   },
+   {
+    "name": "GOV.UK list discipline (lead-in colon, lowercase items)",
+    "reason": "Single-source civic house style; copy register on these pages is locked per-project by the concept sheet's copy-voice row, and Korean copy doesn't map onto the lowercase-fragment convention at all.",
+    "sources": [
+     "govuk"
+    ]
+   },
+   {
+    "name": "nav-footer-conventions & eyebrow-spec",
+    "reason": "Genre furniture formulas (3-zone nav with one pill, 4–6 column footer, fixed eyebrow recipes) risk exactly the template convergence the skill exists to kill (L4-adjacent). HI2 already caps filled header CTAs; TY3 already covers the uppercase-tracking recipe an eyebrow would use; the rest stays optional guidance.",
+    "sources": [
+     "awesome-design-md (Stripe/Linear/Vercel)",
+     "open-design"
+    ]
+   },
+   {
+    "name": "perceptually-uniform-accent-ramps (HSLuv/oklch derivation)",
+    "reason": "Interaction-state color derivation is polish beyond a static page's priorities, and oklch tooling assumptions don't fit the no-build single-file constraint cleanly. The portable requirement — accent variants share hue/chroma and differ only in lightness — was folded into CO1's build application.",
+    "sources": [
+     "polaris"
+    ]
+   },
+   {
+    "name": "progressive-disclosure via <details>",
+    "reason": "Content-strategy rule for minority-need material, hard to judge deterministically ('majority will need'). The one hard invariant worth keeping — frozen claims (price/quantity) must never be hidden inside <details>, summary <= 60 chars — moves to proposal/landing guidance and pairs naturally with the existing claim-diff lane.",
+    "sources": [
+     "govuk"
+    ]
+   }
+  ],
+  "machineLaneCandidates": [
+   {
+    "id": "L2",
+    "criterion": "ROADMAP promotion. At 1440px full-page render: top-level sections = direct children of body/main with rendered height >= 160px, excluding header/nav/footer; require >= 3 qualifying sections. A section counts as 'centered single column' when ALL of: (a) no two sibling boxes >= 240px wide share a row (single-column geometry); (b) its largest text block's center-x is within ±12px of the section center-x AND its left offset >= 15% of section width; (c) > 50% of its text nodes compute text-align: center. FAIL only when 100% of qualifying sections are centered-single-column.",
+    "lane": "visual",
+    "falsePositiveRisk": "Deliberately centered poster/invitation tones (concept-locked) would fail; sections whose asymmetry comes from background art rather than box geometry read as centered. Mitigated by the all-sections-must-match condition and the left-aligned-text exemption in (c). Must dedupe against S3's existing 80%-center-text check: S3 measures page-wide text-align ratio, L2 measures per-section column geometry — promote L2 only with a fixture pair proving they fail on disjoint inputs, and remove L2 from the Phase 5 LLM checklist + update baseline in the same commit."
+   },
+   {
+    "id": "L3",
+    "criterion": "ROADMAP promotion, genre-gated (landing/detail only — proposals legitimately use steady document rhythm). Same section set, require >= 4 sections. Compute per-section vertical padding (top+bottom), inter-section gaps, and a structure signature (sequence of: heading level, paragraph-count bucket {1,2,3+}, has-media flag). FAIL only when ALL THREE hold: >= 4 consecutive sections share identical vertical padding within ±4px; inter-section gap max/min < 1.15; >= 3 consecutive sections share an identical structure signature.",
+    "lane": "visual",
+    "falsePositiveRisk": "Document-texture pages (proposals, long-form specs) use uniform rhythm intentionally — hence the genre gate. Uniform pricing/FAQ runs inside an otherwise varied page could trip the consecutive-section window; the triple-AND keeps this rare. SP3's positive variance measurement (max/min >= 1.5, one gap >= 96px) is the same instrument inverted — L3 owns the lane, SP3 is never separately scored (no-double-scoring invariant)."
+   },
+   {
+    "id": "TY1",
+    "criterion": "At 1440px render: distinct computed font-sizes among visible text nodes containing >= 3 characters, rounded to nearest 0.5px, sub/sup exempt — FAIL when count > 7.",
+    "lane": "visual",
+    "falsePositiveRisk": "Low-moderate: browser-derived sizes on small/legal text add strays; fixed-viewport measurement neutralizes clamp() fluidity. Threshold 7 is deliberately above the 6-size discipline to absorb one stray."
+   },
+   {
+    "id": "TY2",
+    "criterion": "At 1440px render: every <p>/<li> with > 120 rendered characters must have clientWidth / computed font-size <= 40 (≈80ch Latin / ~36–40em Hangul); every <p> with > 80 characters inside main must compute font-size >= 15.5px.",
+    "lane": "visual",
+    "falsePositiveRisk": "Low-moderate: legal fine print legitimately below 16px must use <small>/<figcaption> (convention the build rule sets); single-line wide marquee text in <p> tags can trip the width check — char threshold (120) keeps short lines out."
+   },
+   {
+    "id": "TY3",
+    "criterion": "At 1440px render: multi-line paragraphs (scrollHeight > 1.5x line-height) require line-height/font-size in [1.35, 1.95] ([1.5, 1.95] when >= 30% Hangul chars); h1/h2 with font-size >= 32px require ratio <= 1.3 AND letter-spacing <= 0; elements with text-transform: uppercase and font-size < 20px require letter-spacing >= 0.04em; zero text-align: justify on body copy.",
+    "lane": "visual",
+    "falsePositiveRisk": "Moderate: 'normal' line-height (~1.2) on body intentionally-dense tones fails the 1.35 floor — arguably the desired catch, but a deliberate compact editorial tone could be flagged; calibrate the floor on clean fixtures before enforcing."
+   },
+   {
+    "id": "TY4",
+    "criterion": "Static CSS parse: distinct first-position font-family names across all declarations, excluding monospace stacks applied only to code/pre/kbd/samp selectors, <= 2; every font-family list ends with a CSS generic keyword (or is exactly system-ui/ui-monospace shorthand); if a mono family appears outside code contexts, it must appear on exactly one selector role.",
+    "lane": "static",
+    "falsePositiveRisk": "Low: icon-font declarations and inconsistent fallback spellings of the same family — normalize by lowercased first family name before counting."
+   },
+   {
+    "id": "CO1",
+    "criterion": "Static CSS parse: (a) color literals (hex/rgb/hsl/named, excluding transparent/currentColor/inherit) outside :root custom-property definitions <= 12; (b) all declared colors with HSL saturation >= 25%, clustered into 30° hue bins → <= 2 bins.",
+    "lane": "static",
+    "falsePositiveRisk": "Moderate on (b): role-named semantic colors (success/danger on a proposal risk table) add a third saturated bin — exempt tokens named --success/--danger/--warning when each appears in <= 2 declarations. (a) is near-zero FP and should land first."
+   },
+   {
+    "id": "HI2",
+    "criterion": "At 1440px render: per 100vh vertical window, count <a>/<button>/[role=button] elements with background-color saturation >= 30% and rendered area >= 1000px². FAIL when any window contains >= 3; report (not fail) at exactly 2.",
+    "lane": "visual",
+    "falsePositiveRisk": "Moderate: landing pricing sections with one CTA per tier legitimately show 2–3 filled buttons in one window — the fail threshold of 3 plus warn-at-2 is the conservative compromise; dark tones using saturated dark fills for secondary buttons can misread, so the saturation cutoff needs fixture calibration."
+   },
+   {
+    "id": "DE1",
+    "criterion": "Static CSS parse of all box-shadow values: (a) distinct non-inset signatures <= 3; (b) every non-inset shadow with blur > 0 requires y-offset >= 0, alpha <= 0.3, near-neutral color (max RGB channel − min channel <= 30); (c) hard-offset signatures (blur = 0) <= 1.",
+    "lane": "static",
+    "falsePositiveRisk": "Low-moderate: a deliberate colored-glow signature (neon tone) fails the neutrality test — rare, and the hard-offset exemption (alpha cap applies only to blurred shadows) already covers brutalist drama; media-query duplicates of one token must be deduplicated by value before counting."
+   },
+   {
+    "id": "DE3",
+    "criterion": "Static: FAIL on any of — a :focus/:focus-visible rule containing outline:none|outline:0 without a replacement (outline/box-shadow/border/background) in the same rule or a matching :focus-visible rule; transition: all; viewport meta containing user-scalable=no or maximum-scale=1; <img> missing width or height attribute. WARN (not fail, first release): U+0022/U+0027 adjacent to word characters, literal '--' or '...' sequences in text nodes outside code/pre/kbd/samp.",
+    "lane": "static",
+    "falsePositiveRisk": "Near-zero for the four fail conditions. The character scan has moderate FP (inch/foot marks, brand names, CLI examples in prose) — ship as warn, promote to fail only after fixture calibration."
+   },
+   {
+    "id": "DE2",
+    "criterion": "DOM+CSS: if the page contains a <table> with >= 3 digit-majority cells, or >= 3 sibling elements whose text is >= 50% digits/currency symbols, those elements must compute font-variant-numeric containing tabular-nums or font-feature-settings containing 'tnum'.",
+    "lane": "static",
+    "falsePositiveRisk": "Moderate: decorative numbered sequences (01/02/03 section markers) match the sibling pattern but don't need alignment — require >= 2 digits-after-separator (money/percent shapes) in the majority of matched nodes to narrow to real data."
+   },
+   {
+    "id": "LA3",
+    "criterion": "Dual render at 1440px and 375px: when desktop h1 computed size >= 40px, require mobile/desktop h1 ratio in [0.55, 0.95]; modal <p> font-size delta <= 1px between renders and >= 16px at both; skip entirely when no h1 or desktop h1 < 40px.",
+    "lane": "visual",
+    "falsePositiveRisk": "Moderate: clamp() mid-band can land the ratio at ~0.96 just outside the band — the 0.95 edge needs fixture calibration; pages whose hero is an image rather than type are skipped by the h1-size guard. Cheap to add since the shot lane already renders both widths."
+   },
+   {
+    "id": "PR1",
+    "criterion": "Genre-gated (runs only with an explicit proposal flag / data-genre='proposal'): top-level <section> count in [6,8]; first text match of price regex (₩|\\$|원|KRW adjacent to digits) occurs in DOM after the section with id matching approach|plan; button-like elements (button, [role=button], a.btn|a.cta) <= 2 excluding TOC anchors; last section contains a mailto: or tel: link AND a date pattern; a <nav> contains >= 5 same-page # anchors that all resolve to existing ids.",
+    "lane": "static",
+    "falsePositiveRisk": "Low once genre-gated (catastrophic FP without the gate — landing pages would mass-fail, so the gate is mandatory); incidental currency mentions in the problem narrative are absorbed by the after-approach ordering check rather than an absolute position check."
+   }
+  ],
+  "proposalGuidance": "STRUCTURE — A proposal is a document, not a landing page; the genre flag changes the rules. Spine: 6–8 sections in fixed order: (1) addressed cover header (prepared-for at >= vendor-name size, prepared-by, date, version, validity date 'YYYY-MM-DD까지 유효'; zero background imagery, type-led); (2) executive summary, 100–500 words (~10% of length), conclusion-first per Minto: problem → recommendation → quantified outcome → the ask, fully readable without scrolling; (3) problem/understanding opened in the client's own RFP/intake words; (4) approach with a 3–5 phase CSS-grid timeline (phase / date range / deliverable, tabular-nums) and a visually quiet risk→mitigation pair-table (1–3 real risks, no alarm colors) — acknowledged weakness + remedy outscores silence; (5) evidence as identical-field structured rows (project, period, scale, one quantified result; <= 3 references; >= 5 quantified metrics page-wide, all traceable to frozen claims; no real data → section shrinks or disappears per S1/S2); (6) pricing as a semantic table (item/desc/qty/unit/amount + one emphasized total; <= 3 options, premium anchored first, recommended highlighted by exactly one means; <= 9 line items; round numbers, no 9,900/.99; out-of-scope list below; validity date repeated); (7) next steps: numbered who-does-what-by-when with dates, the page's ONLY CTA (mailto/calendar/signature) and a named accountable contact. Numbered TOC with anchor links + CSS-counter h2 numbering — evaluators read in rubric order, not narrative order. Winning proposals average 7 sections / ~10–11 pages (≈1,500–4,000 words); losers average 13 — cut 'about us' first (company intro <= 15%; approach + evidence >= 50%). h2s are action titles: 6–16 word assertion sentences whose chain alone yields the full argument. INTERVIEW NUANCES — conversion is pre-resolved (approval or the next meeting), so that dimension converts to evaluator targeting: audience = who scores this against what rubric ('평가기준표/배점표가 있나요?' — when an RFP exists, rubric weights are source-prefill confirmations, and section space budgets follow them: ~1.5–2 pages per 10 rubric points); structure = the section the evaluator scores hardest, not above-the-fold priorities; reference = past winning/losing proposals in this relationship; mood = the authority↔approachability trade-off mapped to document texture; brand = the CLIENT's presence outranks the vendor's. Intake must freeze, alongside prices/quantities: client name (pronoun-dominance and addressed-header checks depend on it), the client's own problem phrasing, and validity/deadline dates. Client-pronoun count >= vendor-pronoun count in problem and approach sections. VISUAL RULES — print-document texture: light canvas, zero gradients/illustration/stock/hero formula; real artifacts only (genuine images correlate with +72% close rate). Body 16–18px, line-height 1.5–1.6 (Hangul 1.6–1.8), prose measure <= 68ch with tables/timeline allowed wider; type scale ratio 1.2 (dense document). One accent, spent <= 10 times, only on key numbers, the recommended option, and the total row. All money/percent cells right-aligned tabular-nums (claim-diff lane reads these digits). Key facts as bordered dl key/value rows (GOV.UK summary-list pattern), never card grids; section separation by the spacing scale plus at most 1px rules. Steady document rhythm is LEGITIMATE here — the L3 machine check must be genre-gated off, and density variation comes from dense tables vs prose, not padding stunts. Frozen claims never hidden inside <details>. Exactly one CTA page-wide (<= 2 button-likes including the optional cover contact link); repeated CTAs signal the wrong genre and read as marketing to an evaluator.",
+  "conflicts": "1) Motion/hover grammar: Anthropic plugin demands surprising hovers (transform/shadow shifts) and staggered load reveals; Polaris forbids hover scale/shadow growth and mandates press-darkens physics. Resolved by rejecting both grammars as tone-scoped concept-sheet options; only the prefers-reduced-motion guard was adopted (DE3). 2) Light vs dark default: Anthropic wants polarity varied across generations; refero calls dark-by-default an AI fingerprint. Resolved: neither default — polarity is locked explicitly in the concept sheet (the existing explicit-defaults rule), both sources rejected. 3) Shadow philosophy: Anthropic 'dramatic shadows' vs Polaris hairline-only (blur <= 6px) vs Refactoring UI two-part soft ladders. Resolved in DE1 by adopting only the shared physics invariants (y >= 0, x ≈ 0, neutral color, alpha <= 0.3 on blurred shadows, <= 3 signatures) and exempting blur-0 hard-offset shadows from the alpha cap so brutalist drama stays legal as the single sanctioned exception; magnitude is tone-scoped. 4) Spacing grid divisor: GOV.UK 5px vs Carbon/Polaris/Primer/RUI 4–8px. Resolved in SP1: the check is membership in ONE declared scale (default 4/8 by majority; a declared 5px system passes) — set membership, not a hardcoded divisor. 5) Body line-height: Butterick 1.2–1.45 vs RUI/spark-joy/open-design 1.5–1.75 vs lqez Hangul 1.6–1.9. Resolved as script-dependent bands: Latin [1.4,1.6] build target with [1.35,1.95] audit tolerance, Hangul [1.6,1.8] target. 6) Body size: Polaris 13–14px dense product UI vs the 16px floor everywhere else. Resolved: 16px floor stands for this product's genres (landing/detail/proposal documents); Polaris's own guidance prescribes wider body for landing contexts. 7) Labels: RUI labelless-data vs GOV.UK summary-list and proposal tables. Resolved by genre split — narrative prose merges labels into sentences; spec/pricing/evidence zones use labeled rows with tier-3-ink labels (HI1, PR2); labelless-data rejected. 8) Hero shape: refero hero-thesis 4-part formula vs L4's anti-formula rule. Resolved for L4 — formula rejected, proof-line-from-frozen-claims kept in CN1, hero structure remains interview-derived. 9) Borders: Linear/Stripe hairline-everywhere craft vs RUI borders-last. Resolved as an ordered ladder (CO3): whitespace → bg-delta → hairline → shadow, with data rows always border-legal; what is banned is the everything-outlined look, not hairlines per se. 10) Font denylist: Anthropic forbids Inter/Roboto/Arial/system-ui as primary; spark-joy and modern-font-stacks endorse system stacks and the 'Inter class' for plain/safe personalities. Resolved in TY4: the family must be a named, tone-justified choice with a full fallback chain — a neutral grotesque is legal when the concept's personality class demands plain/technical, illegal as an unexamined default; the hard denylist was not adopted. 11) Tells overlap policing: corpus items that merely restate tell remedies (single accent = C3, one-floating-shadow = C4, vary-density = L3, one-asymmetry = S3, nested radii = S5) were rejected or only adopted where they add quantification or named mechanisms beyond the remedy text (CO1 budget numbers, DE1 physics, SP3 registers, LA2 ratios); SP3/L3 and LA2/S3-L2 pairs are declared single-lane (positive build rule + negative machine check share one instrument) to preserve the no-double-scoring invariant."
+ },
+ "critique": {
+  "verdicts": [
+   {
+    "id": "TY1",
+    "verdict": "revise",
+    "reason": "The binding part (one declared scale, <=6 sizes, cap 7, tokens) is concrete and checkable. But 'ratio in {1.2,1.25,1.333} OR a hand-tuned set' is self-nullifying — any set passes via the escape hatch — and assigning ratios by genre (landing=1.25–1.333) is a convergence vector: every landing page gets the same scale.",
+    "revision": "All font sizes come from ONE declared scale of <= 6 distinct sizes (hard cap 7); no one-off values (17px, 1.45em); remaining differentiation via weight/color, never a new size. The ratio or hand-tuned set is chosen and recorded in the concept sheet (density policy informs it) — no fixed ratio menu, no genre-to-ratio mapping. Declare --fs-* tokens in :root; every font-size references a token."
+   },
+   {
+    "id": "TY2",
+    "verdict": "revise",
+    "reason": "Rule ranges (16–21px, 45–75ch, 60–68ch/36em) are concrete and the measure constraint does not produce visual sameness. But the buildApplication hard-codes body { font-size: 1.0625rem } — a single fixed default means every output ships 17px body, a cross-run fingerprint.",
+    "revision": "Keep the rule verbatim. buildApplication: choose body size within 16–21px from the concept sheet's density policy (dense detail pages low, airy landings high) — never a fixed default; .prose wrapper max-width 60–68ch Latin / 34–40em Hangul on every paragraph-bearing block including under heroes, footers, and full-bleed sections."
+   },
+   {
+    "id": "TY3",
+    "verdict": "revise",
+    "reason": "Direct conflict with TY5: 'never negative tracking on body' forbids the -0.01 to -0.02em that TY5 mandates on Hangul gothic body. Also 'never positive tracking on headings' bans spaced-caps display (uppercase 48px at +0.06em — a legitimate senior editorial move) while the rule's own eyebrow clause demands positive tracking on uppercase below 20px.",
+    "revision": "Line-height/tracking scale inversely with size: body 1.4–1.6 Latin / 1.6–1.9 Hangul; display >= 32px at 1.0–1.2 with letter-spacing -0.01 to -0.02em; Latin body letter-spacing 0 — Hangul gothic body takes the TY5 value (-0.01 to -0.02em, TY5 owns it); uppercase text at any size (eyebrows AND display caps) takes +0.04–0.1em tracking and is exempt from the no-positive-tracking rule; never text-align: justify. Pair line-height explicitly with each scale step."
+   },
+   {
+    "id": "TY4",
+    "verdict": "keep",
+    "reason": "Concrete, statically checkable (<= 2 families, generic-keyword terminator, single mono role), and the personality-class derivation correctly routes the choice through the concept sheet instead of a denylist — it resolves the Anthropic-vs-spark-joy conflict without banning system stacks. The system-ui shorthand exemption already lives in the machine criterion."
+   },
+   {
+    "id": "TY5",
+    "verdict": "keep",
+    "reason": "Measurement-backed (Naver/Daum tracking values), concrete (keep-all, no fake italic, lh band, named stack), and load-bearing for this product's primary Korean-copy audience. It wins the conflict with TY3 — TY3 carries the carve-out, not this rule."
+   },
+   {
+    "id": "SP1",
+    "verdict": "keep",
+    "reason": "Set-membership against ONE declared scale (5px GOV.UK system legal if declared) is concrete, checkable, and not samey — it constrains arithmetic, not appearance. The 1–2px hairline exemption and 90% threshold pre-empt the optical-nudge FP."
+   },
+   {
+    "id": "SP2",
+    "verdict": "keep",
+    "reason": "Gestalt physics with numbers (heading margins >= 1.5–2x asymmetric, container padding >= max inner gap) — concrete, genre-agnostic, and impossible to make pages samey with since it only orders relative magnitudes. The visual check needs a first-child/no-prev-block guard at implementation time, but the rule is sound."
+   },
+   {
+    "id": "SP3",
+    "verdict": "revise",
+    "reason": "The registers and the max/min >= 1.5 variance are good L3-remedy quantification, but 'EXACTLY one denser zone' is a quota, not a cap — mandated presence of the same move on every page is itself a uniformity fingerprint (the failure mode this product fights). 'roughly >= 4:1' is vibe-speak. Since the L3 machine promotion is rejected (see laneVerdicts), L3 stays LLM-lane and SP3 reverts to a build-target verified in preview, not a scored instrument.",
+    "revision": "Two spacing registers: section register 64–128px desktop vertical padding (one gap may reach 96–160px as a rest band) vs content register 8–24px, outer:inner >= 4:1. Inter-section gaps vary: max/min >= 1.5. AT MOST one deliberately denser zone, flanked by larger whitespace, and only when the concept sheet's density policy calls for it. Verified on the desktop screenshot in Phase 4; L3 remains the LLM-lane negative check."
+   },
+   {
+    "id": "CO1",
+    "verdict": "keep",
+    "reason": "The binding parts (<= 12 resolved colors, ~0 literals outside :root, one accent family, <= 2 visible accent uses per viewport, semantic-color exemption) are concrete and statically checkable. The 70–90% pixel-area budget is unverifiable as stated and must stay advisory build guidance — the machine criterion correctly doesn't attempt it. Single-accent discipline is shared senior practice, not a fingerprint."
+   },
+   {
+    "id": "CO2",
+    "verdict": "revise",
+    "reason": "The grey-on-saturated-bg ban and grayscale-survival test are excellent and concrete. But 'NEVER pure #000-on-#fff' forbids deliberate stark editorial/brutalist tones — polarity and starkness are concept-sheet decisions per this product's own thesis (cf. the light-canvas-default rejection). 'Exactly 3 tiers' contradicts the rule's own machine criterion (>= 2) and over-prescribes.",
+    "revision": "Default ink is near-black (L* ~10–25%) tinted with the brand hue at 5–15% saturation; pure #000-on-#fff is legal only as an explicit concept-sheet tone choice (stark/brutalist), never an unexamined default. Neutrals commit to warm OR cool. 2–3 neutral text tiers with monotonically decreasing contrast, body tier >= 4.5:1. On saturated backgrounds, secondary text is the same hue desaturated/lightened, never grey or rgba-white. Hierarchy must survive grayscale."
+   },
+   {
+    "id": "CO3",
+    "verdict": "revise",
+    "reason": "The numeric ladder (2–6% lightness, <= 3–4 surfaces, one-step nesting, data-row border legality) genuinely extends C2/RUI. But 'never blur/translucency for separation' restates C2's signal — a double rule on the same property violates the repo's no-double-scoring spirit at the rule level — and 'never two hard divides adjacent' is undefined.",
+    "revision": "Separation ladder, in order: (1) whitespace, (2) background delta 2–6% lightness, <= 3–4 total surface tones, nested surfaces one step from parent in a monotone direction, (3) 1px hairline (~8–12% luminance from bg), (4) shadow last. 1px row borders reserved for data rows (tables, dl key/value). No two adjacent separators of the border-or-stronger kind spanning >= 80% of the container width. Translucent-blur separation is C2's tell — cross-reference, do not re-rule."
+   },
+   {
+    "id": "LA1",
+    "verdict": "keep",
+    "reason": "Concrete (960–1280px wrapper, clamp padding, content-fitted widths, full-bleed bands with re-contained content) and not samey — it spans the entire range of normal senior layout. One bookkeeping note: the prose-measure number is TY2's; LA1 cross-references it and TY2's lane owns the check (no second instrument on measure)."
+   },
+   {
+    "id": "LA2",
+    "verdict": "revise",
+    "reason": "Worst convergence vector in the set: banning 50/50 outright is wrong (alternating peer-equal feature rows are legitimate senior practice), the closed 3-item quirk menu plus the buildApplication's canned '-48px stats card straddling the hero seam' means every output ships the same break — a new cross-run tell. Requiring presence of an asymmetric split also fails pages with zero 2-col sections (single-column editorial is legal). The keyline discipline is the genuinely strong, checkable core.",
+    "revision": "Prefer uneven two-column ratios (1.5–2.2:1) — 50/50 is legal only when the two sides are genuinely peer-equal in importance. In any peer group, promote AT MOST one item (>= 1.8–2x area, inverted bg, or one accent edge). AT MOST 2 grid-breaking moves per page, derived from the concept sheet's signature — overlap across a section seam, slight rotation <= 6°, and breakout width are examples, not a menu. Breaks happen BETWEEN containers: inside any container children keep <= 3 shared keylines; <= 4–5 distinct text left-edge lines page-wide. Never the same canned break two runs in a row."
+   },
+   {
+    "id": "LA3",
+    "verdict": "keep",
+    "reason": "Physics, not aesthetics: disproportionate type/spacing collapse with identical body across the breakpoint is concrete, dual-render checkable, has zero samey risk, and the rem-in-clamp zoom requirement is a real accessibility invariant. The fluid-clamp rejection correctly kept clamp() as one accepted option."
+   },
+   {
+    "id": "HI1",
+    "verdict": "revise",
+    "reason": "Core is concrete and right (<= 3 weights from {400..700}, <= 3 heading levels, bold < 5% of body). Two over-generalizations: 'never below 400' bans light-weight large display type (a legitimate editorial/luxury move — RUI's actual rule is no light weights at small sizes), and 'never bold + darken + enlarge simultaneously' as written flags every h1 on every page — it must be scoped to within-content emphasis.",
+    "revision": "Inside content blocks, hierarchy comes from weight and ink tier, not size inflation: <= 3 weights from {400,500,600,700}; weights < 400 only on display text >= 28px and only as a concept-sheet choice. Sub-heads may equal body size at +1–2 weight steps; same-level headings share one weight; <= 3 heading levels, no skips. For inline/body emphasis, never stack bold + darker ink + larger size on the same run — emphasize by de-emphasizing neighbors (headings are exempt). No >= 600 weight runs longer than a short phrase; bold < 5% of body text."
+   },
+   {
+    "id": "HI2",
+    "verdict": "revise",
+    "reason": "One-filled-button discipline, 44px hit areas, and verb+object labels are concrete and conversion-grounded, not aesthetic sameness. Two fixes: 'Continue' belongs on the banned list only for landing primaries (it is GOV.UK's own canonical journey button — the cited source contradicts the ban for step flows), and 'one signature move' must be a cap tied to the concept sheet, not a mandated quota (quota = recipe = convergence).",
+    "revision": "One winner at every level: above the fold exactly one dominant element (>= 2 hierarchy vectors) and <= 3 visible type levels. Exactly ONE solid accent-filled button per view; secondary actions outline/ghost/text; destructive never primary; primary may recur once at page end. Primary labels are verb + object naming the real action; banned as landing/detail primaries: OK, Submit, Get started, Learn more, Click here ('Continue' is legal inside multi-step flows). AT MOST one signature move, chosen from the concept sheet's strongest differentiator; every other section holds the quiet baseline."
+   },
+   {
+    "id": "CN1",
+    "verdict": "keep",
+    "reason": "The falsifiable-specific-per-section rule has teeth because the fallback is 'cut the section', which inherits S1/S2/T5's no-fabrication spirit and feeds off frozen claims. h1 <= 10 words and the aspiration regex are concrete; the heading-chain litmus is honestly assigned to the LLM lane. The stated T2-disjointness requirement must be enforced at implementation."
+   },
+   {
+    "id": "CN2",
+    "verdict": "revise",
+    "reason": "As adopted this is a fixed opening formula (caption → h1 → lead) — the synthesis rejected hero-thesis-with-proof for exactly this sin, and L4 says the first screen derives from the structure interview answer, never a template. Inconsistent by its own logic. The salvage: the machine criterion is already cap-shaped (<= 1 lead-size paragraph, position constraints), and the full pattern is legitimately canonical for the document/proposal genre.",
+    "revision": "Genre-gated: on proposal/document pages, open caption → h1 → single lead paragraph (caption < 0.55x h1, regular weight, grey-shifted; lead at ~1.25x body summarizing the offer in frozen claims). On landing/detail pages this is NOT a required shape — the opening derives from the interview's structure answer (L4); only the caps apply: at most ONE paragraph at 1.15–1.4x modal body size page-wide, and if present it precedes the first h2; any caption above the h1 stays < 0.55x h1 and grey."
+   },
+   {
+    "id": "IM1",
+    "verdict": "revise",
+    "reason": "Overlay-contrast methods, >= 75% natural-width screenshots, and the <= 1.5x icon-scale cap are concrete and attack real slop. Two conflicts: prescribing border-radius 12–16px on every figure collides head-on with S5, which names uniform 12–16px as THE AI radius tell — a page following IM1's buildApplication plus 12px cards fails the repo's own static audit. And mandating icon-in-tinted-same-hue-circle for all icons IS the SaaS-template icon treatment — as a required pattern it manufactures sameness.",
+    "revision": "(1) Text over photos requires a named contrast method (dark overlay 30–60%, solid box, blurred region, or bottom scrim) with the headline holding 4.5:1 against the darkest area. (2) Product screenshots sit in panel chrome: 1px hairline, radius taken from the page's radius hierarchy (S5 owns radius — never a fixed 12–16px), <= 1 subtle shadow recipe, displayed >= 75% natural width. (3) Icons stay near native 16–24px, never scaled > 1.5x intrinsic; a tinted same-hue container (40–56px) is ONE legal way to give them weight, not the required treatment."
+   },
+   {
+    "id": "DE1",
+    "verdict": "keep",
+    "reason": "Pure physics invariants shared across conflicting sources (y >= 0, neutral color, alpha <= 0.3 on blurred shadows, <= 3 signatures) — concrete, statically parseable, and the single hard-offset exception keeps brutalist tones legal, so it constrains slop without flattening tone range. Correctly positioned as C4's positive complement rather than a duplicate ban."
+   },
+   {
+    "id": "DE2",
+    "verdict": "keep",
+    "reason": "Narrow, concrete, and doubly load-bearing because the claim-diff lane reads these exact digits; the mono-never-fakes-alignment clause closes a real slop habit. The principle stands — its machine candidate's lane assignment is wrong (see laneVerdicts DE2), but that is a lane problem, not a rule problem."
+   },
+   {
+    "id": "DE3",
+    "verdict": "keep",
+    "reason": "Every clause is a binary static check (focus replacement, transition:all, viewport meta, img dimensions, underlined content links, real characters warn-first) — the definition of concrete. It is a quality floor shared by all senior work, so enforcing it cannot make pages samey. The warn-first shipping plan for the character scan is the right call given inch-marks/CLI-prose FPs."
+   },
+   {
+    "id": "PR1",
+    "verdict": "keep",
+    "reason": "For documents the anti-formula stance inverts: evaluators read in rubric order and canonical structure is the senior move, so a fixed spine is correct HERE and only here — the mandatory genre gate is what keeps it from leaking into landings. Every clause is DOM-checkable. Precondition: the repo has no genre flag today (no concept-sheet genre row, no CLI flag); that plumbing must land before this rule can bind."
+   },
+   {
+    "id": "PR2",
+    "verdict": "revise",
+    "reason": "Content-share budgets, pronoun dominance, table shape, premium anchoring, and the charm-price ban are concrete and well-sourced. But '>= 5 quantified metrics page-wide' is a floor that creates fabrication pressure when frozen claims supply fewer than 5 numbers — directly against claim-freeze and S1/S2, which the rule itself cites. Floors on evidence must be claim-bounded.",
+    "revision": "Approach + evidence >= 50% of body, company intro <= 15%. Client-pronoun count >= vendor-pronoun count in problem and approach; problem opens in the client's own words. Evidence as identical-field rows (project, period, scale, one quantified result); every number traceable to frozen claims — surface as many claim-backed metrics as exist (target >= 5 ONLY when the claims supply them; never pad, the section shrinks or disappears per S1/S2). Pricing: semantic table, <= 3 options premium-first with the recommended option highlighted by exactly one means, <= 9 line items, round numbers, out-of-scope list below. h2s are 6–16 word assertion sentences."
+   }
+  ],
+  "laneVerdicts": [
+   {
+    "id": "L2",
+    "verdict": "promote",
+    "reason": "The triple-AND per-section test with FAIL-only-at-100% keeps FP near zero, computed text-align handles inherited-center-text.html, and condition (c) correctly exempts centered-box/left-text editorial columns. Two hardening requirements before landing: extend geometry.js isVisible to opacity (< 0.05), offscreen position, and clip tricks — otherwise one opacity:0 left-aligned decoy section defeats the 100% condition exactly like display-none-fourth-card.html defeats naive counting; and ship the stated disjoint fixture pair vs S3 plus checklist/baseline updates in the same commit per the promotion invariant."
+   },
+   {
+    "id": "L3",
+    "verdict": "reject",
+    "reason": "Triple-AND is so conservative it catches only the laziest slop: a 6px padding nudge on one section, or one gap at 1.16x, bypasses it (textbook redteam near-miss, cf. three-card-size-delta.html's 5px delta). Under the no-double-scoring invariant, promotion removes L3 from the LLM checklist — trading broad LLM coverage for a near-vacuous machine check is a net detection regression. Also depends on genre-gate plumbing that does not exist yet. Keep L3 LLM-lane; ship the gap-variance instrument as advisory preview metrics (SP3 build verification), re-propose after the gate exists and the fixture corpus grows."
+   },
+   {
+    "id": "TY1",
+    "verdict": "promote",
+    "reason": "Computed font-size is inheritance-proof and the count-with-slack design (cap 7 vs discipline 6) absorbs one stray. Conditions: use the hardened visibility predicate (hidden/offscreen text must not count — or worse, be used to pad legitimacy); bucket to 1px rather than 0.5px and exempt small alongside sub/sup, because <small> at 0.8em in two contexts yields two stray computed sizes and burns the entire slack on one clean fixture."
+   },
+   {
+    "id": "TY2",
+    "verdict": "promote",
+    "reason": "Char-count gating (> 120 chars for width, > 80 for size) keeps single-line marquees and short li out, and clientWidth/fontSize is unit- and inheritance-proof. Conditions: visibility filter; ship p-only first and add li after fixture calibration (horizontal nav/tag-list li with concatenated text is the one realistic FP); the <main>-scoped size check silently skips pages without <main> — acceptable miss, document it."
+   },
+   {
+    "id": "TY3",
+    "verdict": "reject",
+    "reason": "Three adversarial traps as specified: (1) Chromium getComputedStyle returns the keyword for line-height:normal — treated as ~1.2 it fails the 1.35 floor, so any page (or clean fixture) relying on an unset line-height fails; the corpus has exactly one clean fixture with one line-height declaration, so calibration claims are hollow. (2) The arms collide on uppercase display headings: an uppercase 48px h1 at +0.06em (legitimate spaced caps) fails 'letter-spacing <= 0' while the rule's own eyebrow arm mandates positive tracking — same property, contradictory requirements keyed only on size. (3) Deliberate dense editorial body at 1.3 fails. The justify-ban arm alone is near-zero-FP and could ship today; re-propose the rest after the TY3 rule revision (uppercase exemption, Hangul body tracking) and corpus expansion."
+   },
+   {
+    "id": "TY4",
+    "verdict": "promote",
+    "reason": "Static family counting on self-emitted single-file pages is robust; normalization by lowercased first family handles spelling variance. Conditions: must also parse the font: shorthand (font: 16px/1.5 Georgia, serif slips past a font-family-only regex); dead declared-but-unused families are a theoretical FP, acceptable for single-file output but worth a redteam fixture; keep the system-ui/ui-monospace shorthand exemption explicit."
+   },
+   {
+    "id": "CO1",
+    "verdict": "promote",
+    "reason": "Arm (a) (literals outside :root <= 12) is near-zero FP and should land alone first, as stated. Arm (b) needs two fixes before enforcement: circular hue clustering instead of fixed 30° bins (355° and 5° are one red family but two bins — bin-edge near-miss in both directions), and a documented blind spot for SVG presentation attributes (extractCss reads style blocks/attrs only, so multi-hue inline logos escape — correct outcome, but make it deliberate, and add a redteam fixture moving accent colors into fill attrs to prove the miss is bounded)."
+   },
+   {
+    "id": "HI2",
+    "verdict": "promote",
+    "reason": "Windowed counting with fail-at-3/warn-at-2 is well-defined and conservative. Two mandatory hardenings, both bypass-class: count background-image gradient fills as filled buttons (slop CTAs are gradient-filled more often than solid — background-color-only is a trivial bypass), and dedupe position:fixed/sticky elements so one floating CTA does not count once per window. Calibrate the 30% saturation cutoff on a dark-polarity fixture before enforcing (saturated dark secondary fills misread, as the candidate admits)."
+   },
+   {
+    "id": "DE1",
+    "verdict": "promote",
+    "reason": "box-shadow is non-inherited and static-parseable, so the redteam inherited-style class does not apply. Conditions: resolve var() indirection to :root values and dedupe signatures by resolved value across media queries (as stated); the parser must handle multi-shadow lists and all alpha notations (rgba, slash syntax, 8-digit hex) or near-miss encodings become bypasses; the colored-glow FP is real but rare and correctly exempted via the hard-offset clause."
+   },
+   {
+    "id": "DE3",
+    "verdict": "promote",
+    "reason": "All four fail arms are binary string/DOM facts with near-zero FP; warn-first for the character scan is the right release posture. One leniency note: 'replacement in the same rule or a matching :focus-visible rule' should err lenient on selector matching (any :focus-visible rule with a visible treatment excuses) — a strict matcher would FP on split selectors, and lenient only costs misses."
+   },
+   {
+    "id": "DE2",
+    "verdict": "reject",
+    "reason": "Wrong lane as specified: font-variant-numeric is inherited and the criterion says elements 'must compute' it — a static parse cannot determine computed values without full cascade emulation (descendant selectors + inheritance + font-feature-settings merging), which is precisely the inherited-center-text.html failure class. Re-propose on the visual lane where getComputedStyle makes it trivial and robust, accepting puppeteer-optionality; keep the money/percent-shape narrowing to exclude decorative 01/02/03 markers. The criterion logic is sound — only the lane is rejected."
+   },
+   {
+    "id": "LA3",
+    "verdict": "promote",
+    "reason": "Dual-render with skip-guards (no h1, desktop h1 < 40px) bounds FP well and the shot lane already renders both widths. Conditions: add a skip when the h1 is hidden at 375px (display:none mobile heroes break the ratio); define behavior for multiple h1s (take the largest); calibrate the 0.95 edge against clamp() mid-band on real fixtures before enforcing — the candidate's own 0.96 example sits one rounding error from a false fail."
+   },
+   {
+    "id": "PR1",
+    "verdict": "promote",
+    "reason": "Genre-gated DOM facts (section ids/order, price-after-approach, button cap, anchor resolution) are deterministic and the gate makes landing-page FP structurally impossible — but the gate is load-bearing plumbing that does not exist yet (no concept-sheet genre row, no CLI flag); it must land first. Harden the price regex: '원 adjacent to digits' matches '3원칙'/'5원칙' — require currency shape (digit-with-grouping before 원, or symbol before digits) to avoid Korean false price hits in the problem narrative."
+   }
+  ],
+  "wronglyRejected": [
+   {
+    "name": "anti-convergence-across-generations",
+    "why": "Rejected as 'requires cross-session run history — not a property of a single build', but this repo KEEPS that history: root v0-*.html/png artifacts and artifacts/ are prior run outputs, so a deterministic fingerprint diff (first font family, accent hue bin, canvas polarity, scale ratio, signature-move class) against the previous artifact is implementable today. Worse, the adopted set actively increases convergence pressure (SP3's mandated dense zone, LA2's canned -48px overlap card and closed quirk menu, TY2's fixed 17px, IM1's mandated icon circles, CN2's fixed opening) — the synthesis dropped the only principle guarding the product's core failure mode while introducing new house-style quotas. Re-adopt at minimum as a skill-phase rule: when a previous artifact exists, at least typeface genre, accent hue family, and the signature move must differ, verified by diffing the fingerprint tuple."
+   },
+   {
+    "name": "progressive-disclosure residue: frozen-claims-visibility",
+    "why": "The hard invariant ('frozen claims never hidden inside <details>') was demoted to guidance, but it is a machine-checkable security-adjacent invariant: the claim-diff lane compares text presence, so a price tucked into a closed <details>, display:none, opacity:0, or offscreen box passes claim preservation while being invisible to readers — exactly the redteam hidden-element bypass class (display-none-fourth-card.html). Promote 'every frozen claim renders visible at both viewports' to a visual-lane machine candidate paired with intake; it is cheap (the shot lane already renders both widths) and closes a real hole in the existing claim-preservation gate."
+   },
+   {
+    "name": "perceptually-uniform-accent-ramps",
+    "why": "Rejection outcome (fold the lightness-only-variant requirement into CO1) is defensible, but the stated reason is false: oklch() is native CSS with broad browser support — no build tooling is needed in a single-file page. Correct the recorded reason, or this rejection becomes false precedent that 'modern color spaces violate the no-build constraint' and blocks legitimate future use of oklch in CO2's ink-ramp derivation, where perceptual uniformity would actually improve the tier-separation numbers."
+   }
+  ],
+  "missing": "1) No contrast machine check: DE3 states 4.5:1/3:1 as build rules but no candidate computes contrast, despite it being the highest-value fully deterministic visual-lane check available (text color vs effective background at render time). 2) img alt text is absent from the entire synthesis — DE3 checks width/height but never alt; a one-line static check and a basic senior floor. 3) Dark-polarity adaptation: the conflict resolution makes dark canvases legal, but CO2 (near-black on near-white), CO3 (tinted near-white bands, lightness deltas), and DE1 (shadow visibility) are all written light-first with no dark-side numbers — a dark concept currently has no applicable ink-ramp or surface-ladder figures. 4) Responsive tables: PR1/PR2 mandate table-heavy proposals and LA3 cites GOV.UK responsive collapse in its sources, yet nothing governs table behavior at 375px — mandated wide pricing tables will overflow the very mobile shot the pipeline captures. 5) A shared hardened visibility predicate: only TY1 mentions visible-text filtering, but every new visual candidate (L2, TY2, HI2, LA3) inherits geometry.js isVisible, which redteam fixtures already show is blind to opacity/offscreen/clip decoys — harden once in geometry.js, not per check. 6) A caps-not-quotas meta-rule: the 'exactly one X' cluster (SP3 dense zone, LA2 breaks, HI2 signature, DE1 floating element, CN2 opening) collectively forms a recipe; the synthesis needs an explicit principle that these are budget ceilings whose presence derives from the concept sheet, never mandated minimums — this is the build-level face of the wrongly-rejected anti-convergence item. 7) Genre plumbing: PR1, the rejected L3 gate, and the CN2 revision all presuppose a declared genre, but the concept-sheet template has no genre row and the CLI no flag — the gate mechanism itself is an unowned prerequisite. 8) Fixture corpus: tests/fixtures/clean contains exactly ONE file (restaurant.html), so every 'calibrate FP on clean fixtures' promise in the candidates is currently uncheckable — corpus expansion (including one dark-polarity and one Korean-proposal clean fixture) must precede any promotion. 9) Source-coverage gap: Polaris/Primer/Carbon survive only inside shared invariants (fine), but no source informs Korean web layout/density norms beyond the lqez typography survey — proposal-research covers documents, leaving Korean landing-page conventions (e.g., density expectations, button labeling in Korean) uncovered by any adopted principle."
+ }
+}

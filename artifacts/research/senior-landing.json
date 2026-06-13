@@ -1,0 +1,224 @@
+{
+  "key": "senior-landing",
+  "source": "Mixed: anthropics/skills frontend-design SKILL.md (https://github.com/anthropics/skills, Apache-2.0); nexu-io/open-design craft docs — anti-ai-slop.md, color.md, typography.md, typography-hierarchy.md (https://github.com/nexu-io/open-design, Apache-2.0); referodesign/refero_skill references — anti-ai-slop.md, copywriting.md, craft-details.md, icons.md (https://github.com/referodesign/refero_skill, MIT); VoltAgent/awesome-design-md — stripe/linear.app/vercel DESIGN.md measured token captures (https://github.com/VoltAgent/awesome-design-md, MIT); setproduct.com Vercel blueprint-grid guide + pixeldarts.com Stripe/Linear/Vercel principles + social-proof teardowns (saashero.net, provesrc.com, instapage.com) — ideas only",
+  "license": "Apache-2.0 (anthropics/skills, nexu-io/open-design), MIT (referodesign/refero_skill, VoltAgent/awesome-design-md); web articles: ideas-only",
+  "notes": "Ideas extracted, no prose copied. Overlaps with core/design-tells.md were dropped (indigo-default ~ C1, emoji icons = T1, hype lexicon = T2, dark-editorial-serif autopilot ~ C-family, fake testimonials/logos = S1/S2). Conflict found and discarded: refero_skill craft-details.md recommends Title Case for headings/buttons, which contradicts T3 (sentence case) — frontend-design SKILL.md and open-design side with sentence case, so T3 stands. Bonus for the static audit lane: open-design's machine-blocked indigo list (#6366f1 #4f46e5 #4338ca #3730a3 #8b5cf6 #7c3aed #a855f7) could extend C1 detection in src/audit.js, and its accent-cap rule (max 2 visible accent uses per screen, >12 raw hex outside :root) is directly portable to geometry/static lanes. The refero banned-word lists (hype/filler/corporate-zombie/AI-slop openers) can extend the T2 lexicon.",
+  "principles": [
+    {
+      "name": "palette-pixel-budget",
+      "rule": "A senior palette is a four-layer budget: neutrals (bg/surface/fg/muted/border) cover 70-90% of rendered pixels; exactly ONE accent color at 5-10%; semantic colors (success/warn/danger) 0-5%; gradient/glow effects under 1%. Never a second accent. Token discipline: at most ~12 raw hex values outside :root.",
+      "buildApplication": "Define :root tokens --bg --surface --fg --muted --border --accent (4-6 named hex values total); every declaration in the page references these vars; pick the accent from the concept sheet, not a framework default.",
+      "category": "color",
+      "evidence": "open-design craft/color.md 'Palette structure' table; craft/anti-ai-slop.md P1 soft tell '>12 raw hex outside :root'; frontend-design SKILL.md 'palette as 4-6 named hex values'",
+      "machineCheckable": "yes — count hex literals outside :root (<=12); cluster computed colors into hue families and assert exactly one saturated non-neutral family"
+    },
+    {
+      "name": "accent-rationing",
+      "rule": "At most 2 visible uses of the accent color per viewport/screen — the canonical pair is one eyebrow/chip plus one primary CTA. Links count as accent uses: demote links to fg-with-underline when a CTA shares the screen. Stripe's measured rule: one filled indigo pill per band; Linear's lavender appears only on brand mark, focus ring, and primary CTA.",
+      "buildApplication": "Apply var(--accent) to exactly one filled CTA per section band plus at most one small label; style all other links as colored-underline on --fg; never use the accent as body text or section background.",
+      "category": "color",
+      "evidence": "open-design craft/color.md 'Accent discipline'; anti-ai-slop.md P1 'var(--accent) 6+ uses'; awesome-design-md stripe/DESIGN.md ('one filled pill per band') and linear.app/DESIGN.md ('accent used scarcely')",
+      "machineCheckable": "yes — rendered geometry: count elements whose computed color/background is within a small distance of --accent inside each 100vh window; fail if >2"
+    },
+    {
+      "name": "tracking-scales-with-size",
+      "rule": "Letter-spacing is a function of font size: display >=48px gets -0.02 to -0.03em; headings 32-48px get -0.01 to -0.02em; body 14-18px gets 0; small 11-13px gets +0.01 to +0.02em; ALL CAPS always gets +0.06 to +0.1em. Measured: Stripe -1.4px at 56px scaling to 0 at body; Linear -3.0px at 80px to 0 at body, eyebrow +0.4px.",
+      "buildApplication": "Set explicit letter-spacing on every heading size step in CSS; any text-transform: uppercase rule must carry letter-spacing >= 0.06em; leave body at 0.",
+      "category": "typography",
+      "evidence": "open-design craft/typography.md 'Letter-spacing' table (cites Bringhurst 5-10% of em for caps); awesome-design-md stripe + linear.app typography tables",
+      "machineCheckable": "yes — for each computed (font-size, letter-spacing, text-transform) tuple: >=32px must be negative; uppercase must be >=0.06em; 14-18px must be ~0"
+    },
+    {
+      "name": "type-scale-cap",
+      "rule": "One multiplicative scale (ratio 1.2-1.25), 6-8 font sizes total per page, at most 3 sizes visible above the fold. Line-height: 1.0-1.2 for >=32px display, 1.5-1.6 for body, 1.4-1.5 small. Adjacent hierarchy levels must differ by >=1.25x in size OR by a weight/spacing jump (18/20/22px three-level stacks read flat).",
+      "buildApplication": "Derive all font-size values from one ratio constant; cap distinct sizes at 8; give display lines line-height ~1.05-1.15 and paragraphs 1.5-1.6.",
+      "category": "typography",
+      "evidence": "open-design craft/typography.md 'Type scale' + 'Line height'; craft/typography-hierarchy.md lint 'scale steps >=1.25x apart or compensated'",
+      "machineCheckable": "yes — enumerate computed font sizes (<=8 distinct, <=3 above fold); check consecutive size ratios and line-height bands"
+    },
+    {
+      "name": "three-weight-jump",
+      "rule": "Use ~3 font weights with jumps, not a ladder: read ~400, emphasize ~500-550, announce ~600. Weight 700+ rarely earns its place. The graduated ladder (400->500->600->700 all present) reads as default, not authored. Thin-display brands invert this (Stripe sets ALL display at 300 with 400 only on buttons) — still 2-3 weights total.",
+      "buildApplication": "Declare exactly three font-weight values in the stylesheet; headlines and primary buttons share the heaviest; never bold-on-bold for emphasis.",
+      "category": "typography",
+      "evidence": "open-design craft/typography.md 'Three-weight system'; craft/typography-hierarchy.md anti-pattern 'graduated weight ladder'; awesome-design-md stripe 'thin weight is the brand'",
+      "machineCheckable": "yes — count distinct computed font-weights (<=3); flag presence of 4+ consecutive weight steps"
+    },
+    {
+      "name": "typeface-roles",
+      "rule": "Maximum 2 families (display + body, or one variable family) plus an optional monospace reserved for a single role — eyebrows/labels (Vercel) or code/data only (Linear keeps mono inside product screenshots, never on marketing chrome). Headings never render on a bare system-ui/default stack; every family declares a full fallback chain.",
+      "buildApplication": "Pick one characterful display face and one complementary body face with explicit fallbacks; if using mono, assign it exactly one job (section eyebrows OR numeric data) and use it nowhere else.",
+      "category": "typography",
+      "evidence": "open-design craft/typography.md 'Font pairing'; awesome-design-md vercel ('every eyebrow uses the monospace face') and linear.app ('mono only in code contexts'); frontend-design SKILL.md type roles",
+      "machineCheckable": "yes — count distinct font-family stacks (<=3 incl. mono); assert h1/h2 first family is not system-ui/sans-serif alone"
+    },
+    {
+      "name": "measure-65ch",
+      "rule": "Body copy line length 50-75 characters; max-width: 65ch is the safe default. Never text-align: justify on the web (rivers).",
+      "buildApplication": "Set max-width: 65ch (or ~640-720px at 16-18px body) on all paragraph containers, including inside wide sections; left-align body text.",
+      "category": "typography",
+      "evidence": "open-design craft/typography.md 'Line length' + common mistakes (justify ban)",
+      "machineCheckable": "yes — rendered geometry: paragraph box width / (font-size * 0.5) approx chars per line in 50-80 range; CSS contains no text-align: justify on body copy"
+    },
+    {
+      "name": "hairline-over-shadow",
+      "rule": "Surface separation is 1px-border craft, not shadow: on light canvases a near-bg hairline (Stripe #e3e8ee on white — low-contrast cool gray); on dark canvases semi-transparent white rgba(255,255,255,0.06-0.10) or a stepped surface ladder (Linear: canvas #010102 -> surface-1 #0f1011 -> surface-2, each lift = lighter bg + 1px hairline, zero box-shadow). Reserve box-shadow for at most one floating element type at one recipe (e.g. 0 8px 24px rgba(...,0.08)).",
+      "buildApplication": "Define --border as a hairline token ~8-12% luminance away from --bg; separate cards/tables/nav with 1px solid var(--border); if dark, build 2-3 surface steps instead of shadows; allow at most one shadow recipe on the single floating panel (e.g. the product screenshot).",
+      "category": "detail",
+      "evidence": "awesome-design-md linear.app/DESIGN.md (hairline ladder #23252a/#34343a, 'surface ladder carries hierarchy without shadow') and stripe (hairline #e3e8ee, two shadow levels max); open-design craft/color.md 'Dark themes' (1px rgba(255,255,255,0.08))",
+      "machineCheckable": "yes — count distinct box-shadow recipes (<=1-2) vs count of 1px borders; verify border-vs-bg contrast is low (hairline, not heavy outline)"
+    },
+    {
+      "name": "no-pure-black-white",
+      "rule": "Never #000-on-#fff text pairs. Body text is an inked neutral with a hue (Stripe ink = #0d253d deep navy; generic: #111 on #fafafa). Dark themes: background #0f0f0f-class not #000, foreground #f0f0f0-class not #fff (pure pairs vibrate).",
+      "buildApplication": "Set --fg to a near-black tinted toward the brand hue and --bg to a near-white (or the inverse); verify the pair still passes 4.5:1.",
+      "category": "color",
+      "evidence": "open-design craft/color.md 'Dark themes' table; awesome-design-md stripe ('Ink #0d253d — deep navy, never pure black')",
+      "machineCheckable": "yes — computed body color/background must not equal #000/#fff exactly while contrast stays >=4.5:1"
+    },
+    {
+      "name": "density-contrast",
+      "rule": "Large gaps outside, tight interior — never the reverse. Section vertical padding 64-128px (heroes up to 192px; Stripe 64-96px, Linear 96px, Vercel 64-192px); inside a block the heading-to-paragraph gap is 8-12px with a wider gap before the CTA cluster — an outer:inner ratio of roughly 4:1 or more. Section gaps must vary: at least one gap >=1.5x the others, and one section deliberately denser than the rest.",
+      "buildApplication": "Use two spacing registers: a section register (64/96/128px) and a content register (8/12/16/24px); give one section (e.g. the proof strip or spec table) visibly tighter padding to break the rhythm.",
+      "category": "spacing",
+      "evidence": "awesome-design-md vercel 'Whitespace Philosophy' ('large gaps + tight interior, never the other way around', --geist-space 4px, section 192px) and stripe 'section gaps tend toward 96px, tightening to 32px where users compare and act'; open-design anti-ai-slop.md P2 'alternating density'; typography-hierarchy.md lint 'one gap >=1.5x'",
+      "machineCheckable": "yes — rendered geometry: measure inter-section gaps (variance > 0, max/min >= 1.5) and heading-to-paragraph gaps (<= section-gap / 4)"
+    },
+    {
+      "name": "single-entry-point",
+      "rule": "Exactly one dominant element above the fold — no co-primaries. Dominance must be carried by at least 2 of the 5 hierarchy vectors (scale, weight, spacing, tracking, alignment), and no more than 3 visible hierarchy levels appear above the fold. Hierarchy is relative: to promote one element, demote everything else.",
+      "buildApplication": "Make the hero headline (or hero image) win through size AND surrounding whitespace; cap above-the-fold type at 3 levels (display, lead, label); if two things compete, shrink or mute one.",
+      "category": "hierarchy",
+      "evidence": "open-design craft/typography-hierarchy.md 'core contract', 'hierarchy vectors' table, lint checklist",
+      "machineCheckable": "partly — geometry: exactly one display-size (>=2x body) text node above fold; <=3 distinct size levels above fold; full vector analysis needs judgment"
+    },
+    {
+      "name": "hero-thesis-with-proof",
+      "rule": "Hero = outcome headline (concrete verb phrase, what changes for the user) + mechanism subhead (what it does, on what platform) + one verifiable proof line (a real limit, count, or named integration — drawn from frozen intake claims) + exactly ONE primary CTA. Shape: 'Turn meeting notes into decisions.' / 'Record, transcribe, and summarize calls in real time on macOS.' / 'English and Spanish. 60-minute meetings.' / [Try it free]. The big-number-with-gradient-accent stat hero is the template answer — only if truly best.",
+      "buildApplication": "Compose the hero from the concept sheet: headline states the outcome with a verb, subhead names the mechanism and platform, proof line reuses an intake-frozen claim verbatim, and only one filled button exists in the hero.",
+      "category": "content",
+      "evidence": "refero_skill references/copywriting.md 'Marketing Hero Section' (five questions + example); frontend-design SKILL.md 'the hero is a thesis'",
+      "machineCheckable": "partly — exactly 1 filled/accent button in the hero region; proof line contains a digit or an intake-claim string; headline verb-ness needs LLM"
+    },
+    {
+      "name": "cta-verb-object",
+      "rule": "Every button label is verb + object: 'Create project', 'Download PDF', 'Start tracking'. Ban OK / Submit / Continue / Get started / Learn more as primary CTAs ('Start tracking' beats 'Get started'). An action keeps the same name through the whole flow — the button that says 'Publish' produces 'Published'.",
+      "buildApplication": "Write each CTA as imperative-verb + concrete-object specific to the product; reuse identical action names everywhere they recur on the page.",
+      "category": "content",
+      "evidence": "refero_skill copywriting.md 'Microcopy/Buttons'; open-design anti-ai-slop.md 'How to add soul'; frontend-design SKILL.md writing section ('Save changes, not Submit')",
+      "machineCheckable": "yes — button/a.button text against banned generic list {OK, Submit, Continue, Get started, Learn more, Click here}; verb-first heuristic via word list"
+    },
+    {
+      "name": "descriptive-headings",
+      "rule": "Section headings name the content, not the aspiration: 'Pricing', 'Works with your stack', 'Revenue this month' — never 'Unlock your growth potential', 'Supercharge your X', 'Take X to the next level'. Litmus: reading only headings + labels + numbers must convey what the page offers.",
+      "buildApplication": "After building, strip the page to its h2/h3 text and check it still summarizes the offer; rewrite any heading that needs its body text to make sense.",
+      "category": "content",
+      "evidence": "refero_skill copywriting.md 'Product UI Copy — Headings: descriptive, not aspirational' table + 'AI Slop Markers' list",
+      "machineCheckable": "partly — regex ban on 'Unlock/Supercharge/Elevate your', 'next level', 'Say goodbye to', 'Introducing the future of' in headings; descriptiveness itself needs LLM"
+    },
+    {
+      "name": "fact-per-section",
+      "rule": "Every feature/benefit block contains at least one falsifiable specific — a number, a named integration/platform, or a stated limit: 'fast' -> 'in 10 seconds'; 'powerful' -> 'Works with Gmail and Outlook. iCloud is next.' Dead-copy test: if the sentence could live on 1,000 sites unchanged, replace it. Stating one real constraint increases credibility.",
+      "buildApplication": "Source one concrete fact per section from the intake-frozen claims; if a section has zero verifiable specifics, cut the section rather than pad it (mirrors the repo's claim-preservation invariant).",
+      "category": "content",
+      "evidence": "refero_skill copywriting.md 'Living words vs dead words' table, 'Proof beats hype', 'Pre-publish checklist' Q3; open-design anti-ai-slop.md P0-6 (no invented metrics — real source or labelled placeholder)",
+      "machineCheckable": "partly — per section: presence of digits, units, or capitalized product nouns; honesty of the number requires diff against intake claims (already a repo lane)"
+    },
+    {
+      "name": "screenshot-panel-craft",
+      "rule": "Real product UI is the senior brand's main imagery, framed with consistent panel chrome: 12-16px radius container, 1px hairline border, at most one subtle shadow recipe (e.g. 0 8px 24px at <=0.08 alpha). Linear: screenshots in surface-1 panels at 16px corners dominate the page; Stripe: every feature explanation pairs with a composited dashboard mockup ('the argument is: look at the actual product'). On mobile, crop to the single most actionable panel.",
+      "buildApplication": "Wrap each product screenshot in a figure with border:1px solid var(--border), border-radius:12-16px, overflow:hidden, optional single shadow; pair every major feature claim with one; if no real screenshot exists, solve with typography (per S4) — never CSS-fake the UI.",
+      "category": "imagery",
+      "evidence": "awesome-design-md linear.app ('product UI screenshots dominate; chrome intentionally minimal') and stripe ('card-dashboard-mockup' spec, Do's list); refero_skill anti-ai-slop.md Tell #9 (preserve the media role; never fake complex imagery)",
+      "machineCheckable": "yes — img/svg/picture inside a container with 1px border + radius 8-20px; shadow recipe count <=1; presence of width/height attrs (CLS)"
+    },
+    {
+      "name": "logo-strip-spec",
+      "rule": "Customer logos (only when real, per S2): 6-8 logos, rendered monochrome/grayscale, uniform height at one value in the 20-32px range (Vercel: 24px), aligned in a single baseline row with even gaps, no boxes or cards around them, placed directly under the hero or near the CTA.",
+      "buildApplication": "Render real logos as single-color SVGs (fill: currentColor at --muted) sized height:24px each in a flex row with uniform gap; skip the section entirely if real logos are unavailable.",
+      "category": "imagery",
+      "evidence": "awesome-design-md vercel ('customer logos: monochrome SVGs, consistent 24px height'); social-proof teardowns (saashero.net, provesrc.com): grayscale for consistency, 6-8 recognizable logos below headline",
+      "machineCheckable": "yes — all logo imgs/svgs share equal rendered height (20-32px); computed filter grayscale or single fill color; count 4-10"
+    },
+    {
+      "name": "testimonial-attribution-spec",
+      "rule": "A testimonial earns its place only with: a concrete result inside the quote (number or named outcome — 'increased conversions 34%' beats 'great product') + full name + role + company (photo optional, 32-40px circular avatar per Linear's spec). One well-attributed quote placed next to the CTA outperforms a 3-up anonymous wall.",
+      "buildApplication": "If (and only if) a real quote exists from intake, render one blockquote with cite line 'Full Name, Role, Company' adjacent to the primary CTA section; avatar at 32-40px border-radius:50% if a photo exists.",
+      "category": "content",
+      "evidence": "social-proof teardowns (instapage.com, saashero.net: name+title+company attribution uplift; specific-result quotes); awesome-design-md linear.app testimonial-card spec (32-40px avatar circles); complements S1 (no fabrication)",
+      "machineCheckable": "partly — blockquote/testimonial block must contain a cite element or 'Name, Role' comma pattern and a digit-or-outcome in the quote; authenticity is the S1 LLM lane"
+    },
+    {
+      "name": "nav-footer-conventions",
+      "rule": "Nav: wordmark left, 3-6 plain text links, sign-in + ONE filled CTA pill right, 56-72px tall, separated by a 1px hairline or floating transparent over the hero (Stripe: logo left / nav center / sign-in + filled pill right at 16px-24px padding). Footer: 4-6 columns of grouped links + a small legal row, caption-size 12-13px muted text, 48-64px+ vertical padding, zero marketing copy (Stripe footer: 64px 24px padding, caption type, ink-mute).",
+      "buildApplication": "Build header as a 3-zone flex bar with exactly one filled button; build footer as a multi-column link grid in 13px var(--muted) text with a separate legal line — no taglines, no newsletter hype.",
+      "category": "layout",
+      "evidence": "awesome-design-md stripe 'nav-bar-on-mesh' + 'footer-light' component specs; linear.app footer (canvas bg, ink-subtle, caption type)",
+      "machineCheckable": "yes — header contains exactly 1 filled-accent button; header height 48-80px; footer font-size <=13px and link-group columns >=3"
+    },
+    {
+      "name": "card-justification-test",
+      "rule": "Default is NO cards. A bordered/raised container is justified only when it is an interaction container (clickable item, form, expandable) — or when removing its border+shadow+background+radius would break comprehension. Otherwise group static content with whitespace and 1px dividers. (The rounded card with a colored left-border stripe is the canonical AI dashboard tile — drop the radius or the stripe.)",
+      "buildApplication": "For each candidate card ask 'does the user interact with this container?'; render static feature groups as ruled rows or a definition list with hairline dividers instead of card grids.",
+      "category": "layout",
+      "evidence": "refero_skill anti-ai-slop.md Tell #2 'cards everywhere' + 'Card test' litmus; open-design anti-ai-slop.md P0-5 (rounded card + left accent border)",
+      "machineCheckable": "partly — count containers with border+radius+padding that contain no link/button/form descendant; flag when non-interactive card count > interactive card count; also flag border-left accent + radius combo"
+    },
+    {
+      "name": "asymmetric-split",
+      "rule": "Two-column sections use uneven ratios off a 12-col grid — 7/5 or 8/4, not 50/50. In any collection of peer items, promote exactly one: ~2x the area, or inverted colors (Stripe's featured pricing tier is the only navy-filled card among white ones). Break the grid with one element, not everything — breaking alignment is itself a hierarchy signal.",
+      "buildApplication": "Use grid-template-columns: 7fr 5fr (or 8fr 4fr) for split sections; in the pricing/feature collection, give one item a dark inverted background or a 2x grid span while siblings stay quiet.",
+      "category": "layout",
+      "evidence": "refero_skill anti-ai-slop.md 'Antidote: break the grid intentionally (one element, not everything)' + 'Safe vs Intentional'; awesome-design-md stripe 'card-pricing-featured' (inverted navy tier); open-design typography-hierarchy.md alignment vector",
+      "machineCheckable": "yes — rendered geometry: 2-col section width ratio outside 0.95-1.05; exactly one item in a peer group with area >=1.8x siblings or inverted bg luminance"
+    },
+    {
+      "name": "eyebrow-spec",
+      "rule": "Section eyebrows are a taxonomy device with a fixed recipe: 10-13px, either uppercase with +0.06-0.1em tracking (Stripe micro-cap: 10px/400/+0.1px) or weight-500 with slight positive tracking (Linear: 13px/500/+0.4px) or monospace (Vercel: every section eyebrow is mono). Positive tracking against negative-tracked display marks it as taxonomy. Numbered markers (01/02/03) only when content is a true sequence — order must carry information.",
+      "buildApplication": "Add one eyebrow per major section in a single consistent recipe; color it --muted (or --accent, counting against the 2-use budget); number sections only if they describe an actual ordered process.",
+      "category": "detail",
+      "evidence": "awesome-design-md stripe micro-cap token, linear.app eyebrow token ('eyebrow uses positive tracking'), vercel ('every section eyebrow uses the monospace face'); frontend-design SKILL.md 'structure is information' (numbering only for real sequences)",
+      "machineCheckable": "partly — eyebrow-class elements: font-size 10-13px, uppercase implies letter-spacing >=0.06em, one consistent recipe page-wide; sequence-justification is LLM"
+    },
+    {
+      "name": "tabular-numerals-for-claims",
+      "rule": "Every cell or line rendering money, percentages, or counts uses font-variant-numeric: tabular-nums (OpenType tnum), with right-alignment in tables. Stripe treats this as its quiet financial-data signature and pairs it with slight negative tracking on numeric type. Directly relevant here: intake-frozen price/percent claims should render in tabular figures.",
+      "buildApplication": "Add font-variant-numeric: tabular-nums to the selector covering prices, stats, and spec tables; right-align numeric columns; keep the digits verbatim from intake.",
+      "category": "detail",
+      "evidence": "awesome-design-md stripe 'Tabular-Figure Money Type' signature component + body-tabular token (tnum, -0.42px)",
+      "machineCheckable": "yes — elements whose text matches money/percent patterns must compute font-variant-numeric: tabular-nums (or font-feature-settings tnum)"
+    },
+    {
+      "name": "background-texture-restraint",
+      "rule": "If a decorative blueprint grid/dot texture is used (the Vercel pattern): 1px lines or 1px dots, 16-24px spacing, alpha <=0.05-0.10 — barely visible. One texture per page maximum. Named threshold: if the grid is the first thing you notice, it is too strong.",
+      "buildApplication": "Implement as repeating linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px) at background-size 24px 24px (or radial-gradient dots at 16px), on one section only.",
+      "category": "detail",
+      "evidence": "setproduct.com 'Complete guide to Blueprint Grid design' (1px, 16/24px spacing, 10-20% max opacity, 'barely visible' constraint)",
+      "machineCheckable": "yes — parse background-image gradients: stop alpha <=0.1, tile size 16-32px, at most one textured section"
+    },
+    {
+      "name": "quality-floor",
+      "rule": "Ship-floor checks seniors never skip: visible :focus-visible styles (outline 2px + outline-offset 2px; outline:none never without replacement); any animation wrapped in @media (prefers-reduced-motion: no-preference); contrast gates 4.5:1 body / 3:1 large text and UI components; never transition: all; images carry width/height attributes (no CLS); no user-scalable=no.",
+      "buildApplication": "Add a :focus-visible block for a/button/input, a reduced-motion media query around transitions, explicit img dimensions, and verify token pairs against the contrast gates before delivery.",
+      "category": "detail",
+      "evidence": "refero_skill craft-details.md sections 1/3/9 (focus-visible, image dims, transition:all ban); open-design craft/color.md 'Contrast minimums'; frontend-design SKILL.md quality floor ('responsive, visible keyboard focus, reduced motion respected')",
+      "machineCheckable": "yes — CSS contains :focus-visible and prefers-reduced-motion; no transition: all; img elements have width+height; computed contrast ratios >=4.5/3.0"
+    },
+    {
+      "name": "light-canvas-default",
+      "rule": "Color mode is a concept decision, not a default: absent an explicit dark direction in the brief/concept sheet, light canvas is the professional baseline — dark-by-default is an AI fingerprint just like indigo. (Linear-style dark is legitimate only as a deliberate, interview-confirmed brand choice.)",
+      "buildApplication": "Default the page to a near-white --bg unless the concept sheet's palette answer explicitly locks a dark canvas; never flip to dark to 'look premium'.",
+      "category": "color",
+      "evidence": "refero_skill anti-ai-slop.md Tell #3 'dark mode by default'",
+      "machineCheckable": "yes — body background luminance >0.5 unless concept sheet metadata declares dark mode"
+    },
+    {
+      "name": "one-signature-element",
+      "rule": "~80% proven patterns + ~20% distinctive choice, and the 20% lives in exactly ONE place: a bold type treatment, one unexpected proportion, one memorable micro-detail only a product user would add (a kbd shortcut hint, a product-specific status badge), or one quotable copy line. Everything around the signature stays quiet. Test: an outsider seeing a screenshot can tell which product it is; if not, it is a template.",
+      "buildApplication": "Pick the signature from the concept sheet's strongest differentiator, execute it in one section, and deliberately mute every other section (Chanel rule: remove one accessory before shipping).",
+      "category": "hierarchy",
+      "evidence": "open-design anti-ai-slop.md 'How to add soul' (80/20, four placement options, screenshot test); frontend-design SKILL.md 'spend your boldness in one place' + signature concept",
+      "machineCheckable": "no — requires judgment; weak proxy: count of attention-grabbing devices (animations, accent blocks, display-size deviations) should be ~1"
+    }
+  ]
+}

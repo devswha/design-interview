@@ -1,0 +1,175 @@
+{
+  "source": "Refactoring UI (Adam Wathan & Steve Schoger) — extracted via community summary repos: https://github.com/erikuus/good-ui (217 stars) and https://github.com/elrincondeldev/refactoring-ui-notes (41 stars), cross-checked with https://github.com/tigerabrodi/refactoring-ui-notes",
+  "license": "ideas-only",
+  "notes": "The book is proprietary and the summary repos carry no license; only unprotectable design principles were extracted, no prose copied. Deliberately excluded items already covered by core/design-tells.md: hero formula (L4), uniform card grid (L1), center-everything (L2), purple gradients (C1), shadow-everywhere (C4 — the positive elevation system below is its complement, not a duplicate), uniform radius (S5 — the personality-lock principle constrains WHICH radius, not uniformity), emoji bullets / 'supercharge bullets with icons' (conflicts with T1's reduce-bullets stance, skipped), empty-state and fabricated-content advice (S1/S2/T5 already mandate section deletion). Conflict noted: the book says 'stick to one radius family' while S5 flags uniform radius — resolved by framing radius as a concept-derived personality decision rather than a uniformity rule.",
+  "principles": [
+    {
+      "name": "spacing-scale-geometric",
+      "rule": "Define the spacing scale before designing and pick only from it. Base 16px, geometric-ish steps: 4, 8, 12, 16, 24, 32, 48, 64, 96, 128. Adjacent steps differ by >=25% so any two values are visually distinguishable; never hand-tune by a few px.",
+      "buildApplication": "Declare the scale as CSS custom properties (--s1..--s10) in :root; every margin, padding, and gap in the page uses var(--sN) or a literal from the set {4,8,12,16,24,32,48,64,96,128}px. Start sections with too much space (one step up) and remove, rather than adding.",
+      "category": "spacing",
+      "evidence": "good-ui key-principles/systematize-everything.md (Sizes), key-principles/start-with-too-much-space.md; elrincondeldev README 'Layout and Spacing'",
+      "machineCheckable": "yes — parse all computed margin/padding/gap px values; assert every nonzero value is a member of a declared scale and that sorted distinct values have pairwise ratio >= 1.25"
+    },
+    {
+      "name": "type-scale-fixed",
+      "rule": "Use a hand-picked fixed type scale, not a mathematical ratio and not em units: e.g. 12, 14, 16, 18, 20, 24, 30, 36, 48, 60, 72px in px/rem. A single page should use roughly 5-8 distinct sizes, no more.",
+      "buildApplication": "Define font sizes as :root custom properties from the scale; set all font-size in rem/px only (em forbidden for font-size so nesting cannot produce off-scale values); cap distinct sizes used on the page at 8.",
+      "category": "typography",
+      "evidence": "elrincondeldev README 'Designing Text' (scale, px/rem, don't be relative-dogmatic); tigerabrodi README 'Designing Text'",
+      "machineCheckable": "yes — collect computed font-size of all text nodes; assert <= 8 distinct values and all values members of the declared scale; flag any em-unit font-size in stylesheets"
+    },
+    {
+      "name": "hierarchy-weight-color-not-size",
+      "rule": "Build text hierarchy primarily with color and weight, only secondarily with size. Three text-color tiers: dark for primary, mid grey for secondary, light grey for tertiary. Exactly two font weights (normal 400/500 + bold 600/700); never use weights below 400 — to de-emphasize, use lighter color or smaller size instead.",
+      "buildApplication": "Define --text-primary/--text-secondary/--text-tertiary tokens and use all three on the page; restrict font-weight declarations to {400|500, 600|700}; when something must recede (metadata, captions), change its color tier rather than dropping weight to 300 or shrinking below 12px.",
+      "category": "hierarchy",
+      "evidence": "good-ui to-do/use-a-visual-hierarchy.md; elrincondeldev README 'Hierarchy is Everything'; tigerabrodi 'don't go below 400'",
+      "machineCheckable": "yes — assert no computed font-weight < 400 anywhere; assert >= 2 and <= 3 distinct body-text colors with decreasing contrast against their backgrounds; assert <= 2 distinct font-weight values in use"
+    },
+    {
+      "name": "no-grey-on-color",
+      "rule": "Never put grey text (saturation ~0) or reduced-opacity white text on a saturated colored background. Hand-pick a de-emphasis color with the SAME hue as the background, adjusting saturation/lightness until contrast reads as secondary.",
+      "buildApplication": "For any section with a saturated background (hero band, CTA band, footer in brand color), derive secondary text as hsl(same hue, lowered saturation, raised lightness) — e.g. bg hsl(220 80% 30%) -> secondary text hsl(220 40% 80%) — instead of #9ca3af or rgba(255,255,255,.6).",
+      "category": "color",
+      "evidence": "elrincondeldev README 'Hierarchy is Everything' (grey on colored backgrounds); tigerabrodi 'Hierarchy is Everything'",
+      "machineCheckable": "yes — for each text node whose effective background has HSL saturation > 25%, flag text colors with saturation < 8% or color values of the form rgba(255,255,255,a<1) / opacity-reduced white"
+    },
+    {
+      "name": "action-pyramid",
+      "rule": "Each view has ONE primary action (solid, high-contrast background), a couple of secondary actions (outline or low-contrast soft background), and tertiary actions styled as links. Destructive actions get secondary/tertiary treatment unless deletion is the page's whole point.",
+      "buildApplication": "On a landing/detail page: exactly one solid accent-background button above the fold; any second CTA in the same region is outline or text-link style; repeated CTAs further down may reuse the primary style but never two different solid-accent buttons side by side.",
+      "category": "hierarchy",
+      "evidence": "good-ui to-do/use-a-visual-hierarchy.md (button pyramid); elrincondeldev README 'When you have multiple actions'",
+      "machineCheckable": "yes — per visual section (or per viewport-height band), count elements that are link/button-like with solid accent-colored background; assert <= 1; sibling CTAs must differ in treatment (transparent or neutral background)"
+    },
+    {
+      "name": "labelless-data",
+      "rule": "Avoid 'Label: value' pairs. Prefer (a) formats that self-identify (email, price, date need no label), (b) merging the label into the value as a sentence ('12 left in stock', not 'In stock: 12'), (c) if a label is unavoidable, de-emphasize it: smaller size, lighter color, treat the value as primary. Exception: spec-sheet-density pages where users scan for the label — there, emphasize labels.",
+      "buildApplication": "When rendering intake claims (prices, quantities, durations) on the page, write them as natural phrases carrying the number, not as a colon-separated key/value table; if a spec table is genuinely needed (detail page), style the dt/labels at the tertiary text tier and the values at primary.",
+      "category": "content",
+      "evidence": "good-ui not-to-do/avoid-labels-when-possible.md (all four subsections); elrincondeldev README 'Hierarchy is Everything'",
+      "machineCheckable": "partially — count text nodes matching /^[A-Za-z가-힣 ]{1,20}:\\s/ colon-label patterns and bare dt/dd pairs; threshold (e.g. <= 3 outside an explicit spec-table region); semantic 'merged into sentence' needs LLM judgment"
+    },
+    {
+      "name": "measure-45-75ch",
+      "rule": "Body paragraphs are 45-75 characters per line, which is a max-width of roughly 20-35em (about 600-700px at 16px). The limit applies even when the paragraph sits next to wider components — the paragraph stays narrow inside the wide section.",
+      "buildApplication": "Give every prose container max-width: 65ch (or 32em); when a section's visual container is wider (full-bleed background, image rows), still constrain the inner <p> blocks, letting them sit left-aligned within the wider frame.",
+      "category": "typography",
+      "evidence": "good-ui not-to-do/avoid-too-long-lines.md; elrincondeldev README 'Designing Text' (45-75 chars, 20-35em)",
+      "machineCheckable": "yes — rendered geometry: for each <p> with > 120 visible characters, computed width / computed font-size must be within [20, 35] em (or width/1ch within [45, 80])"
+    },
+    {
+      "name": "line-height-inverse-to-size",
+      "rule": "Line-height is inversely proportional to font size and proportional to line length. Body at <=16px: 1.5-1.75. Large headings >=36px: 1.0-1.2. Narrow columns can run ~1.5; very wide text blocks need up to 2.",
+      "buildApplication": "Set line-height per scale step, not one global value: e.g. 72px/1.0, 48px/1.1, 30px/1.2, 20px/1.4, 16px/1.6, 14px/1.7. Never ship an h1 with the inherited body line-height of 1.6+.",
+      "category": "typography",
+      "evidence": "good-ui to-do/contextualize-line-height.md (both subsections); elrincondeldev README 'Designing Text'",
+      "machineCheckable": "yes — computed line-height / font-size ratio: assert <= 1.3 where font-size >= 32px and >= 1.4 where font-size <= 16px in multi-line paragraphs"
+    },
+    {
+      "name": "letter-spacing-by-context",
+      "rule": "Leave body letter-spacing alone (trust the typeface). Two exceptions: large headlines set in a body-optimized font may be tightened (-0.01 to -0.03em, tighter as size grows); all-caps text must be tracked OUT (+0.03 to +0.1em) because uppercase-only words read poorly at default spacing.",
+      "buildApplication": "letter-spacing: normal everywhere by default; add negative tracking only to headings >= 30px (e.g. -0.02em at 48px); any element with text-transform: uppercase (eyebrow labels, small caps section markers) gets letter-spacing >= 0.05em and usually a smaller size + tertiary color.",
+      "category": "typography",
+      "evidence": "good-ui to-do/use-letter-spacing-effectively.md (tighten headlines, loosen all-caps); elrincondeldev README 'Designing Text' (leave letter-spacing alone)",
+      "machineCheckable": "yes — flag nonzero letter-spacing on body-size text (12-18px, no text-transform); flag text-transform:uppercase elements whose computed letter-spacing <= 0; flag positive letter-spacing on >=30px headings"
+    },
+    {
+      "name": "border-budget",
+      "rule": "Borders are the last-resort separator. Before drawing a line, try in order: (1) box-shadow to outline a card, (2) two different background colors for adjacent regions, (3) extra whitespace, (4) zebra striping for rows. A page full of 1px outlines looks busy and template-like.",
+      "buildApplication": "Cards: shadow or bg-delta against the section background, not border:1px solid grey on every box; table rows: row padding + optional zebra bg, no horizontal rules; section dividers: background-color change or a 64-96px spacing step instead of <hr>. Keep total fully-bordered boxes on the page to a handful, used where shadow/space genuinely fail.",
+      "category": "detail",
+      "evidence": "good-ui not-to-do/avoid-too-many-borders.md; tigerabrodi 'Layout and Spacing'",
+      "machineCheckable": "yes — count elements with a visible border on all four sides (style != none, width >= 1px, alpha > 0); flag pages where bordered boxes > N (e.g. 6) or where > 50% of card-like elements use borders while none use shadow/bg-delta"
+    },
+    {
+      "name": "proximity-encodes-grouping",
+      "rule": "Ambiguous spacing is a structural bug: space WITHIN a group must be visibly smaller than space BETWEEN groups. A heading sits closer to the content below it than to the section above (roughly 2:1 above:below); a label hugs its field; list items have less gap inside an item than between items; an icon hugs the text it annotates.",
+      "buildApplication": "Apply margin asymmetry explicitly: h2 { margin-top: 64px; margin-bottom: 16px; } not margin: 32px 0. Same for figure captions, icon+text rows (gap 8px inside, 24px+ to neighbors), and any heading/body pair.",
+      "category": "spacing",
+      "evidence": "good-ui not-to-do/avoid-ambiguous-spacing.md (titles, lists, icons, labels); elrincondeldev README 'Layout and Spacing' (grouping via spacing)",
+      "machineCheckable": "yes — rendered geometry: for every h2-h4 with content before and after, assert gap(heading, previous block) >= 1.5x gap(heading, next block)"
+    },
+    {
+      "name": "content-width-discipline",
+      "rule": "Don't fill the screen. Give each element a width optimized for ITS content: prose ~65ch, a form ~480-600px, a sidebar a fixed 220-280px (not a percentage). A full-width nav does not obligate full-width content. If a narrow block looks lost in a wide canvas, split it into columns rather than stretching it.",
+      "buildApplication": "On a 1440px canvas, the page can have a full-bleed nav/background while the content column is 600-1100px depending on content type; never width:100% on a form or text block just to fill space; rebalance a too-narrow-looking section by introducing a second column (supporting text, image) instead of widening.",
+      "category": "layout",
+      "evidence": "good-ui not-to-do/dont-fill-the-whole-screen.md, to-do/use-a-fixed-width.md, key-principles/think-in-columns.md; elrincondeldev README 'Layout and Spacing' ('if you only need 600px, use 600px')",
+      "machineCheckable": "yes — at 1440px viewport: forms and prose blocks must have rendered width <= 720px; flag any text-content container whose width > 1200px; sidebars (if any) must have px-fixed flex-basis/width, not %-based"
+    },
+    {
+      "name": "shadow-elevation-system",
+      "rule": "Predefine at most 5 shadow levels keyed to conceptual elevation — small for buttons/inputs, medium for cards/dropdowns, large for modals — and use no other shadow values. Each level combines two parts: a tall soft ambient shadow plus a tight, darker contact shadow (e.g. '0 4px 6px rgba(0,0,0,.7*alpha), 0 1px 3px rgba(0,0,0,alpha)'); light comes from above, so vertical offsets are positive; inset top shadow = pressed-in (wells, inputs).",
+      "buildApplication": "Define 2-3 --shadow-sm/md/lg tokens with two comma-separated parts each, black alpha <= 0.2; cards/popovers use md, the single floating element (if any) uses lg, pressed/inset surfaces use 'inset 0 2px 4px rgba(0,0,0,.06)'. This is the positive complement to tell C4: the budget is enforced by the token set.",
+      "category": "detail",
+      "evidence": "good-ui key-principles/systematize-everything.md (Shadows), tips-and-tricks/combine-two-shadows.md; elrincondeldev README 'Creating Depth'; tigerabrodi 'Creating Depth'",
+      "machineCheckable": "yes — collect all computed box-shadow values: assert <= 3 distinct non-inset values, every value has 2 parts or is from the declared token set, all alpha <= 0.25, all vertical offsets >= 0 for non-inset shadows"
+    },
+    {
+      "name": "hsl-palette-construction",
+      "rule": "Build the palette in HSL with shades fixed up front: 8-10 shades of grey, 5-10 of the primary, a few accents — you cannot design with 5 hex codes. Greys are never pure (saturation 0): tint 2-12% toward blue for a cool feel or toward yellow/orange for warm. To lighten a color, rotate hue toward the nearest bright hue (yellow/cyan/magenta); to darken, toward the nearest dark hue (red/green/blue) — never rotate more than 20-30 degrees. Darkest shade is reserved for text; lightest shade tints backgrounds of same-hue elements (e.g. badge: darkest-blue text on lightest-blue bg).",
+      "buildApplication": "Emit a :root block of hsl() custom properties: --grey-50..--grey-900 with saturation 4-10% at a chosen tint hue, --primary-100..--primary-900 via lightness+small hue rotation, 1-2 accents; every color in the page references these tokens; alert/badge components pair shade-900 text with shade-100 background of the same hue.",
+      "category": "color",
+      "evidence": "good-ui key-principles/systematize-everything.md (Colors); elrincondeldev README 'Working with color' (hue rotation 20-30deg, saturated greys, darkest-for-text)",
+      "machineCheckable": "partially — parse all colors to HSL: flag pure greys (S=0) used for text/bg; assert total distinct hue families <= 4; assert colored-badge text/bg pairs share hue within 15deg; 'shades defined up front' itself is a process rule"
+    },
+    {
+      "name": "personality-lock",
+      "rule": "Personality is decided before building, via four concrete levers that must AGREE: typeface genre (serif = elegant/serious, rounded sans = playful, neutral sans = plain), dominant color (blue = safe/familiar, gold = sophisticated/expensive, pink = fun), border-radius family (0 = serious/formal, small 4-6px = neutral, large 12px+ = playful), and copy tone (official vs casual). A serif elegant concept shipping 16px-radius pill buttons, or playful rounded type with 0-radius slabs, is a mismatch.",
+      "buildApplication": "Read the concept sheet's tone answer, then derive all four levers from it as one consistent set and record them as CSS tokens (--radius-base, font stack, --primary hue) plus a copy register note; check the four against each other before writing any section markup.",
+      "category": "content",
+      "evidence": "good-ui key-principles/choose-a-personality.md (font/radius/color/language with named examples); elrincondeldev README 'Starting from scratch'",
+      "machineCheckable": "partially — given a declared personality (e.g. 'serious'), assert radius tokens within its band (serious: 0-4px, playful: >=10px) and serif/sans family matches; tone-of-copy agreement needs LLM judgment"
+    },
+    {
+      "name": "feature-first-greyscale",
+      "rule": "Start with a feature, not a layout: design the actual core content block (the proof, the product, the offer) before any shell (nav, footer, hero chrome). Do the first pass entirely in greyscale — being denied color forces hierarchy to come from spacing, size, weight, and contrast — then add color last, deliberately.",
+      "buildApplication": "Generation order for the page: (1) the single most important content section built greyscale-only, (2) remaining sections in importance order, (3) nav/footer, (4) a final pass replacing grey tokens with the palette. If the page reads correctly with all colors stripped to grey, the hierarchy is real; if not, fix structure before coloring.",
+      "category": "content",
+      "evidence": "elrincondeldev README 'Starting from scratch' (start with a feature; design in grayscale; details later); tigerabrodi 'Starting from scratch'",
+      "machineCheckable": "partially — final artifact check: convert page colors to greyscale and verify heading/body/CTA remain distinguishable by computed size/weight/lightness deltas (e.g. CTA lightness contrast vs surroundings >= 30 L* points); the process ordering itself is not checkable"
+    },
+    {
+      "name": "text-on-image-protection",
+      "rule": "Text sitting on a photo needs an engineered contrast layer, chosen from four named techniques: (1) semi-transparent dark overlay (~black at 40-60% over the whole image), (2) lower the image's own contrast/brightness, (3) colorize the image with a single-hue multiply blend so it joins the palette, (4) subtle text-shadow (e.g. 0 1px 3px rgba(0,0,0,.4)) when the overlay is not wanted.",
+      "buildApplication": "Any hero or band with background-image gets either a ::before overlay (background: rgb(0 0 0 / .5) or brand hue with mix-blend-mode: multiply) under the text, or filter: brightness(.6) contrast(.8) on the image, or a text-shadow on the heading — never raw white text on a raw photo.",
+      "category": "imagery",
+      "evidence": "good-ui tips-and-tricks/make-text-stand-out-on-image-background.md (overlay, text shadow, lower contrast, multiply); elrincondeldev README 'Working with images'",
+      "machineCheckable": "yes — for text rendered over an element with background-image: require presence of an overlay layer with alpha >= 0.3, or a brightness/contrast filter, or text-shadow; can also sample rendered pixel contrast behind the text box (WCAG >= 4.5:1)"
+    },
+    {
+      "name": "icon-screenshot-scale-integrity",
+      "rule": "Never scale raster/vector assets past their drawn size class. Icons drawn on a 16-24px grid look amateur blown up 2-4x — instead, keep the icon near its native size and enclose it in a larger colored shape (circle/rounded square) to occupy the visual slot. Screenshots must not be scaled down to illegibility: crop to the relevant region, take the shot at a smaller (tablet/mobile) layout, or draw a simplified UI mock instead.",
+      "buildApplication": "Inline SVG icons render at 16-24px inside a 40-56px tinted container (same-hue light background per the palette rule); <img> screenshots are displayed at >= 75% of natural width — if the slot is smaller, pre-crop the asset or reference a narrow-breakpoint capture rather than letting CSS shrink a 1440px shot into a 400px card.",
+      "category": "imagery",
+      "evidence": "good-ui not-to-do/dont-scale-icons-and-screenshots.md; elrincondeldev README 'Working with images' (16-24px icons, tablet-size screenshots, simplified UI)",
+      "machineCheckable": "yes — rendered geometry: for each <img>/<svg>, compare displayed size to naturalWidth/viewBox: flag icons (intrinsic <= 32px) displayed > 1.5x intrinsic without an enclosing shape, and screenshots (intrinsic >= 800px) displayed < 0.75x intrinsic"
+    },
+    {
+      "name": "overlap-for-depth",
+      "rule": "Create layers by overlapping: pull a card or image across a background boundary (e.g. a stats card straddling the hero band and the body background via negative margin), or overlap two sibling elements slightly. Overlapping images need an 'invisible border' (a few px of the page background color) so they don't visually merge.",
+      "buildApplication": "Use one deliberate overlap on the page: hero band height H with the key card positioned margin-top: -48px into the next section, or an image stack where the front image has border: 4px solid var(--bg). This single move breaks the flat stacked-sections look without any shadow inflation — and doubles as the S3 intentional-asymmetry requirement.",
+      "category": "layout",
+      "evidence": "good-ui tips-and-tricks/overlap-elements-to-create-layers.md (partial, both sides, components, invisible border on images); tigerabrodi 'Creating Depth'",
+      "machineCheckable": "yes — rendered geometry: detect at least one element whose bounding box intersects two sibling sections' background regions (negative margin or absolute offset crossing a bg-color boundary); overlapping imgs must have a border matching an adjacent background color"
+    },
+    {
+      "name": "disproportionate-responsive-scaling",
+      "rule": "Elements scale DISPROPORTIONATELY across breakpoints: large display text shrinks much faster than body text (e.g. h1 48px desktop -> 28-32px mobile while body stays 16px, so the h1:body ratio drops from 3:1 to ~2:1); padding and button sizing also shrink more than their text. Proportional (single multiplier / pure em) scaling produces oversized mobile headlines.",
+      "buildApplication": "Write explicit per-breakpoint values rather than scaling a root multiplier: in the <=640px media query, drop heading sizes 1-2 steps on the type scale and section padding 1-2 steps on the spacing scale while body font-size stays put.",
+      "category": "layout",
+      "evidence": "good-ui to-do/scale-disproportionately.md, key-principles/think-mobile-first.md (~400px canvas); elrincondeldev README 'Layout and Spacing' (not everything scales; no em-dogma)",
+      "machineCheckable": "yes — render at 1440px and 400px: assert h1_desktop/h1_mobile >= 1.3 while body_desktop/body_mobile <= 1.1, and section vertical padding ratio desktop/mobile >= 1.5"
+    },
+    {
+      "name": "accent-border-polish",
+      "rule": "A cheap, reliable polish move: a 3-4px solid accent-colored bar on one edge — top of a highlighted card, left of an alert or blockquote, under/left of a headline, or across the very top of the whole page. It injects the brand color without inventing new components, and marks ONE element as special (not all of them).",
+      "buildApplication": "Apply border-top: 4px solid var(--primary) to the single featured card in a comparison, or border-left: 3px solid var(--primary) on the key quote/claim block, or a 4px page-top brand bar on body — at most one or two such accents per page so the marker keeps its meaning.",
+      "category": "detail",
+      "evidence": "good-ui tips-and-tricks/add-color-with-accent-borders.md (cards, menus, alerts, headlines, layouts); elrincondeldev README 'Finishing Touches'",
+      "machineCheckable": "yes — detect single-edge borders >= 3px in the accent hue; assert count on page between 0 and 3, and that not all sibling cards in a group carry it (differentiation, ties into L1's importance-differential rule)"
+    }
+  ]
+}

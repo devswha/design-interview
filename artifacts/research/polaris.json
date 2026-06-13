@@ -1,0 +1,143 @@
+{
+  "source": "Shopify Polaris design system (https://github.com/Shopify/polaris) — polaris-tokens/src + polaris.shopify.com/content/design",
+  "license": "MIT (Shopify Inc., LICENSE.md at repo root; tokens and docs live in the same repo)",
+  "principles": [
+    {
+      "name": "4px-grid-typesetting",
+      "rule": "Every line-height is a multiple of the 4px base unit. The token set is exactly {12, 16, 20, 24, 28, 32, 40, 48}px. Text bounding boxes (defined by line-height) are what align to the grid, not glyphs.",
+      "buildApplication": "Define a CSS custom-property set of line-heights limited to multiples of 4 (e.g. --lh-20: 20px; --lh-24: 24px). Never use unitless multipliers that produce off-grid values (e.g. 1.6 on 13px = 20.8px). Pick the nearest 4px multiple instead.",
+      "category": "typography",
+      "evidence": "polaris-tokens/src/themes/base/font.ts (font-line-height-300..1200), polaris.shopify.com/content/design/typography/using-type.mdx 'Line height'",
+      "machineCheckable": "yes — for every rendered text element, computed line-height in px % 4 === 0"
+    },
+    {
+      "name": "dual-typescale-with-fixed-steps",
+      "rule": "Two scales, not one: heading scale 36/30/24/20/14/13/12px (line-heights 48/40/32/24/20/20/16) and body scale 14/13/12/11px (line-heights 20/20/16/12). Heading weights: bold(700) at >=24px, semibold(~650) at <=20px. Body weight is regular (~450 in a variable font, i.e. slightly heavier than 400). Default body size is 13px in dense UI; large-display sizes jump 24→30→36 (steps of 6, ratio ~1.2–1.25), small sizes step by 1px (11/12/13/14).",
+      "buildApplication": "Lock the page to <=7 font sizes drawn from {11,12,13,14,16,20,24,30,36,40}px. For a landing page use a wider body (16px) but keep the heading ladder ratios: each heading level either changes size by a scale step or keeps the size and raises weight one step (400→600→700).",
+      "category": "typography",
+      "evidence": "polaris-tokens/src/themes/base/text.ts (all text-heading-*/text-body-* variants), polaris-tokens/src/size.ts, font.ts (font-weight-regular: 450, semibold: 650)",
+      "machineCheckable": "yes — collect all computed font-sizes; assert the distinct set has <=7 members and every member belongs to the allowed scale; assert h1..h4 font-weight >= 600"
+    },
+    {
+      "name": "tracking-tightens-with-size",
+      "rule": "Letter-spacing is 0 below 20px, then tightens as display size grows: -0.2px at 20–24px, -0.3px at 30px, -0.54px at 36px+. Named steps: normal / dense / denser / densest. Never positive tracking on headings, never negative tracking on body text.",
+      "buildApplication": "Add letter-spacing: -0.2px to h2/h3 around 20–24px, -0.3px to ~30px headings, -0.5px to the 36px+ hero heading; leave all text under 20px at letter-spacing: normal.",
+      "category": "typography",
+      "evidence": "polaris-tokens/src/themes/base/font.ts (font-letter-spacing-densest/-denser/-dense/-normal), text.ts pairings per heading variant",
+      "machineCheckable": "yes — for each text node: if font-size < 20px assert letter-spacing == normal/0; if >= 24px assert letter-spacing < 0"
+    },
+    {
+      "name": "weight-before-size-hierarchy",
+      "rule": "Inside content blocks, hierarchy comes from weight and ink color, not from inflating sizes. A sub-heading may be the same size as its body text but one-to-two weight steps heavier (heading-md = 14px semibold vs body-lg = 14px regular). Headings must be >= the size of the text they introduce, never smaller, and all headings of the same level use one consistent weight. Headings should be short, and omitted entirely when the content is self-evident.",
+      "buildApplication": "For card titles and section sub-heads, set font-size equal to body (or one step up) and font-weight 600–650 instead of jumping to 20px+. Reserve big sizes for the page title and one section opener. Delete headings that just restate the content under them.",
+      "category": "hierarchy",
+      "evidence": "polaris.shopify.com/content/design/typography/using-type.mdx 'Headings' and 'Body' (do/dont blocks: 'Headings don't need to be larger than the content', 'Body is often the same size as its leading heading, but will rarely be the same weight')",
+      "machineCheckable": "partially — assert every heading's computed font-size >= the font-size of its next sibling paragraph, and that all same-level headings share one font-weight; 'omit redundant headings' needs LLM judgment"
+    },
+    {
+      "name": "shadow-elevation-ladder",
+      "rule": "Shadow magnitude encodes z-position, on a fixed 6-step ladder: resting cards/tables get shadow-100 = '0 1px 0 rgba(26,26,26,.07)' (a hairline, nearly flat); banners shadow-200 = '0 3px 1px -1px rgba(26,26,26,.07)'; popovers/tooltips shadow-300; toasts shadow-400; modals shadow-600 = '0 20px 20px -8px rgba(26,26,26,.28)'. Blur and opacity grow together (alpha .07→.28). Elements at the same layer share the same exact shadow; nothing static gets an overlay-grade shadow.",
+      "buildApplication": "On a static page there are no overlays, so the only legal shadows are the resting ones: 0 1px 0 rgba(0,0,0,.07) on cards (or a 1px border instead). No blur > 6px anywhere. If two cards exist, they carry the identical shadow string.",
+      "category": "detail",
+      "evidence": "polaris-tokens/src/themes/base/shadow.ts (shadow-100..600 values), polaris.shopify.com/content/design/depth/shadow-tokens.mdx component-to-token table, creating-depth.mdx 'Shadows & bevels'",
+      "machineCheckable": "yes — parse all box-shadow declarations: for non-fixed/non-absolute elements assert blur <= 6px, y-offset <= 3px, alpha <= 0.1; assert all card-level elements share one identical shadow value"
+    },
+    {
+      "name": "neutral-ink-shadows",
+      "rule": "Shadows are tinted with the ink color, not black or brand color: rgba(26,26,26,α) — the same near-black as gray-16 text. X-offset is always 0 (light comes from straight above), alpha stays within .07–.28, and negative spread (-1 to -8px) keeps large shadows tucked under the element.",
+      "buildApplication": "Write every box-shadow as 0 Ypx Bpx Spx rgba(26,26,26,α) with α <= .28 and S <= 0. Never use colored glows (e.g. rgba of the accent color) or x-offsets.",
+      "category": "detail",
+      "evidence": "polaris-tokens/src/themes/base/shadow.ts — every scale token uses rgba(26,26,26,…), x=0, negative spread on 200+",
+      "machineCheckable": "yes — parse box-shadow colors: assert r==g==b (neutral), alpha <= 0.3, x-offset == 0, spread <= 0"
+    },
+    {
+      "name": "nested-radius-decrement",
+      "rule": "A nested surface always has a strictly smaller border-radius than its parent (parent 12px → child 8px), chosen from the fixed scale {0,2,4,6,8,12,16,20,30}px. Never give a child the same or larger radius than its container, and never alter the radius of atomic elements (buttons, badges) to make them 'fit' a corner.",
+      "buildApplication": "If a card uses border-radius: 12px, any inset panel inside it uses 8px and a chip inside that uses 6px or its own component radius. Encode as custom properties (--r-card: 12px; --r-inset: 8px) so the decrement is structural.",
+      "category": "detail",
+      "evidence": "polaris.shopify.com/content/design/layout/spacial-organization.mdx 'Nesting' (do/dont images), polaris-tokens/src/themes/base/border.ts radius scale",
+      "machineCheckable": "yes — rendered-geometry check: for every element with border-radius > 0 contained (with padding) inside another rounded element, assert child radius < parent radius and both values are in the allowed scale"
+    },
+    {
+      "name": "borders-for-tables-only",
+      "rule": "1px divider lines are reserved for data: table rows and index lists. Everywhere else, separation comes from grouped nested surfaces (a tinted child panel) or whitespace — never a horizontal rule slicing a card into sections. Borders also legitimately wrap a table nested inside a card.",
+      "buildApplication": "Do not emit <hr> or border-bottom between sections of a card or page. To separate a sub-block, wrap it in a child div with background ~3% darker than the surface and a smaller radius. Keep 1px solid borders only on <tr>/<td> of real tabular data (e.g. pricing rows).",
+      "category": "layout",
+      "evidence": "spacial-organization.mdx 'Dividing surfaces' ('Divider lines are reserved for data and index tables'), colors/using-color.mdx 'Border'",
+      "machineCheckable": "yes — flag any <hr>, or horizontal 1px border on an element that is not inside a <table>/<tr> or an element with role=row/list-row layout (siblings stacked with identical height pattern)"
+    },
+    {
+      "name": "three-level-neutral-surface-stack",
+      "rule": "Exactly three neutral levels build the canvas: page background gray-6 #f1f1f1, content surface white #fff, de-emphasis inset gray-4 #f7f7f7 (or gray-5 #f3f3f3). The deltas are small (3–6% lightness). Background color never appears on a card; vibrant 'fill' colors never cover large areas — they are reserved for small elements (buttons, badges). A gray inset visually recedes, pushing attention to the white surface.",
+      "buildApplication": "Set body { background: #f1f1f1 } (or an off-white from the concept palette), cards white, and any secondary panel #f7f7f7. Do not invent a fourth neutral level and do not paint a section with the accent color as a full-bleed background.",
+      "category": "color",
+      "evidence": "polaris-tokens/src/themes/base/color.ts (color-bg = gray[6], color-bg-surface = gray[1], color-bg-surface-secondary = gray[4]), src/colors.ts gray ramp, depth/creating-depth.mdx 'Surface depth', colors/using-color.mdx 'Fill' dont-blocks",
+      "machineCheckable": "yes — collect background-colors of elements with rendered area > 10% of viewport: assert saturation < 10%, and the set of distinct neutral lightness levels <= 3–4"
+    },
+    {
+      "name": "ink-hierarchy-not-pure-black",
+      "rule": "Text uses a three-step ink ramp on white, none of it #000: default #303030 (gray-15), secondary #616161 (gray-13), disabled/faint #b5b5b5 (gray-11). Hierarchy inside a block is made by stepping down this ramp (and weight), not by shrinking font size. Status colors are never used as decorative text color.",
+      "buildApplication": "body { color: #303030 }; metadata, captions and supporting lines get #616161. Use at least two ink levels on the page so hierarchy is visible, and never set running text to #000 or to the accent color.",
+      "category": "color",
+      "evidence": "polaris-tokens/src/themes/base/color.ts (color-text: gray[15], color-text-secondary: gray[13], color-text-disabled: gray[11]), colors/using-color.mdx 'Text' do-block ('default, secondary, or tertiary role colors')",
+      "machineCheckable": "yes — assert body text computed color is not rgb(0,0,0) and its lightness is in the 15–25% band; assert >= 2 distinct neutral text colors exist on the page"
+    },
+    {
+      "name": "single-brand-fill-per-area",
+      "rule": "Brand color exists to point at THE primary action. Per visual area (card, hero, section) there is at most one brand-filled element; sibling actions are secondary (bordered, neutral) or tertiary (plain text). Text/icons sitting on a fill use the fill's dedicated on-fill color, never the normal text color.",
+      "buildApplication": "One solid accent CTA per section, maximum; every other link/button in that section is outlined or plain. If the accent is dark, button text is white (on-fill), not the page ink color.",
+      "category": "hierarchy",
+      "evidence": "colors/palettes-and-roles.mdx 'Brand' ('Use multiple brand roles in the same area' = dont), using-color.mdx 'Fill' ('fills are the most vibrant…smaller surface areas', on-fill contrast rule)",
+      "machineCheckable": "yes — per <section>/landmark container, count elements whose background-color saturation > 30% and area > 1000px²: assert <= 1; contrast-check text color on those fills >= 4.5:1"
+    },
+    {
+      "name": "tabular-numbers-for-data",
+      "rule": "Any column or repeated row of numbers — prices, quantities, percentages — is set in tabular figures so digits align vertically. Monospace fonts are never used to fake this alignment, and mono is never decorative; it appears only for actual code. Oversized promotional numbers (a big price on a plan card) are exempt.",
+      "buildApplication": "Add font-variant-numeric: tabular-nums to tables, spec lists, and pricing rows. This matters doubly here because intake-frozen claims (prices, quantities) end up in exactly these spots.",
+      "category": "detail",
+      "evidence": "typography/using-type.mdx 'Tabular numbers' (do/dont blocks incl. 'Don't use mono in lieu of tabular numbers'), font-and-typescale.mdx 'Mono' dont-blocks",
+      "machineCheckable": "yes — for table cells / dl rows whose text matches a digit-heavy pattern, assert font-variant-numeric includes tabular-nums (or font-feature-settings 'tnum'); flag monospace font-family on non-code elements"
+    },
+    {
+      "name": "density-matched-to-task",
+      "rule": "Density is a deliberate per-zone choice, not a global constant: data the reader compares (specs, plans, claims) is set dense — 6px table-cell padding, tight lists; narrative/focus content is set loose — 16px card padding, 16px card gap, 8px gap inside button groups. Two densities never mix inside one card, and density never changes abruptly within one component. Vertical splits into columns of unrelated content are forbidden; grids are for selection/data only.",
+      "buildApplication": "Give the page at least one dense zone (a real spec/pricing table at ~6px cell padding) against looser prose sections; wrap each context in its own card with 16px padding and 16px gaps rather than packing mixed content into one container.",
+      "category": "layout",
+      "evidence": "polaris-tokens/src/themes/base/space.ts (space-table-cell-padding: 6px, space-card-padding/gap: 16px, space-button-group-gap: 8px), layout/density.mdx (high/low density do-dont), pro-design-language.mdx 'Increase density'",
+      "machineCheckable": "partially — measurable: td padding ~6px in tables, card padding 16px, and intra-card line spacing variance low; 'matched to task' itself needs LLM judgment"
+    },
+    {
+      "name": "stepped-space-scale",
+      "rule": "All spacing comes from one non-linear scale: {0,1,2,4,6,8,12,16,20,24,32,40,48,64,80,96,112,128}px. Steps are 4px-ish inside components, then jump in growing increments (24→32→40→48→64→80…) so macro whitespace grows faster than micro whitespace. 1px/2px exist only for hairline adjustments.",
+      "buildApplication": "Define spacing custom properties from this set. Use 4–24px within components, 16px between cards, and >= 48px (typically 64–96px) between page sections; never an arbitrary value like 35px or 18px.",
+      "category": "spacing",
+      "evidence": "polaris-tokens/src/themes/base/space.ts + src/size.ts (the full size ramp)",
+      "machineCheckable": "yes — parse every margin/padding/gap declaration (and computed values): assert each px value is a member of the allowed set"
+    },
+    {
+      "name": "break-alignment-only-across-containers",
+      "rule": "When optical alignment beats mathematical alignment, the break happens between separate containers, never inside one. Within any single container, all left edges sit on a small set of shared keylines; a neighboring container may adopt a different keyline. This is the safe mechanism for intentional asymmetry.",
+      "buildApplication": "When introducing the page's deliberate asymmetry (per S3's replacement rule), shift a whole section or card off the grid — e.g. an indented aside container — while keeping every element inside each container flush to that container's own keyline.",
+      "category": "layout",
+      "evidence": "layout/spacial-organization.mdx 'Breaking alignment' ('different alignment should be applied to separate containers, and never within the same container')",
+      "machineCheckable": "yes — rendered-geometry: within each container, cluster children's left x-coordinates; assert <= 3 distinct keylines with > 8px separation, while allowing distinct keylines across sibling containers"
+    },
+    {
+      "name": "press-darkens-rise-lightens",
+      "rule": "Interactive state styling follows physical lighting: an element pushed down the z-axis (:active/pressed) gets darker and may take an inset shadow; an element raised (hover, selected) gets lighter. Buttons are made tactile with 1px inset bevels (e.g. inset 0 -1px highlights/shades), not with growing drop shadows or scale transforms.",
+      "buildApplication": "Style CTA states as: rest = base color + subtle inset bevel; :hover = ~4–6% lighter background; :active = ~6–10% darker background or an inset shadow. No transform: scale(), no glow, no shadow enlargement on hover.",
+      "category": "detail",
+      "evidence": "depth/creating-depth.mdx 'Lighting' do-blocks, shadow.ts shadow-button / shadow-button-hover / shadow-button-*-inset token values, pro-design-language.mdx 'Craft juicy interactions'",
+      "machineCheckable": "yes — static CSS parse: for selectors with :active, assert background lightness < rest-state lightness; flag transform: scale or box-shadow blur increase inside :hover rules"
+    },
+    {
+      "name": "perceptually-uniform-accent-ramps",
+      "rule": "Palette shades are built on HSLuv lightness so any two hues at the same step have identical contrast against a given background (Red-12 and Blue-12 both pass the same ratio on Gray-1). Practical consequence: pick accent tints/shades by fixed lightness steps, not by eyeballing, and status colors keep strict semantics — green only for confirmation, yellow/orange for stalled/attention, red only for blocked/error, never as decoration or promotion.",
+      "buildApplication": "Derive the accent's hover/active/inset variants by shifting L in a perceptual space (oklch in modern CSS: e.g. oklch from the base with L ±0.06) rather than mixing arbitrary hexes; if the page shows statuses, map them semantically and never use red/green for marketing emphasis.",
+      "category": "color",
+      "evidence": "colors/palettes-and-roles.mdx 'Global palette' (HSLuv, 12 colors × 16 shades) and Success/Caution/Warning/Critical role do-dont blocks",
+      "machineCheckable": "partially — can verify accent variants differ only in lightness (same hue/chroma within tolerance in oklch); semantic correctness of status colors needs LLM judgment"
+    }
+  ],
+  "notes": "Extracted 2026-06-13 from a depth-1 clone at /tmp/polaris. Values cross-checked between written guidance (polaris.shopify.com/content/design/*.mdx) and the machine tokens (polaris-tokens/src). Deliberately excluded: anything restating design-tells.md (C4 shadow-everywhere, S5 uniform radius, C3 rainbow icons, L3 uniform rhythm) — the principles above are the positive systems behind those bans (elevation ladder, radius decrement, single-fill rule, density contrast). Polaris is admin-UI-oriented; for landing pages the body size scales up (13→16px) but the structural rules (4px grid, ink ramp, surface stack, space scale) transfer directly. Weight values 450/550/650 assume a variable font (Inter); with static fonts round to 400/500/600."
+}

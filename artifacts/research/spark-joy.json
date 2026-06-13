@@ -1,0 +1,215 @@
+{
+  "source": "sw-yx/spark-joy (https://github.com/sw-yx/spark-joy), cloned at /tmp/spark-joy; concrete numbers cross-checked against the write-ups it endorses: Anthony Hobday 'Visual design rules you can safely follow' (summarized inline in README), Erik Kennedy '7 Rules for Creating Gorgeous UI' (learnui.design), Jeremy Thomas 'Web Design in 4 minutes' (jgthms.com), Steve Schoger / Refactoring UI checklists (summarized inline), Material Design elevation + breakpoint tables (reproduced inline)",
+  "license": "MIT (spark-joy repo); linked third-party articles extracted as ideas-only (unprotectable principles, no prose copied)",
+  "notes": "Filtered against core/design-tells.md: only POSITIVE complements kept. Several principles are the constructive inverse of existing tells (e.g. shadow-physics vs C4, ordered-elevation vs C4, nested-radius vs S5, breakout-widths vs L2/L3, one-primary-CTA vs L4) — they tell the builder what to do instead, with numbers. Highest-leverage machine-checkable additions for src/audit.js or src/geometry.js: line-length 45–80ch, body >= 16px, line-height ratio bands, <= 5 font sizes / no weight < 400, 4px spacing-grid conformance, button padding 2:1 + 44px hit area, no pure #000 text, <= 2 accent hue clusters, box-shadow offset-y >= 0 with blur ~ 2x offset, <= 3 shadow signatures, one accent-filled CTA per viewport, scrim required for text-over-image, <= 4 left-edge alignment lines.",
+  "principles": [
+    {
+      "name": "Measure: 45-80 characters per line",
+      "rule": "Body copy line length stays between 60 and 75 characters (45-80 acceptable band); the canonical implementation is max-width: 60ch to 70ch on the text column.",
+      "buildApplication": "Give every paragraph-bearing section a content column with max-width: 65ch; never let running text span the full viewport at desktop widths.",
+      "category": "typography",
+      "evidence": "README.md '### Line Width' ('between 60-75 chars is good', 'max-width: 60ch'); Hobday rule list under '### Helpful podcasts/talks/articles' ('Use a line length around 70 characters')",
+      "machineCheckable": "yes - for each <p> with >120 chars of text, estimated chars-per-line (rendered width / (0.5 * font-size)) must fall in [45, 80]; or computed max-width <= 75ch"
+    },
+    {
+      "name": "Body text 16px floor",
+      "rule": "Primary reading text is >= 16px (1rem). Meta/caption text may go smaller, but never the main copy.",
+      "buildApplication": "Set html { font-size: 100% } and body text at 1rem-1.125rem; resist shrinking body copy to fit a layout - fix the layout instead.",
+      "category": "typography",
+      "evidence": "Hobday rule list ('Keep body text at 16px or above'); Matt D Smith checklist Typography section ('most important content no smaller than 16px')",
+      "machineCheckable": "yes - computed font-size of every <p> inside <main>/article content >= 16px"
+    },
+    {
+      "name": "Leading and tracking scale inversely with size",
+      "rule": "Body line-height ~1.5; display headings (>= 32px) line-height 1.1-1.2 with letter-spacing -0.01em to -0.02em; small all-caps labels get letter-spacing +0.05em to +0.1em wider.",
+      "buildApplication": "Three explicit pairings in CSS: body { line-height: 1.5 }, h1/h2 { line-height: 1.15; letter-spacing: -0.015em }, .eyebrow/uppercase labels { letter-spacing: 0.08em; font-size: 0.75-0.875rem }.",
+      "category": "typography",
+      "evidence": "jgthms 'Web Design in 4 minutes' Spacing step (line-height: 1.5); README.md '### Kerning and char spacing' (Schoger: widen tracking on allcaps section titles); Hobday ('Lower letter spacing and line height with larger text. Raise them with smaller text')",
+      "machineCheckable": "yes - computed line-height/font-size ratio: p in [1.4, 1.8]; h1 in [1.0, 1.3]; any element with text-transform: uppercase and font-size < 16px must have letter-spacing > 0"
+    },
+    {
+      "name": "Few font sizes; hierarchy via weight, color, case",
+      "rule": "2-4 font sizes per page (5 hard cap). Create remaining hierarchy with weight (400/500 base, 600/700 emphasis), color tiers, and casing - never with one-off sizes. Never use font-weight below 400; use a lighter color or smaller size instead.",
+      "buildApplication": "Declare a tokenized scale (e.g. 0.875 / 1 / 1.25 / 2 / 3rem) as custom properties and use nothing else; differentiate card titles from body by weight 600 and color, not by inventing 17px.",
+      "category": "typography",
+      "evidence": "README.md '### Font Sizing' ('DON'T GO CRAZY WITH FONT SIZES. Try to use 1-2 sizes and vary weight, space/leading, color, casing'; 'Don't go under font weight 400'); MDS '3 most common mistakes' under Helpful articles",
+      "machineCheckable": "yes - count distinct computed font-sizes across rendered text nodes <= 5; no computed font-weight < 400"
+    },
+    {
+      "name": "Two typefaces max, chosen by personality",
+      "rule": "At most 2 typefaces (plus monospace for code). Choose by site personality: elegant/classic = old-style serif (Garamond/Freight class); plain/safe = neutral grotesque (Inter class); technical = geometric/squared sans (DIN class); playful = rounded sans. Safe zero-cost default: the system-ui font stack.",
+      "buildApplication": "Map the concept sheet's tone answer to one of the four personality classes, pick one display + one body face (or a single family in 2 weights), and self-host or use system stack - no third face anywhere.",
+      "category": "typography",
+      "evidence": "README.md '### Fonts' ('Consider your site personality' list; System Font Stacks); Hobday ('Use two typefaces at most')",
+      "machineCheckable": "yes - distinct font-family stacks applied to rendered text <= 2, excluding monospace on code/pre"
+    },
+    {
+      "name": "Fluid display type via clamp with a rem term",
+      "rule": "Display/hero sizes use clamp(min, rem + vw, max), e.g. font-size: clamp(2rem, 2rem + 1.2vw, 3rem). The rem term preserves user zoom (pure vw breaks zoom accessibility).",
+      "buildApplication": "Set h1 with clamp() so the mobile and desktop screenshots both look intentional without media queries; never use a bare vw font-size.",
+      "category": "typography",
+      "evidence": "README.md '### Font Sizing' (clamp examples incl. CSS-Tricks v18 'clamp(2rem, calc(2rem + 1.2vw), 3rem)'; Sara Soueidan zoom caveat)",
+      "machineCheckable": "yes - h1 font-size value uses clamp() containing both a rem and a vw component; no font-size declaration is a bare vw unit"
+    },
+    {
+      "name": "Mathematically related measurements (modular scale + 4/8px spacing grid)",
+      "rule": "All spacing values come from a 4px or 8px grid (4, 8, 12, 16, 24, 32, 48, 64...); font sizes come from one modular ratio (1.2-1.333). No arbitrary one-offs like 13px or 37px.",
+      "buildApplication": "Define --space-1..--space-7 custom properties on the 4/8 grid and a type scale ratio up front; every padding/margin/gap references a token.",
+      "category": "spacing",
+      "evidence": "Hobday ('Measurements should be mathematically related'); Schoger checklist ('use a consistent spacing scale'); Refactoring UI summary ('Establish a spacing/sizing system'); typescale.com link in '### Font Sizing'",
+      "machineCheckable": "yes - parse all computed px padding/margin/gap values: >= 90% divisible by 4; font sizes fit a single geometric ratio within 1px tolerance"
+    },
+    {
+      "name": "Double your whitespace",
+      "rule": "When spacing feels finished, double it. Concrete anchors: list/menu items get vertical padding equal to the text height (12px font -> 12px above and below = row twice the text height); heading-to-rule gap exceeds the font's cap height; whitespace is the default state, content is what you add to it.",
+      "buildApplication": "Sections get >= 4rem vertical padding on desktop (>= 2.5rem mobile); >= 1.5x font-size gap between a heading and its body; nav/list rows >= 2.2x their font-size tall.",
+      "category": "spacing",
+      "evidence": "README.md '### 2D Spacing' ('More. Spacing. Please. Double your whitespace'); Erik Kennedy 7 Rules, Rule 3 (music-player measurements); Schoger ('Start with too much whitespace')",
+      "machineCheckable": "partially - rendered geometry: section blocks' padding-top >= 48px at 1440px viewport; list/nav item box height >= 2.2x its font-size"
+    },
+    {
+      "name": "Outer padding >= inner padding",
+      "rule": "A container's padding (gap from content to its edge) must equal or exceed the gaps between elements inside it; spacing between groups always exceeds spacing within groups.",
+      "buildApplication": "If card children are 16px apart, card padding is >= 16px (typically 24px); section padding exceeds the gap between cards in that section.",
+      "category": "spacing",
+      "evidence": "Hobday ('Make outer padding the same or more than inner padding'; 'Spacing should go between points of high contrast')",
+      "machineCheckable": "yes - rendered geometry: for each bordered/filled container, min(content-to-edge distance) >= max(sibling gap inside)"
+    },
+    {
+      "name": "Button geometry: 2:1 padding, 44px hit area",
+      "rule": "Buttons get horizontal padding about twice the vertical padding (e.g. 12px 24px); interactive elements have a minimum 44px hit area (pad or pseudo-element if visual size is smaller).",
+      "buildApplication": "Primary CTA: padding: 0.75em 1.5em with resulting height >= 44px; text links in nav get padding so the clickable box reaches 44px.",
+      "category": "detail",
+      "evidence": "Hobday ('Make horizontal padding twice the vertical padding in buttons'); Emil Kowalski tips under '## Animations & Transitions' ('Use 44px minimum hit area')",
+      "machineCheckable": "yes - computed padding-left/padding-top ratio on button-like elements in [1.6, 2.6]; rendered height of primary CTA >= 44px"
+    },
+    {
+      "name": "Near-black, near-white, saturated neutrals",
+      "rule": "Never pure #000 text or harsh #000-on-#fff. Body text around #444-#666 luminance; headings/strong darker (#1a-#33 range); tint all grays with the brand hue at low saturation (roughly 5-15%); commit to warm OR cool neutrals, never both.",
+      "buildApplication": "Derive the neutral ramp from the accent hue in HSL (same H, S 5-15%, L stepped); e.g. body hsl(210 15% 35%), headings hsl(210 25% 15%), page bg hsl(210 20% 98%).",
+      "category": "color",
+      "evidence": "README.md '## Colors' intro ('Don't use system default colors, too brutal... Never use black'); Hobday ('Use near-black and near-white', 'Saturate your neutrals', 'warm or cool, not both'); Schoger ('Grays dont have to be GRAY'); jgthms (#555 body, #333 headings)",
+      "machineCheckable": "yes - no computed text color equal to rgb(0,0,0) and no #000-on-#fff pairing; neutral colors (S < 30%) either share one hue family (within 60 degrees) or have S < 5%"
+    },
+    {
+      "name": "Black-and-white first, one accent hue",
+      "rule": "The page must read correctly in grayscale; color is added last and with purpose. One brand hue carries interaction/emphasis (links, CTA, selection); grays do everything else. Ceiling: grayscale + 1-2 hues, or multiple S/B variations of a single hue.",
+      "buildApplication": "Build the page with the neutral ramp only, verify hierarchy by squinting at a grayscale screenshot, then apply the accent to exactly: links, the primary CTA, one emphasis element.",
+      "category": "color",
+      "evidence": "Erik Kennedy 7 Rules, Rule 2 ('Black and white first'; 'grayscale + one color'; single-hue themes); README.md '## Colors' intro ('Pick a primary brand color... DO NOT OVERUSE IT')",
+      "machineCheckable": "yes - collect rendered colors with saturation > 25%: distinct hue clusters (30-degree bins) <= 2"
+    },
+    {
+      "name": "Palette steps have distinct brightness",
+      "rule": "Every color in the palette must remain distinguishable when converted to grayscale - meaningful pairwise luminance separation so hierarchy survives the squint test and colorblindness.",
+      "buildApplication": "After choosing accent + neutrals, check the palette in grayscale: accent vs its background and each neutral tier vs the next must differ visibly in luminance (target relative-luminance delta >= 0.08 between adjacent roles).",
+      "category": "color",
+      "evidence": "Hobday ('Colours in a palette should have distinct brightness values'); '## Colors' accessibility note (1 in 12 men colorblind; 'luminance contrast'); learnui 4 rules ('Pass the Squint Test')",
+      "machineCheckable": "yes - pairwise relative-luminance delta between palette role colors (bg, surface, text tiers, accent) >= 0.08; WCAG 4.5:1 for body text pairs"
+    },
+    {
+      "name": "Gradients: same hue family, mid stop, saturation bump",
+      "rule": "If a gradient is used at all: keep the end stops within one hue family (<= ~60 degrees apart, avoiding the gray dead zone of a straight RGB interpolation), add a third middle stop with boosted saturation, or vary only saturation/brightness of a single hue.",
+      "buildApplication": "Hero or accent surface gradient: linear-gradient(120deg, hsl(H S% L1%), hsl(H (S+20)% Lmid%), hsl(H S% L2%)) - one hue, three stops; never two distant hues.",
+      "category": "color",
+      "evidence": "README.md '### Color Gradients' note (hard edges; 'Add a third color stop in the middle and boost saturation'; gray dead zone); argyleink saturation-bump tip; '#### Background Gradients' hsl example",
+      "machineCheckable": "yes - parse gradient stops: hue distance between extreme stops <= 60 degrees, or >= 3 stops with the middle stop's saturation >= end stops"
+    },
+    {
+      "name": "Light comes from the sky (shadow physics)",
+      "rule": "Shadows fall downward: offset-y > 0, offset-x ~ 0, never upward. Blur ~ 2x the offset distance; alpha low (<= ~0.2). Realistic shadows have two parts (one tight darker + one larger softer). Inset treatment for wells/inputs, outset for buttons/cards; a button may have a subtly darker bottom edge / lighter top.",
+      "buildApplication": "One shadow token like box-shadow: 0 1px 2px rgb(H S% 10% / .12), 0 4px 8px rgb(H S% 10% / .08); inputs get a 1px border or faint inset instead of an outer shadow.",
+      "category": "detail",
+      "evidence": "Erik Kennedy 7 Rules, Rule 1 ('Light comes from the sky'; inset vs outset element lists); Hobday ('Make drop shadow blur values double their distance values'); Schoger ('Shadows have two parts', 'Use shadows to convey elevation')",
+      "machineCheckable": "yes - parse box-shadow: every non-inset shadow has offset-y >= 0; blur/offset-y ratio in [1.5, 3]; color alpha <= 0.25"
+    },
+    {
+      "name": "Ordered elevation scale (2-3 levels max)",
+      "rule": "Use at most 2-3 shadow signatures, mapped to z-roles on a consistent ladder (Material dp anchors: resting card 1, button 2, sticky header 4, dropdown/menu 8, modal 16-24). Higher surfaces are also lighter in color ('closer elements should be lighter').",
+      "buildApplication": "Define --shadow-1 (cards) and --shadow-2 (the one genuinely floating element, e.g. sticky nav or popover); nothing else gets a shadow; the floating element's background is the lightest surface tone.",
+      "category": "detail",
+      "evidence": "README.md '### Stacking and Elevation' (Material elevation table); Hobday ('Closer elements should be lighter'); complements design-tells C4 by giving the positive ladder",
+      "machineCheckable": "yes - distinct box-shadow value signatures across the page <= 3; position:sticky/fixed elements carry a larger shadow than static cards"
+    },
+    {
+      "name": "Breakout width system (content / popout / feature / full)",
+      "rule": "Define 3-4 named widths on one grid: content = min(65ch, 100% - 2*gap) with gap = clamp(1rem, 6vw, 3rem); popout = content + ~2rem each side; feature = content + ~5rem each side; full = viewport bleed. Promote only the elements that deserve emphasis (hero figure, key image, pull quote) to wider tracks.",
+      "buildApplication": "Implement Ryan Mulligan's named-grid-lines pattern in plain CSS grid on <main>; default children to the content track; assign exactly 1-3 emphasized elements to popout/feature/full - selective bleed is what breaks the uniform single-column tell.",
+      "category": "layout",
+      "evidence": "README.md '### Layout Bleed' ('A nice bleed lets you put emphasis on things selectively'; layout-breakouts grid code); positive complement to design-tells L2/L3",
+      "machineCheckable": "yes - rendered geometry: at least one non-paragraph element wider than the paragraph column while all p widths stay <= 75ch"
+    },
+    {
+      "name": "Responsive margins and content cap",
+      "rule": "Side margins: 16px on phones (< 600px), 32px on tablets (600-905px); desktop content column caps at roughly 840-1040px. One-liner: padding-inline: clamp(1rem, 6vw, 3rem) plus a max-width.",
+      "buildApplication": "body > main { padding-inline: clamp(1rem, 6vw, 3rem) } with section inner wrappers max-width: 60-65rem; check both screenshot widths against the margin minimums.",
+      "category": "layout",
+      "evidence": "README.md '### Responsive Layout Breakpoints' (Material table: 16dp margin 0-599, 32dp 600-904, body 840/1040); '### Layout Bleed' gap clamp",
+      "machineCheckable": "yes - at 375px viewport text content has >= 16px side padding; at 1440px the main content block measures <= ~1100px wide"
+    },
+    {
+      "name": "One primary CTA per view (action hierarchy)",
+      "rule": "Exactly one filled accent-colored button per viewport; secondary actions are outline/ghost/text style. Squint test: the blurred page should surface the single most important action first. 'Many primary buttons' is a flagged common mistake.",
+      "buildApplication": "Style .btn-primary (accent fill) and .btn-secondary (transparent bg, 1px border or plain link); use .btn-primary once in the hero and at most once again at page end.",
+      "category": "hierarchy",
+      "evidence": "'UI Common Mistakes Checklist' #2 (many primary buttons); Schoger ('give actions hierarchy'); learnui '4 rules' ('Pass the Squint Test')",
+      "machineCheckable": "yes - count button/a elements with accent-hue background fill per viewport-height slice of the rendered page <= 1"
+    },
+    {
+      "name": "Emphasize by de-emphasizing (3-tier text color)",
+      "rule": "Instead of making the key element louder, mute everything around it. Use exactly three neutral text tiers: primary near-black for headings, mid gray for body, light gray for meta/captions - and demote competing elements to lower tiers.",
+      "buildApplication": "Tokens --text-1/--text-2/--text-3 on the tinted-neutral ramp (e.g. L 15% / 35% / 55%); captions, dates, footnotes always take --text-3; never bold a label AND darken it AND enlarge it simultaneously.",
+      "category": "hierarchy",
+      "evidence": "Refactoring UI summary ('Emphasize by de-emphasizing'); README.md '## Colors' intro ('grey for secondary content, lighter grey for tertiary content'); Schoger ('use color to create a hierarchy')",
+      "machineCheckable": "yes - >= 3 distinct neutral text colors with monotonically decreasing contrast vs background; body tier still >= 4.5:1 WCAG AA"
+    },
+    {
+      "name": "Spacing and background shifts before borders",
+      "rule": "To separate content, prefer in order: (1) more whitespace, (2) a subtle background-color difference (white vs tinted near-white, ~2-4% luminance delta), (3) a soft shadow - reach for a 1px border last. Never place two hard divides adjacent (e.g. hr next to a bordered edge). Alternate section backgrounds to delimit page sections without lines.",
+      "buildApplication": "Give one or two sections a bg of hsl(H 20% 97%) against the white page instead of border-top rules; keep visible 1px borders only on inputs, tables, and one card variant.",
+      "category": "layout",
+      "evidence": "Schoger Refactoring UI process ('Use fewer borders', 'Alternate Backgrounds') and details checklist ('consider spacing instead of borders'); Hobday ('Don't put two hard divides next to each other')",
+      "machineCheckable": "partially - count of elements with visible borders bounded (e.g. <= 25% of sections use border separators); no adjacent sibling pair where both have full-width horizontal rules/borders; >= 2 distinct section background-colors with luminance delta <= 0.06"
+    },
+    {
+      "name": "Nested corner radius formula",
+      "rule": "When a rounded element sits inside another rounded element: inner radius = outer radius minus the padding between them (concentric corners). E.g. card radius 16px with 8px padding -> inner image radius 8px.",
+      "buildApplication": "Compute child radii from the parent: --r-outer: 16px; --pad: 8px; child { border-radius: calc(var(--r-outer) - var(--pad)) } - this is also the natural way to satisfy S5's 'differentiate radii by hierarchy'.",
+      "category": "detail",
+      "evidence": "Hobday ('Nest corners properly'); positive complement to design-tells S5",
+      "machineCheckable": "yes - for each rounded child inside a rounded parent: |parent radius - (child radius + gap between edges)| <= 2px"
+    },
+    {
+      "name": "Text over images requires a named contrast method",
+      "rule": "Never set text directly on a photo. Use one of four methods: (a) full-image dark overlay at 30-40% black; (b) put the text in its own solid box; (c) blur the image region behind the text; (d) floor fade - a scrim gradient from transparent to ~rgba(0,0,0,.5) behind bottom-anchored text.",
+      "buildApplication": "If the concept uses a hero photo, add a ::after overlay (rgba(15,23,30,.35)) or a bottom scrim gradient before placing the headline; verify the headline still meets 4.5:1 against the darkest sampled overlay area.",
+      "category": "imagery",
+      "evidence": "Erik Kennedy 7 Rules, Rule 4 ('Learn the methods of overlaying text on images'); README.md 'Misc Backgroundy Stuff' ('Dimming/coloring text on background images')",
+      "machineCheckable": "yes - if a text node overlaps an img/background-image box, require an intermediate layer with alpha >= 0.3 or a gradient scrim, or the text's own container has an opaque background"
+    },
+    {
+      "name": "Brand the browser details",
+      "rule": "Carry the accent color into the browser-rendered details: ::selection background, accent-color (checkboxes/radios), :focus-visible outline-color, ::marker, scrollbar-color. Six lines of CSS that read as hand-finished. Never remove the focus ring without a replacement.",
+      "buildApplication": "Add the web.dev accent block: :root { accent-color: var(--brand) } ::selection { background: var(--brand) } :focus-visible { outline-color: var(--brand) } ::marker { color: var(--brand) } html { scrollbar-color: var(--brand) transparent }.",
+      "category": "detail",
+      "evidence": "README.md '## Individual HTML Elements' opening snippet (web.dev/accent-color)",
+      "machineCheckable": "yes - stylesheet contains ::selection and (accent-color or :focus-visible outline-color) rules referencing the accent custom property; no outline: none without an alternative :focus-visible style"
+    },
+    {
+      "name": "Few alignment lines",
+      "rule": "Every element edge aligns with some other element's edge; minimize the count of distinct vertical alignment lines on the page (checklist phrasing: 'use as few lines as possible', aim <= 3-4 left edges). Long text is left-aligned for scannability; trust optical alignment over pure math when icons/quotes make mathematical alignment look off.",
+      "buildApplication": "Derive all blocks from the same grid so headings, body, and media share left edges; when an element looks misaligned despite equal numbers (e.g. a circular icon), nudge it 1-2px optically.",
+      "category": "layout",
+      "evidence": "Hobday ('Everything should be aligned with something else'; 'Optical alignment is often better than mathematical alignment'); 'Simple Layout checklist' (Alignment - use as few lines as possible); Matt D Smith checklist Layout section",
+      "machineCheckable": "yes (approximate) - collect left-edge x coordinates of rendered text blocks at 1440px: distinct values with 4px tolerance <= 4-5; flags scattered ad-hoc alignment but allows the deliberate asymmetry S3 requires"
+    },
+    {
+      "name": "Benefit-led short headline",
+      "rule": "The headline states the user benefit, not the feature list, and stays short - one line, roughly 8 words or fewer. Walls of text get broken up; CTA labels are specific verb phrases.",
+      "buildApplication": "Write the h1 from the intake's strongest concrete claim phrased as the user's outcome (claims stay immutable per intake freeze); push mechanism details to a subhead or body; CTA label names the action ('Start the 14-day trial'), not 'Learn more'.",
+      "category": "content",
+      "evidence": "Tracy Osborn checklist under Helpful articles ('Headlines: talk benefits not details. short.'; 'big clear CTA buttons'); works alongside design-tells T2 (no hype adjectives) by giving the positive formula",
+      "machineCheckable": "partially - h1 word count <= 10 is checkable; benefit-vs-feature judgment stays in the LLM lane"
+    }
+  ]
+}

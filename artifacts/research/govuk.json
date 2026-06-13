@@ -1,0 +1,159 @@
+{
+  "source": "GOV.UK Design System — https://github.com/alphagov/govuk-design-system (cloned depth-1 to /tmp/govuk-design-system; content in src/styles/*, src/components/*, src/patterns/*, data/colours.json)",
+  "license": "MIT (repo LICENSE, Crown Copyright / Government Digital Service). Site content additionally published under Open Government Licence v3.0. Ideas extracted, no prose copied.",
+  "notes": "Filtered against core/design-tells.md: nothing below duplicates L1-L4/C1-C4/T1-T5/S1-S5; principles are the POSITIVE counterparts (named patterns + numbers). GOV.UK is a content-first system tuned by iteration on real services, so most rules are evidence-backed (e.g. green start button A/B, Carer's Allowance progress-indicator removal).",
+  "principles": [
+    {
+      "name": "5px-rhythm type scale",
+      "rule": "Every text style sits on a fixed scale where the line-height is a multiple of 5px: 16/20, 19/25, 24/30, 27/30, 36/40, 48/50, 80/80 (desktop). New styles must snap to an existing point, never invent in-between sizes.",
+      "buildApplication": "Define the whole page with at most 5-6 font-size/line-height pairs taken from one scale whose line-heights are all multiples of a single base unit (e.g. 5px or 4px). No ad-hoc 17px/22px/1.45em values; every heading, body, caption maps to a named scale point in :root custom properties.",
+      "category": "typography",
+      "evidence": "src/styles/type-scale/index.md (large-screen table; 'every point on the type scale uses a line height in a multiple of 5px')",
+      "machineCheckable": "Parse computed font-size/line-height of all text nodes; assert <=6 distinct (size,line-height) pairs and every line-height in px is divisible by the base unit (5 or 4)."
+    },
+    {
+      "name": "Responsive type collapse, body never shrinks",
+      "rule": "Below the 640px breakpoint big sizes collapse (48→32, 36→27, 24→21) but body text stays 19px and small text stays 16px — mobile readers never get smaller body copy, only smaller display type.",
+      "buildApplication": "Add one media query at ~640px that reduces only h1/h2/display sizes (~33% for the largest, ~12-25% for mid sizes). Never reduce p/li font-size in the mobile query; body stays >=16px (ideally 19px equivalent) at every viewport.",
+      "category": "typography",
+      "evidence": "src/styles/type-scale/index.md (small-screens table vs large-screens table; tablet breakpoint 640px)",
+      "machineCheckable": "Render at 1280px and 360px; assert computed body <p> font-size identical at both widths and >=16px, while h1 computed size at 360px is 60-75% of its 1280px size."
+    },
+    {
+      "name": "Named spacing scale in 5px multiples",
+      "rule": "All margin/padding come from a 10-stop scale: 0, 5, 10, 15, 20, 25, 30, 40, 50, 60px (note the jump from 5px steps to 10px steps after 30). Responsively, large stops shrink on small screens (60→40, 50→30, 40→25, 30→20, 25→15, 20→15) while stops 0-15px stay fixed.",
+      "buildApplication": "Declare the scale as custom properties (--space-1: 5px ... --space-9: 60px) and use only those tokens for every margin/padding. In the mobile media query remap only --space-4 and up; micro-spacing stays constant.",
+      "category": "spacing",
+      "evidence": "src/styles/spacing/index.md (responsive and static spacing tables)",
+      "machineCheckable": "Parse all px margin/padding values in the stylesheet; assert each is a member of {0,5,10,15,20,25,30,40,50,60} (or the chosen scale set) — divisible-by-5 alone is necessary but not sufficient."
+    },
+    {
+      "name": "Measure capped at 75 characters",
+      "rule": "Lines of body text must not exceed ~75 characters; GOV.UK achieves this by keeping running text in a two-thirds column of a 1020px page even when there is no sidebar.",
+      "buildApplication": "Give every paragraph container max-width: 66ch–75ch (or ~630-680px at 19px body). Never let body copy span the full 1020px+ container, including under the hero and in footers.",
+      "category": "typography",
+      "evidence": "src/styles/layout/index.md ('no more than 75 characters per line'; 'main content should always be in a two-thirds column even if you're not using a corresponding one-third column')",
+      "machineCheckable": "Rendered geometry: for each <p> with >100 chars, assert boundingWidth / computedFontSize <= ~38 (≈75ch, since avg char ≈ 0.5em)."
+    },
+    {
+      "name": "Two-thirds / one-third asymmetric grid as default",
+      "rule": "The default page layout is asymmetric: main content 66.66%, secondary content 33.33%, inside a max-width 1020px wrapper. Halves and quarters exist but two-thirds(+one-third) is the recommended default for most pages.",
+      "buildApplication": "Set the outer container max-width ~1020px with side gutters. Build at least the main body section as a 2fr/1fr grid (content + aside with related links, key facts, or contact), not 1fr/1fr. Main flow content lives in the 2fr column.",
+      "category": "layout",
+      "evidence": "src/styles/layout/index.md ('default maximum page width is 1020px'; 'we recommend either a two-thirds or a two-thirds and one-third layout'; 'Most GOV.UK pages follow a two-thirds and one-third layout')",
+      "machineCheckable": "Rendered geometry: assert container max-width <=1100px; detect at least one row whose two children have width ratio between 1.8:1 and 2.2:1."
+    },
+    {
+      "name": "Caption-over-heading for context",
+      "rule": "When a heading needs higher-level context (section name, product family, document type), render it as a small grey caption line directly above the h1 — never inflate the h1 with the context or stack two headings. Caption is one scale step context text in secondary grey.",
+      "buildApplication": "For detail/proposal pages: <p class=\"caption\">Proposal · Acme Corp</p> followed by <h1>the specific subject</h1>. Caption styled at 16-24px, color = secondary-text grey, regular weight; the h1 itself names only the page's specific subject.",
+      "category": "hierarchy",
+      "evidence": "src/styles/headings/index.md ('Headings with captions'), src/styles/headings/captions/index.njk (govuk-caption-xl above govuk-heading-xl), src/patterns/question-pages/index.md (section shown as caption, heading relates specifically to current page)",
+      "machineCheckable": "Parse DOM: if an element immediately precedes h1 and shares its block, assert its font-size < 0.55x of h1 and its color differs from primary text color toward grey."
+    },
+    {
+      "name": "One lead paragraph, then standard body",
+      "rule": "At most ONE lead paragraph per page: 24px (vs 19px body), placed directly after the h1, summarising the page. Everything else is 19px body; 16px small text used sparingly, never for the majority of copy.",
+      "buildApplication": "After the h1, write one 1-3 sentence intro paragraph at ~1.25x body size, regular weight. All subsequent paragraphs use the single body size. Do not repeat the large-paragraph treatment in later sections.",
+      "category": "hierarchy",
+      "evidence": "src/styles/paragraphs/index.md ('Lead paragraphs use 24px type on desktop and you should only use it once per page'; 'majority of your body copy should use the standard 19px size')",
+      "machineCheckable": "Count <p> elements whose computed font-size is between 1.15x and 1.4x the modal paragraph size: must be <=1, and it must appear before any <h2>."
+    },
+    {
+      "name": "One primary CTA, left-aligned, named after the action",
+      "rule": "Exactly one primary button per page, aligned to the LEFT edge of the content column (not centered). Its label is the specific action in sentence case ('Start now', 'Apply now', 'Register or update your details') — never 'Next', 'Learn more', 'Get started today'. Secondary calls to action are plain links, not second buttons. Evidence: green start buttons measurably improved click-through.",
+      "buildApplication": "Render one button element styled as primary; any other action is an underlined text link. Button container has no text-align:center / margin:auto. Label = verb + object describing what actually happens. Reuse the page's success/brand colour for it rather than introducing a new hue.",
+      "category": "hierarchy",
+      "evidence": "src/components/button/index.md ('Avoid using multiple default buttons'; 'Align the primary action button to the left edge'; research note on green start buttons), src/patterns/question-pages/index.md ('aligned to the left so users do not miss it'), src/patterns/start-using-a-service/index.md ('if you need a secondary call to action, use a standard link')",
+      "machineCheckable": "Count elements matching button/primary-button styling (background-filled <a>/<button>): exactly 1 visually-primary instance; rendered geometry: its left edge within 8px of the content column's left edge."
+    },
+    {
+      "name": "Functional colour roles, variants by tint/shade",
+      "rule": "Colours are assigned by FUNCTION, not decoration: text near-black, secondary-text grey, one brand/link blue, error red, success green, border light-grey, focus yellow. Any additional variants are derived from existing hues by tint (25/50/80/95%) or shade (25/50%) — never by introducing a new hue.",
+      "buildApplication": "Define <=7 colour custom properties named by role (--color-text, --color-text-secondary, --color-brand, --color-border, --color-bg, optional --color-success/--color-error). Hover/active/background-tint states are computed as mixes of these (color-mix or precomputed tints), so the whole page resolves to 2-3 base hues.",
+      "category": "color",
+      "evidence": "src/styles/colour/index.md (functional colours section; tint-25/50/80/95 and shade-25/50 variants), data/colours.json (text #0b0c0c, secondary-text #484949, brand #1d70b8, border #cecece, focus #ffdd00, error, success)",
+      "machineCheckable": "Extract all colours from CSS, convert to HSL, cluster by hue (ignoring near-greys): assert <=3 distinct hue families across the page."
+    },
+    {
+      "name": "Near-black text, grey only for secondary, AA everywhere",
+      "rule": "Body text is near-black (#0b0c0c-style), not pure #000 and not mid-grey. A single secondary-text grey (#484949-class, still ~9:1 contrast) is reserved for captions/metadata. Every text and interactive element meets WCAG 2.2 AA 4.5:1, including white-on-dark elements.",
+      "buildApplication": "Set body color to a near-black (L* < 10). Use exactly one lighter grey for secondary text and verify it still passes 4.5:1 on its background. Run every text/background pair (including buttons and links on dark) through a contrast check before shipping.",
+      "category": "color",
+      "evidence": "src/styles/colour/index.md (contrast section; functional text/secondary-text values in data/colours.json), src/components/button/index.md and src/styles/links/index.md (4.5:1 for inverse elements)",
+      "machineCheckable": "Compute WCAG contrast ratio for every rendered text node against its effective background: all >=4.5:1; assert body text colour luminance corresponds to near-black (not #000, not lighter than ~#333)."
+    },
+    {
+      "name": "Body links: underlined, blue, no stunts",
+      "rule": "Links in running text are underlined and use the link colour; underlines may be dropped only where position alone signals link-ness (header/nav). No external-link icons, no opening in new tabs, no full stop inside the linked text. Link text describes the destination.",
+      "buildApplication": "Keep text-decoration: underline on all <a> inside paragraphs/lists; no target=\"_blank\"; nav links may drop underline. Never make a link's only distinction its colour-on-hover.",
+      "category": "detail",
+      "evidence": "src/styles/links/index.md ('Links are blue and underlined by default'; 'Avoid opening links in a new tab'; 'Do not use an external link icon')",
+      "machineCheckable": "For every <a> whose parent is <p>/<li>: computed text-decoration-line includes underline; zero target=\"_blank\" attributes; nav-context links exempt."
+    },
+    {
+      "name": "Designed focus state, never removed",
+      "rule": "Focused elements get a deliberate high-visibility treatment — GOV.UK uses yellow (#ffdd00) background + black text + thick bottom border for text, yellow outline + thickened border for inputs — chosen to pass non-text contrast on both light and dark backgrounds. outline:none without replacement is forbidden.",
+      "buildApplication": "Add an explicit :focus-visible rule for links and buttons: either a >=3px outline in a hue that contrasts with both page backgrounds, or a background+border combo. Never write outline: none / outline: 0 without a replacement style in the same rule.",
+      "category": "detail",
+      "evidence": "src/get-started/focus-states/index.md (yellow + black + thick bottom border; WCAG 2.2 1.4.11), data/colours.json (focus #ffdd00, focus-text #0b0c0c)",
+      "machineCheckable": "Static CSS parse: any rule containing outline:none/0 on :focus must also set background-color, box-shadow, or border; presence of at least one :focus or :focus-visible rule for a, button."
+    },
+    {
+      "name": "One thing per page, one job per section",
+      "rule": "Each page does one job and the h1 names that job specifically — not the category it belongs to. Translated to sections: each section answers exactly one user question; headings must be unique and specific to the content directly below them; if a section needs two headings it should be two sections.",
+      "buildApplication": "Single <h1> stating the page's specific purpose. Each <h2> phrased as the one question/job its section resolves; no generic 'Features' / 'About us' buckets containing three unrelated ideas. If content under a heading covers two topics, split it.",
+      "category": "content",
+      "evidence": "src/patterns/question-pages/index.md ('Start by asking one question per page'; 'Do not use the same page heading across multiple pages'; 'heading should relate specifically to the information on the current page')",
+      "machineCheckable": "Partially: exactly one <h1>; all h2 texts unique; sections (h2-to-h2 spans) each contain content. Specificity of headings needs the LLM lane."
+    },
+    {
+      "name": "List discipline: lead-in colon, lowercase items",
+      "rule": "Bulleted lists are introduced by a lead-in sentence ending in a colon; items start lowercase and carry no terminal full stop. Numbered lists are used only when order matters and their items are full sentences ending in periods. Lists exist to break up text, not to decorate.",
+      "buildApplication": "Every <ul> in body copy is preceded by a <p> ending with ':' that frames it; <li> fragments lowercase, no trailing '.'. Use <ol> for ordered steps with complete sentences. No orphan bullet lists dropped in without a lead-in.",
+      "category": "content",
+      "evidence": "src/styles/lists/index.md ('Introduce bulleted lists with a lead-in line ending in a colon... lowercase letter... no full stop'; numbered lists when order is relevant)",
+      "machineCheckable": "DOM parse: for each body <ul>, previous element sibling is a <p> whose text ends with ':'; each <li> text starts lowercase and does not end with '.'."
+    },
+    {
+      "name": "Key facts as bordered key/value rows, not cards",
+      "rule": "Sets of factual pairs (price, dates, scope, deliverables, metadata) are presented as a summary list: a <dl> of key/value rows separated by 1px hairline borders, optionally with a row action link. Borders join each fact to its row; cards/grids are not used for key facts.",
+      "buildApplication": "For proposal/detail pages, render specs, pricing breakdown, timeline and terms as a two-column <dl> (key ~one-third bold, value two-thirds), rows divided by 1px solid light-grey border-bottom. Use a real <table> only for genuinely tabular comparisons; use tabular-nums for the figures.",
+      "category": "proposal",
+      "evidence": "src/components/summary-list/index.md ('show information as a list of key facts'; borders 'join the information on each row'; think carefully before removing borders), src/styles/font-override-classes/index.md (tabular numbers for comparison)",
+      "machineCheckable": "Presence of <dl> (or table) for fact groups of >=3 key/value pairs instead of repeated card divs; rows have computed border-bottom 1px; numeric columns have font-variant-numeric: tabular-nums."
+    },
+    {
+      "name": "Keyline surfaces: border weight instead of shadow or fill",
+      "rule": "Blocks are differentiated by structural lines, not effects: inset/quote blocks get a thick (10px) solid grey LEFT border on the plain background; sections separate via an <hr> whose default visibility is just its margin (line optional); warnings use an icon + bold text, not a coloured panel. Each treatment is reserved for one meaning and used sparingly — inset text 'is less effective if overused'.",
+      "buildApplication": "For callouts/quotes: border-left: 10px solid #b1b4b6-class grey, padding-left ~15px, no background fill, no shadow, no radius. Between major sections: spacing from the scale, with at most a 1px rule when a thematic break is needed. At most one inset block per screenful.",
+      "category": "detail",
+      "evidence": "src/components/inset-text/index.md (use sparingly; avoid for critical info), src/styles/section-break/index.md (break visible only by margin by default), src/components/warning-text/index.md (icon + bold for legal warnings)",
+      "machineCheckable": "Detect callout blocks: assert border-left-width >= 5px with background equal/near page background and box-shadow: none; count such blocks per 100vh <= 1."
+    },
+    {
+      "name": "Costs, time and prerequisites before the CTA",
+      "rule": "The start point gives 'just enough' information ahead of the action button: what the thing does, what it costs, roughly how long it takes, and what the user must have ready (documents/info they would not know from memory) — plus non-primary routes (phone, paper). Complex eligibility logic is NOT dumped on the start page.",
+      "buildApplication": "On a landing page, place a short block immediately before the primary CTA: price (from intake-frozen claims), expected duration, and a 'what you'll need' list. Do not bury price below the fold or behind the CTA. Omit any item with no real data rather than inventing one (consistent with S1/S2 bans).",
+      "category": "proposal",
+      "evidence": "src/patterns/start-using-a-service/index.md ('just enough information'; 'how much it costs and roughly how long it will take'; list documents/information needed; 'avoid using the start point to provide complex eligibility information')",
+      "machineCheckable": "Partially: rendered geometry — if the intake claim set contains a price/duration, assert its text appears in the DOM above (smaller y-offset than) the primary CTA."
+    },
+    {
+      "name": "Left-aligned ragged text, bold rationed",
+      "rule": "Body copy is left-aligned, never justified (justification creates uneven word spacing) and never centered for multi-line text. Bold is reserved for critical data points inside sentences (reference numbers, key figures) — too much bold destroys the signal.",
+      "buildApplication": "No text-align: justify anywhere; text-align: center only for single-line elements if at all. Use <strong> only on the handful of load-bearing numbers/facts (the intake-frozen claims are good candidates), not on whole sentences.",
+      "category": "typography",
+      "evidence": "src/styles/font-override-classes/index.md ('Do not justify blocks of body copy'; left-align body copy; 'Use bold text sparingly')",
+      "machineCheckable": "Static CSS: zero text-align: justify declarations; rendered: no multi-line <p> with text-align center; ratio of bold characters to total body characters < 5%."
+    },
+    {
+      "name": "Progressive disclosure for minority-need content",
+      "rule": "Information only SOME readers need goes behind a native <details> disclosure with a short, descriptive summary link — instead of an extra section, accordion, or FAQ. Content most users need must never be hidden this way.",
+      "buildApplication": "For edge-case material on a detail/proposal page (full terms, methodology, edge pricing), use <details><summary>short specific label</summary>…</details> inline where the question arises. One section of hidden content → details; never hide the price or core claims.",
+      "category": "content",
+      "evidence": "src/components/details/index.md ('reveal more detailed information only if they need it'; 'Do not use details to hide information the majority of users will need'; details over tabs/accordion for a single section)",
+      "machineCheckable": "Partially: DOM — intake-frozen claims (price/quantity) must NOT be descendants of <details>; <summary> text length <= ~60 chars."
+    }
+  ]
+}

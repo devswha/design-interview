@@ -1,0 +1,111 @@
+{
+  "source": "Multi-source synthesis: Proposify State of Proposals / proposal-structure research (proposify.com/blog/proposal-structure-tips, proposify.com/state-of-proposals-2024); adall.kr evaluator-perspective RFP scoring analysis (adall.kr/blog/6f38c542); Formlio pricing-presentation guide (formlio.com/blog/how-to-present-pricing-to-clients); moducreative B2B 제안서 PPT 디자인 가이드 (moducreative.com); consulting slide standards / Minto pyramid action-title sources (deckary.com, think-cell.com, slideworks.io); responsive.io proposal-format guide; sifthub/loopio executive-summary guides; Korean public-sector RFP 평가기준 documents (pps.go.kr, story-d.com)",
+  "license": "ideas-only",
+  "notes": "Extracted unprotectable ideas/statistics only; no prose copied. Key empirical anchors: winning proposals average 7 sections / 10-11 pages (lost: 13); images +72% close rate; tiered pricing +98% revenue vs single price but winning proposals usually carry only 2 fee options; evaluators read by scoring rubric, not narrative order, spending <1 min on low-weight sections; bundled offers close 16-28% higher. Audience model is the inverse of a landing page: a known evaluator with a checklist and one decision (approve / take the meeting), so repetition of CTAs, marketing heroes, and anonymous tone are all wrong for this page type. All 13 principles are tagged category=proposal per task instruction.",
+  "principles": [
+    {
+      "name": "seven-section-spine",
+      "rule": "Canonical proposal order: (1) cover/title block, (2) executive summary, (3) problem/understanding, (4) approach/solution, (5) evidence (cases + team), (6) pricing, (7) terms + next step. Winning proposals average 7 sections across 10-11 pages; lost ones average 13 pages. Price never appears before the approach and value are established. No marketing sections (feature grid, FAQ, hero banner) interleaved.",
+      "buildApplication": "Emit exactly 6-8 top-level <section> elements in this order with ids (summary, problem, approach, evidence, pricing, next-steps). Place the pricing section after both problem and approach sections in DOM order.",
+      "category": "proposal",
+      "evidence": "proposify.com/blog/proposal-structure-tips (7-section list, 11-page average); formlio.com (never lead with price)",
+      "machineCheckable": "yes — count top-level sections (6-8); the first section whose text matches price patterns (₩|$|원 + digits) must come after the section whose heading matches problem/approach vocabulary; DOM-order check."
+    },
+    {
+      "name": "executive-summary-first-screen",
+      "rule": "Directly after the title block: a 300-500 word executive summary (~10% of total document length, one screen max) stating problem → recommendation → quantified outcome → the ask, conclusion first (Minto pyramid). The decision-maker who never scrolls further must still get the full argument and the next step.",
+      "buildApplication": "Second block of the page is a visually denser summary (slightly larger body size or tinted left rule), containing one inline anchor to the next-steps section as the ask.",
+      "category": "proposal",
+      "evidence": "sifthub.io / loopio.com executive-summary guides (one page, 300-500 words, 10% rule); slideworks.io pyramid principle",
+      "machineCheckable": "yes — word count of the first non-cover section ≤ 500 and ≥ 100; it precedes the approach and pricing sections in DOM order."
+    },
+    {
+      "name": "action-title-headings",
+      "rule": "Section headings are full-sentence assertions stating the takeaway (roughly 6-16 words, contains a verb), not category labels: '도입 효과' ✗ → '운영 비용을 6개월 내 30% 줄이는 3단계 전환 계획' ✓. Reading only the heading chain yields the complete argument; every element under a heading must pass the 'so what' test against it.",
+      "buildApplication": "Write each h2 as the section's conclusion sentence before writing the body; if an element doesn't support its heading's claim, delete it.",
+      "category": "proposal",
+      "evidence": "deckary.com consulting slide standards; think-cell.com pyramid principle (action titles, executives read titles only)",
+      "machineCheckable": "partial — deterministic: average h2 word count ≥ 6 and no h2 is a 1-2 word label; assertion quality needs the LLM lane."
+    },
+    {
+      "name": "weight-proportional-space",
+      "rule": "Space follows the evaluator's scoring weight, not the vendor's ego: approach + evidence sections ≥ 50% of body content; company self-introduction ≤ 15%. Rubric guide: roughly 1.5-2 pages per 10 rubric points (e.g., 30-point understanding/strategy = 8 pages, 10-point team = 3 pages). Evaluators spend 5+ minutes on 15+ point items and under 1 minute scanning low-weight ones.",
+      "buildApplication": "Budget word count per section before writing; render the company intro as a short block or sidebar, never a full-height section; give problem/approach the longest sections.",
+      "category": "proposal",
+      "evidence": "adall.kr evaluator-perspective analysis (time-per-weight table, page allocation formula); pps.go.kr 평가 배점 documents",
+      "machineCheckable": "yes — per-section text-length (or rendered-height) share: approach+evidence ≥ 50%, about/company ≤ 15% of total."
+    },
+    {
+      "name": "numbered-toc-navigation",
+      "rule": "Document navigation, not marketing navigation: a numbered table of contents with in-page anchor links matching numbered section headings (1, 2, 3 / CSS counters), because evaluators read in rubric order, not narrative order, and must jump to the item they are scoring. In Korean procurement practice the TOC exists for the evaluator and its order is not rearranged for storytelling.",
+      "buildApplication": "Top-of-page (or sticky-aside on desktop) <nav><ol> of anchors resolving to section ids; prefix h2s with numbers via CSS counters; no external links in this nav.",
+      "category": "proposal",
+      "evidence": "adall.kr (evaluators reference checklist, read by rubric); PUBLY 제안요청서 분석 (TOC is for the evaluator); responsive.io proposal format (TOC + skimmability)",
+      "machineCheckable": "yes — a <nav> containing ≥ 5 href=\"#...\" anchors, each resolving to an existing id; headings carry sequential numbering."
+    },
+    {
+      "name": "itemized-pricing-table",
+      "rule": "Pricing is a semantic <table> with item / description / qty / unit / amount columns and one emphasized total row — never landing-page pricing cards. 2-3 options maximum (winning proposals typically carry 2); if options exist, the premium anchors first and the recommended option is highlighted by exactly one visual means. ≤ 9 line items (group related services). Round numbers; no charm pricing (no 9,900 / .99 endings) for professional services. Explicitly list what is out of scope.",
+      "buildApplication": "thead/tbody/tfoot table; numeric cells right-aligned with font-variant-numeric: tabular-nums; the single accent color marks only the total row or recommended column; an out-of-scope list directly below the table.",
+      "category": "proposal",
+      "evidence": "formlio.com pricing-presentation guide (2-3 options, anchoring, round numbers, exclusions); proposify.com (tiered +98%, interactive +12.6%)",
+      "machineCheckable": "yes — pricing section contains a <table>; option columns ≤ 3; ≤ 9 body rows; price tokens not matching /(9[,.]?900|\\.99)\\b/; numeric td text-align right."
+    },
+    {
+      "name": "single-approval-cta",
+      "rule": "One conversion only: approval or the next meeting. Exactly one CTA block, located in the final next-steps section — never repeated buttons through the body (the landing-page repeat-CTA pattern signals the wrong genre). The next-steps section enumerates who does what by when (client's task, vendor's task, deadline) and ends with one direct action (mailto / calendar link / signature line) plus a contact person.",
+      "buildApplication": "Final section = numbered 2-4 step list with dates + one button or mailto + name/title/phone of the accountable person. Zero buttons in all preceding sections.",
+      "category": "proposal",
+      "evidence": "venngage.com / arrows.to sales-proposal guides (clear next-steps section, single CTA such as booking a call); buzzboard.ai weak-CTA analysis",
+      "machineCheckable": "yes — count of button-like elements/CTA links page-wide ≤ 2 (TOC anchors excluded); the last section contains a mailto: or tel: link and a date pattern."
+    },
+    {
+      "name": "addressed-document-header",
+      "rule": "The cover is an addressed document header, not an anonymous hero: prepared-for (client name), prepared-by, date, proposal version/number, and a validity date ('이 제안은 2026-07-12까지 유효'). Type-led title block, zero background imagery. The validity date creates legitimate urgency and is reused beside pricing and next steps.",
+      "buildApplication": "Cover block as a <header> with a dl or stacked metadata lines; client name set at equal or larger size than vendor name; repeat the validity date in the pricing or next-steps section.",
+      "category": "proposal",
+      "evidence": "shopify.com/kr/blog/business-proposal (cover page metadata); formlio.com (validity creates the deadline); instructionalsolutions.com proposal format",
+      "machineCheckable": "yes — first section contains a date pattern and the client-name string (from intake); computed background-image: none in the first viewport; client-name font-size ≥ vendor-name font-size."
+    },
+    {
+      "name": "client-pronoun-dominance",
+      "rule": "In the problem and approach sections, occurrences of the client's name / '귀사' / 'you(r)' must be ≥ occurrences of the vendor's name / '저희·당사' / 'we/our'. The problem statement restates the client's stated challenge in the client's own words (from the RFP/intake) before any solution appears. Vendor-dominant language is allowed only in the evidence/company section.",
+      "buildApplication": "Open the problem section by quoting or paraphrasing the client's own framing of the problem; audit pronoun balance per section while writing.",
+      "category": "proposal",
+      "evidence": "adall.kr (restate client challenges verbatim: '귀사의 ○○ 달성을 위해'); PUBLY (write for the evaluator, not yourself); getaccept.com 7-step guide (client-centric)",
+      "machineCheckable": "yes — deterministic token count: client-name+second-person tokens ≥ vendor-name+first-person tokens within problem and approach sections."
+    },
+    {
+      "name": "structured-verifiable-evidence",
+      "rule": "Evidence is structured metadata, not adjectives: up to 3 reference cases, each row carrying project name, period, scale/budget, and one quantified result ('매출 35% 증가'); ≥ 5 quantified metrics across the whole proposal, every number traceable to intake claims; team members listed with role and allocation (man-month or % time). If real references don't exist, the section shrinks or disappears — never pad (positive counterpart of tells S1/S2).",
+      "buildApplication": "Render references as a table or repeated dl rows with identical field structure; team as name/role/allocation rows; pull every metric from the frozen intake claim list.",
+      "category": "proposal",
+      "evidence": "adall.kr (3+ references with metrics/timeline/budget, man-month org charts, ≥5 quantified metrics checklist); proposify.com (social proof +34% conversions)",
+      "machineCheckable": "partial — deterministic: evidence section contains a table/dl whose rows each include a date pattern and a numeric pattern; total numeric claims ≥ 5 and all match intake claims (existing claim-diff lane). Authenticity itself needs the human/LLM lane."
+    },
+    {
+      "name": "risk-acknowledgment-block",
+      "rule": "Name 1-3 real risks or limitations, each paired with a mitigation — acknowledged weakness plus remedy outscores silence with evaluators ('업계 경험은 짧지만 유사 도메인 3건 + 자문역 투입'). Render as a two-column risk → mitigation table or paired list, visually quiet (no alarm colors), placed inside the approach section or just before pricing.",
+      "buildApplication": "A compact subsection titled as an assertion ('우리가 본 리스크와 대응'), 2-column grid or table, neutral palette; never bury it in fine print.",
+      "category": "proposal",
+      "evidence": "adall.kr (weakness acknowledgment + remedy outscores silence; mitigation example)",
+      "machineCheckable": "partial — presence of a risk/mitigation-labeled paired structure (table or 2-col dl) before the pricing section is detectable; substance needs the LLM lane."
+    },
+    {
+      "name": "phase-timeline-not-prose",
+      "rule": "The execution plan is a visual phase timeline — 3-5 phases, each with name, date range, and deliverable — built from HTML/CSS (grid rows or a table), never paragraphs and never stock graphics. Diagrams for methodology are what evaluators expect; pair the timeline adjacent to pricing so cost maps to phases.",
+      "buildApplication": "CSS grid timeline: phase name column + date-range column (tabular-nums) + deliverable column; optionally bar widths proportional to phase duration; place immediately before or beside the pricing table.",
+      "category": "proposal",
+      "evidence": "adall.kr (diagrams mandatory for methodology); moducreative.com (execution = timeline graphics); formlio.com (pair pricing with timeline)",
+      "machineCheckable": "partial — approach/plan section contains ≥ 3 sibling elements each holding a date-range pattern; full semantic correctness needs the LLM lane."
+    },
+    {
+      "name": "document-measure-and-density",
+      "rule": "Print-document reading texture, not marketing texture: prose measure 60-75ch (max-width ≈ 65-68ch), body 16-18px, line-height 1.5-1.6; tables may exceed the prose measure. One accent color total, spent only on key numbers, the recommended option, and the total row. Whole-page word budget ≈ 2,000-3,500 words — the web equivalent of the 10-11-page winner versus the 13-page loser. No gradients, no illustration, no decorative imagery anywhere; real artifacts (screenshots, charts) only — proposals with genuine images close 72% more.",
+      "buildApplication": "Prose containers max-width: 68ch; tables/timeline allowed to span a wider grid column; define a single --accent custom property and use it ≤ 10 times; count words before delivery and cut 'about us' first.",
+      "category": "proposal",
+      "evidence": "proposify.com state-of-proposals (11 vs 13 pages, images +72%); responsive.io / instructionalsolutions.com format guides (white space, digestible sections); walton.uark.edu proposal formatting",
+      "machineCheckable": "yes — computed max-width of prose blocks ≤ ~75ch equivalent; body font-size 16-18px and line-height 1.5-1.6; total text word count within 1,500-4,000; accent-color usage count; zero gradient/background-image declarations."
+    }
+  ]
+}
