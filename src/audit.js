@@ -584,8 +584,29 @@ export function auditHtml(html) {
 
 // 정적 감사 결과에 시각 레인(geometry.js) findings를 합류시킨다. warnings는
 // 정적 레인에서만 나오므로 그대로 통과시킨다.
+//
+// 같은 원칙 ID가 정적/시각 암으로 나뉘어 들어오는 경우(DE3 quality-floor의
+// 대비 검사 등)는 하나의 finding으로 병합한다. 같은 원칙을 두 번 denominator에
+// 넣으면 이중 채점이 되므로, pass는 AND, evidence는 순서대로 결합한다.
 export function combineAudits(staticResult, visualFindings) {
-  const findings = [...staticResult.findings, ...visualFindings];
+  const findings = staticResult.findings.map((f) => ({ ...f }));
+  const indexById = new Map(findings.map((f, i) => [f.id, i]));
+  for (const visual of visualFindings) {
+    const existingIndex = indexById.get(visual.id);
+    if (existingIndex === undefined) {
+      indexById.set(visual.id, findings.length);
+      findings.push({ ...visual });
+      continue;
+    }
+
+    const existing = findings[existingIndex];
+    const evidence = [existing.evidence, visual.evidence].filter(Boolean).join('; ');
+    findings[existingIndex] = {
+      ...existing,
+      pass: existing.pass && visual.pass,
+      evidence: evidence || null,
+    };
+  }
   const failed = findings.filter((f) => !f.pass).map((f) => f.id);
   return {
     findings,

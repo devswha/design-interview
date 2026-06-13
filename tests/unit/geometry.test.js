@@ -27,7 +27,7 @@ test('feature-grid: L1 caught by box geometry, invisible to static audit', opts,
   assert.match(l1.evidence, /3× identical 280×180/);
 });
 
-test('clean restaurant page passes both visual tells', opts, async () => {
+test('clean restaurant page passes visual checks', opts, async () => {
   const findings = await analyzeVisualTells(fixture('tests/fixtures/clean/restaurant.html'));
   assert.ok(findings.every((f) => f.pass), JSON.stringify(findings));
 });
@@ -37,6 +37,23 @@ test('combineAudits merges visual findings into score', () => {
   const merged = combineAudits(staticResult, [{ id: 'L1', name: 'uniform-card-grid', pass: false, evidence: 'e' }]);
   assert.deepEqual(merged.failed, ['L1']);
   assert.equal(merged.slopScore, 0.5);
+  assert.equal(merged.pass, false);
+});
+
+test('combineAudits merges duplicate IDs without double-scoring', () => {
+  const staticResult = {
+    findings: [{ id: 'DE3', name: 'quality-floor', pass: true, evidence: null }],
+    failed: [],
+    slopScore: 0,
+    pass: true,
+  };
+  const merged = combineAudits(staticResult, [
+    { id: 'DE3', name: 'quality-floor', pass: false, evidence: 'contrast 1.8:1' },
+  ]);
+  assert.deepEqual(merged.failed, ['DE3']);
+  assert.equal(merged.findings.length, 1, 'same principle ID must not be counted twice');
+  assert.equal(merged.slopScore, 1);
+  assert.match(merged.findings[0].evidence, /contrast 1\.8/);
   assert.equal(merged.pass, false);
 });
 
@@ -127,4 +144,30 @@ test('TY2 arm b: sub-15.5px body paragraph inside <main> fails', opts, async () 
 test('TY2 arm b: page without <main> silently skips the size check', opts, async () => {
   const findings = await analyzeVisualTells(fixture('tests/redteam/no-main-small-paragraph.html'));
   assert.equal(findings.find((f) => f.id === 'TY2').pass, true);
+});
+
+// ── DE3 contrast-discipline ──
+
+test('DE3 contrast: body text below 4.5:1 fails on solid backgrounds', opts, async () => {
+  const findings = await analyzeVisualTells(fixture('tests/redteam/low-contrast-text.html'));
+  const de3 = findings.find((f) => f.id === 'DE3');
+  assert.equal(de3.pass, false);
+  assert.match(de3.evidence, /contrast \d+\.\d+:1/);
+  assert.match(de3.evidence, /limit 4\.5:1/);
+});
+
+test('DE3 contrast: large text uses the 3:1 threshold', opts, async () => {
+  const findings = await analyzeVisualTells(fixture('tests/redteam/large-text-contrast.html'));
+  const de3 = findings.find((f) => f.id === 'DE3');
+  assert.equal(de3.pass, true, de3.evidence);
+  assert.match(de3.evidence, /checked/);
+});
+
+test('DE3 contrast: gradient and image backgrounds are explicit skips', opts, async () => {
+  const findings = await analyzeVisualTells(fixture('tests/redteam/contrast-gradient-skip.html'));
+  const de3 = findings.find((f) => f.id === 'DE3');
+  assert.equal(de3.pass, true, de3.evidence);
+  assert.match(de3.evidence, /skipped/);
+  assert.match(de3.evidence, /gradient:1/);
+  assert.match(de3.evidence, /image:1/);
 });

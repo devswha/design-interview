@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Contrast gradient skip</title>
+<style>
+  body{margin:0;background:#ffffff;color:#1f1d1a;font-family:system-ui,sans-serif;line-height:1.6}
+  .hero{padding:64px 48px;background:linear-gradient(135deg,#4a5b45,#d7c9a1)}
+  .photo{padding:48px;background-image:url("texture.png")}
+  .photo h2{font-size:32px;line-height:1.2;margin:0;color:#5f6658}
+  .hero h1{font-size:32px;line-height:1.2;margin:0;color:#5f6658}
+  main > p{font-size:18px;max-width:34em;margin:32px 48px;color:#1f1d1a}
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <h1>그라데이션 위 텍스트는 1차 대비 검사 범위 밖</h1>
+  </section>
+  <section class="photo">
+    <h2>이미지 위 텍스트도 1차 대비 검사 범위 밖</h2>
+  </section>
+  <p>단색 배경 위의 이 문장은 충분한 대비를 가집니다. 그라데이션과 이미지 배경의 제목은 실패가 아니라 명시적 skip 카운트로 보고되어야 합니다.</p>
+</main>
+</body>
+</html>

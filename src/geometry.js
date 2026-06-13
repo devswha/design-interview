@@ -18,7 +18,7 @@ function pageAnalyzer() {
   const docW = Math.max(document.documentElement.scrollWidth, document.documentElement.clientWidth);
   const docH = Math.max(document.documentElement.scrollHeight, document.documentElement.clientHeight);
 
-  // 가시성 판정 — 모든 시각 체크(L1/L2/S3/TY1/TY2)가 공유한다. 거부 조건:
+  // 가시성 판정 — 모든 시각 체크(L1/L2/S3/TY1/TY2/DE3 contrast)가 공유한다. 거부 조건:
   // display/visibility 숨김, 1px 이하 박스(sr-only 패턴 — 기존 `< 1`을 `<= 1`로 조임),
   // 문서 영역 밖 배치, clip: rect(0,0,0,0)·clip-path: inset(100%) 트릭,
   // opacity < 0.05 — opacity는 합성 그룹이라 자손의 computed 값에 전파되지 않으므로
@@ -38,6 +38,13 @@ function pageAnalyzer() {
   };
 
   // 텍스트 블록 셀렉터 — S3와 L2가 공유.
+  const ownText = (el) => [...el.childNodes]
+    .filter((n) => n.nodeType === Node.TEXT_NODE)
+    .map((n) => n.textContent)
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   const TEXT_SEL = 'h1,h2,h3,h4,h5,h6,p,li,button,figcaption';
 
   // L1 균일 카드 그리드: 한 부모 아래 보이는 자식 3개+가 동일 크기(±2px),
@@ -184,13 +191,116 @@ function pageAnalyzer() {
     }
   }
 
-  return { l1, s3, l2, ty1, ty2 };
+  // DE3 contrast: 첫 승격 범위는 "단색 배경 위 텍스트"로 제한한다.
+  // 이미지·그라데이션·반투명 배경/잉크는 오판정하지 않고 skip 카운트에 명시한다.
+  const parseRgb = (value) => {
+    const raw = String(value).trim();
+    if (!/^rgba?\(/i.test(raw)) return null;
+    const parts = raw.match(/[\d.]+%?/g);
+    if (!parts || parts.length < 3) return null;
+    const channel = (token) => {
+      const n = parseFloat(token);
+      return token.endsWith('%') ? (n * 255) / 100 : n;
+    };
+    return {
+      r: channel(parts[0]),
+      g: channel(parts[1]),
+      b: channel(parts[2]),
+      a: parts[3] === undefined ? 1 : parseFloat(parts[3]),
+    };
+  };
+  const relLuminance = ({ r, g, b }) => {
+    const linear = (v) => {
+      const c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  };
+  const contrastRatio = (fg, bg) => {
+    const l1 = relLuminance(fg);
+    const l2 = relLuminance(bg);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  };
+  const solidBackgroundFor = (el) => {
+    for (let n = el; n; n = n.parentElement) {
+      const style = getComputedStyle(n);
+      if (style.backgroundImage && style.backgroundImage !== 'none') {
+        return { skip: style.backgroundImage.includes('gradient(') ? 'gradient' : 'image' };
+      }
+      const bg = parseRgb(style.backgroundColor);
+      if (!bg) {
+        if (style.backgroundColor && style.backgroundColor !== 'transparent') return { skip: 'unsupported-color' };
+        continue;
+      }
+      if (bg.a === 0) continue;
+      if (bg.a < 0.98) return { skip: 'non-solid' };
+      return { color: bg };
+    }
+    return { color: { r: 255, g: 255, b: 255, a: 1 } }; // 브라우저 캔버스
+  };
+  const hex = ({ r, g, b }) => `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+  const fontWeightNumber = (value) => {
+    if (value === 'bold') return 700;
+    if (value === 'normal') return 400;
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n : 400;
+  };
+
+  let de3Contrast = { pass: true };
+  let checkedContrast = 0;
+  const skippedContrast = { gradient: 0, image: 0, 'non-solid': 0, 'unsupported-color': 0 };
+  const skipEvidence = () => Object.entries(skippedContrast)
+    .filter(([, count]) => count > 0)
+    .map(([reason, count]) => `${reason}:${count}`)
+    .join(', ');
+  const contrastSummary = () => {
+    const skipped = Object.values(skippedContrast).reduce((sum, n) => sum + n, 0);
+    return `contrast ${checkedContrast} checked, ${skipped} skipped${skipped ? ` (${skipEvidence()})` : ''}`;
+  };
+
+  for (const el of document.querySelectorAll('body *')) {
+    const tag = el.tagName.toLowerCase();
+    if (['script', 'style', 'noscript', 'svg', 'path'].includes(tag)) continue;
+    const text = ownText(el);
+    if (text.length < 2) continue;
+    if (!isVisible(el)) continue;
+
+    const fg = parseRgb(getComputedStyle(el).color);
+    if (!fg || fg.a < 0.98) {
+      skippedContrast['unsupported-color'] += 1;
+      continue;
+    }
+    const bg = solidBackgroundFor(el);
+    if (bg.skip) {
+      skippedContrast[bg.skip] += 1;
+      continue;
+    }
+
+    checkedContrast += 1;
+    const style = getComputedStyle(el);
+    const fontSize = parseFloat(style.fontSize);
+    const weight = fontWeightNumber(style.fontWeight);
+    const isLargeText = fontSize >= 24 || (fontSize >= 18.66 && weight >= 600);
+    const isUiText = el.matches('button,input,select,textarea,[role="button"]');
+    const limit = isLargeText || isUiText ? 3 : 4.5;
+    const ratio = contrastRatio(fg, bg.color);
+    if (ratio + 0.005 < limit) {
+      de3Contrast = {
+        pass: false,
+        evidence: `"${text.slice(0, 40)}…" contrast ${ratio.toFixed(2)}:1 on ${hex(bg.color)} (limit ${limit}:1); ${contrastSummary()}`,
+      };
+      break;
+    }
+  }
+  if (de3Contrast.pass) de3Contrast.evidence = contrastSummary();
+
+  return { l1, s3, l2, ty1, ty2, de3Contrast };
 }
 
 // 로컬 HTML을 데스크탑 viewport로 렌더해 시각 텔 findings를 돌려준다.
 // 반환 형식은 audit.js findings와 동일: [{ id, name, pass, evidence }]
 export async function analyzeVisualTells(htmlPath) {
-  const puppeteer = await loadPuppeteer('visual checks (L1/L2/S3/TY1/TY2)');
+  const puppeteer = await loadPuppeteer('visual checks (L1/L2/S3/TY1/TY2/DE3 contrast)');
   const browser = await puppeteer.launch({ headless: 'new' });
   try {
     const page = await browser.newPage();
@@ -199,13 +309,14 @@ export async function analyzeVisualTells(htmlPath) {
     // networkidle0은 폰트 *전송*까지만 보장한다 — 적용 후 리플로우 전에 재면
     // fontSize/clientWidth 판정(TY1/TY2)이 흔들린다 (slides-grab 검증 레인에서 채용).
     await page.evaluate(() => document.fonts?.ready);
-    const { l1, s3, l2, ty1, ty2 } = await page.evaluate(pageAnalyzer);
+    const { l1, s3, l2, ty1, ty2, de3Contrast } = await page.evaluate(pageAnalyzer);
     return [
       { id: 'L1', name: 'uniform-card-grid', pass: l1.pass, evidence: l1.evidence ?? null },
       { id: 'L2', name: 'center-everything', pass: l2.pass, evidence: l2.evidence ?? null },
       { id: 'S3', name: 'perfect-symmetry', pass: s3.pass, evidence: s3.evidence ?? null },
       { id: 'TY1', name: 'type-scale-chaos', pass: ty1.pass, evidence: ty1.evidence ?? null },
       { id: 'TY2', name: 'measure-discipline', pass: ty2.pass, evidence: ty2.evidence ?? null },
+      { id: 'DE3', name: 'quality-floor', pass: de3Contrast.pass, evidence: de3Contrast.evidence ?? null },
     ];
   } finally {
     await browser.close();

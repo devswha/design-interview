@@ -73,7 +73,7 @@ Phase 0의 URL 경로를 코드로.
 - [x] DE1 포커스 링 스코핑(:focus류 box-shadow는 고도 예산 제외 — DE3 권장 대체와의 자가당착 해소) + shot/geometry에 `document.fonts.ready` 대기(slides-grab 채용 — 웹폰트 적용 전 측정 방지)
 - [ ] 승격 대기 (비평 통과, 구현 유예): HI2 뷰포트 CTA 카운트, LA3 듀얼 렌더, PR1 정적 스파인(장르 플래그 필요), CO1 arm b(원형 hue 클러스터), TY5 한글 조건부
 - [ ] C5 left-accent-card 기계 승격 검토 (slides-grab 검토에서 채용한 신규 LLM 텔 — 정적 기준 스케치: border-left solid 채도색 + radius 동일 룰 + 반복 카운트) / 모바일 가로 오버플로 기하 검사 (LA3 듀얼 렌더와 합류)
-- [ ] 대비(4.5:1) 렌더 시점 기계 검사 — 최고가치 시각 후보
+- [x] 대비(본문 4.5:1 / 큰 텍스트·UI 3:1) 렌더 시점 기계 검사 — 단색 배경 범위, 이미지/그라데이션/반투명은 skip 보고
 - [ ] img alt 정적 검사 (장식 alt="" 허용)
 - [ ] 다크 극성 수치 — CO2/CO3/DE1의 다크 캔버스 대응 수치 리서치
 - [ ] 기각 기록: L3(우회 취약), TY3(line-height:normal 함정), DE2(상속 속성 — 정적 부적합, 시각 재설계 필요)

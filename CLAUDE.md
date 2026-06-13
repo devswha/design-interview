@@ -39,8 +39,8 @@ node src/cli.js shot <page.html>                 # desktop/mobile full-page PNG 
 
 Negative tells have IDs in `core/design-tells.md` (L1–L4 layout, C1–C4 color, T1–T5 typography/copy, S1–S5 structure); positive principles have two-letter IDs in `core/design-principles.md` (TY/SP/CO/LA/HI/CN/IM/DE/PR). Every item is judged in exactly one lane:
 
-- **Static machine lane** (`src/audit.js`): tells C1, T1, T2, T4, S5 + principles TY4, CO1, DE1, DE3 — pure HTML/CSS parsing. DE3 also feeds a warnings channel that never affects pass/exit.
-- **Visual machine lane** (`src/geometry.js`, via `audit --visual`): tells L1, L2, S3 + principles TY1, TY2 — judged from rendered box geometry. `pageAnalyzer()` executes inside the browser; it must not reference outer scope. L2 (per-section column geometry) and S3 (page-wide text-align ratio) are deliberately disjoint — redteam fixtures prove they fire on different inputs.
+- **Static machine lane** (`src/audit.js`): tells C1, T1, T2, T4, S5 + principles TY4, CO1, DE1, DE3 static quality-floor arms — pure HTML/CSS parsing. DE3 also feeds a warnings channel that never affects pass/exit.
+- **Visual machine lane** (`src/geometry.js`, via `audit --visual`): tells L1, L2, S3 + principles TY1, TY2, and DE3 rendered contrast — judged from rendered box geometry/computed style. `pageAnalyzer()` executes inside the browser; it must not reference outer scope. L2 (per-section column geometry) and S3 (page-wide text-align ratio) are deliberately disjoint — redteam fixtures prove they fire on different inputs. DE3 static+visual arms are merged under one ID before scoring to avoid double counting.
 - **LLM lane** (SKILL.md Phase 5 checklist): tells L3, L4, S1/S2/S4, T3, T5 + all principles not machine-checked.
 
 Invariant: an item covered by a machine lane is removed from the LLM checklist — no double scoring. Promoting an item to a machine lane means updating its core doc, SKILL.md, and the baseline together. Promotion candidates that FAILED adversarial review (do not re-promote without new evidence): L3 (bypassable via padding nudges), TY3 (line-height:normal trap), DE2 (inherited property — wrong lane for static).
