@@ -199,3 +199,16 @@ test('DE3 contrast: gradient and image backgrounds are explicit skips', opts, as
   assert.match(de3.evidence, /gradient:1/);
   assert.match(de3.evidence, /image:1/);
 });
+// ── TY5-A 한글 어절 중간 줄바꿈 (시각 fail, 양면) ──
+
+test('TY5 hangul: mid-word break in narrow column fails (no keep-all)', opts, async () => {
+  const { findings } = await analyzeVisualTells(fixture('tests/redteam/hangul-word-break.html'));
+  const ty5 = findings.find((f) => f.id === 'TY5');
+  assert.equal(ty5.pass, false);
+  assert.match(ty5.evidence, /어절 중간 줄바꿈/);
+});
+
+test('TY5 hangul: keep-all spaced text does not fire (clean guard, 오탐0)', opts, async () => {
+  const { findings } = await analyzeVisualTells(fixture('tests/redteam/hangul-keepall-clean.html'));
+  assert.equal(findings.find((f) => f.id === 'TY5').pass, true);
+});

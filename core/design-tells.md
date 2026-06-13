@@ -38,8 +38,8 @@ patina의 패턴 팩에 해당하는 시각 도메인 금지 목록. 빌드(Phas
 
 두 레인으로 나뉜다. 양성 원칙(`design-principles.md`)의 기계 검사도 같은 감사기에 합류한다:
 
-- **기계 레인 (정적)** (`node src/cli.js audit <built.html>`): C1, T1, T2, T4, S5는 `src/audit.js`가 HTML/CSS 파싱으로 판정한다. 원칙 검사 TY4·CO1·DE1·DE3 정적 품질 바닥선도 이 레인.
-- **기계 레인 (시각)** (`--visual` 플래그, requires puppeteer): L1, **L2**, S3는 `src/geometry.js`가 렌더된 박스 좌표·계산 스타일로 판정한다. 원칙 검사 TY1·TY2·DE3 렌더 대비도 이 레인. DE3는 정적 암과 시각 암을 같은 ID로 병합해 한 번만 채점한다.
+- **기계 레인 (정적)** (`node src/cli.js audit <built.html>`): C1, T1, T2, T4, S5는 `src/audit.js`가 HTML/CSS 파싱으로 판정한다. 원칙 검사 TY4·CO1·DE1·DE3 정적 품질 바닥선, 그리고 TY5-B/C(한글 폴백 스택·가짜 이탤릭) WARN도 이 레인.
+- **기계 레인 (시각)** (`--visual` 플래그, requires puppeteer): L1, **L2**, S3는 `src/geometry.js`가 렌더된 박스 좌표·계산 스타일로 판정한다. 원칙 검사 TY1·TY2·DE3 렌더 대비·TY5-A(한글 어절 중간 줄바꿈 fail)도 이 레인. DE3는 정적 암과 시각 암을 같은 ID로 병합해 한 번만 채점한다. WARN(DE3 craft·TY5-B/C)은 `warnings` 배열로만 흐르고 채점·exit에 영향 없다.
   - L2는 섹션별 판정(단일 컬럼 기하 AND (기하 중앙 OR 텍스트 중앙 다수), 전 섹션이 100% 해당일 때만 fail), S3는 페이지 전체 text-align 비율 — 서로 다른 입력에서 발화한다 (양방향 분리 증명 픽스처: `tests/redteam/`).
 - **LLM 레인**: 의미 판단이 필요한 나머지(L3, L4, C5, S1/S2/S4, T3, T5)는 Phase 5에서 체크리스트로 점검한다.
   - L3는 기계 승격이 적대 심사에서 기각됨(보수적 기준조차 패딩 6px 넛지 하나로 우회 가능). LLM 레인 잔류, SP3(design-principles)와 단일 계기.

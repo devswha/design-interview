@@ -547,6 +547,45 @@ function collectWarnings(html, rules, vars) {
   if (dash >= 0) warnings.push({ name: 'double-hyphen', lane: 'static', evidence: snippet(dash) });
   const dots = text.search(/\.\.\./);
   if (dots >= 0) warnings.push({ name: 'ascii-ellipsis', lane: 'static', evidence: snippet(dots) });
+
+  // TY5-B/C 한글 조판 정적 경고 (WARN, 보수적 — 한글 본문이 있을 때만).
+  // regex CSS 파서는 selector→요소 매칭을 못 하므로 broad selector
+  // (body/html/:root/*/p/h1-6/li)와 인라인 한글 요소로만 좁혀 잡음을 억제한다.
+  if (/[가-힣]/.test(text)) {
+    const KOREAN_FONT = /pretendard|apple sd gothic|noto sans (?:kr|cjk)|malgun|nanum|gothic a1|spoqa|gowun|kopub|ibm plex sans kr|gmarket|sunflower|sandoll/i;
+    const GENERIC = /(?:^|[\s,])(?:serif|sans-serif|system-ui|ui-serif|ui-sans-serif|ui-rounded)(?:$|[\s,!])/i;
+    const BROAD = new Set(['body', 'html', ':root', '*', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']);
+    const isBroad = (sel) => sel.split(',').some((s) => BROAD.has(s.trim().toLowerCase()));
+    let bDone = false;
+    let cDone = false;
+    for (const r of (rules ?? [])) {
+      if (bDone && cDone) break;
+      if (!isBroad(r.selector)) continue;
+      for (const d of parseDeclarations(r.body)) {
+        if (!bDone && (d.prop === 'font-family' || d.prop === 'font')) {
+          const stack = resolveVars(d.value, vars ?? new Map());
+          if (!/var\(/i.test(stack) && GENERIC.test(stack) && !KOREAN_FONT.test(stack)) {
+            warnings.push({ name: 'hangul-no-korean-font', lane: 'static', evidence: `한글 본문에 명시적 한글 폰트 없음 — "${stack.slice(0, 48)}" (OS별 시스템 폴백 렌더 불일치)` });
+            bDone = true;
+          }
+        }
+        if (!cDone && d.prop === 'font-style' && /\b(?:italic|oblique)\b/i.test(d.value)) {
+          warnings.push({ name: 'hangul-fake-italic', lane: 'static', evidence: `한글에 font-style:${d.value} (가짜 기울임) — 강조는 웨이트/잉크로` });
+          cDone = true;
+        }
+      }
+    }
+    if (!cDone) {
+      for (const m of String(html).matchAll(/<([a-z][a-z0-9-]*)\b[^>]*?\sstyle\s*=\s*("([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/\1\s*>/gi)) {
+        const style = m[3] ?? m[4] ?? '';
+        const inner = stripTags(m[5] ?? '');
+        if (/font-style\s*:\s*(?:italic|oblique)/i.test(style) && /[가-힣]/.test(inner)) {
+          warnings.push({ name: 'hangul-fake-italic', lane: 'static', evidence: `인라인 한글 가짜 이탤릭: "${inner.slice(0, 30)}"` });
+          break;
+        }
+      }
+    }
+  }
   return warnings;
 }
 

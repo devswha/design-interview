@@ -191,6 +191,42 @@ function pageAnalyzer() {
     }
   }
 
+  // TY5-A 한글 어절 중간 줄바꿈 (시각 fail). word-break:keep-all 미적용 시
+  // 브라우저가 한글 음절 사이 아무 데서나 끊는다. 공백·구두점 없이 인접한
+  // 한글 완성형 음절 쌍이 실제로 서로 다른 줄에 렌더되면 fail. 보수적:
+  // 텍스트 노드 단위로만 보므로 <br>/inline 경계는 노드가 갈려 자연 제외되고,
+  // 세로쓰기(writing-mode: vertical-*)는 top 차이가 의미 없어 건너뛴다.
+  let ty5a = { pass: true };
+  const isSyllable = (ch) => ch >= '가' && ch <= '힣';
+  const breakRange = document.createRange();
+  for (const el of document.querySelectorAll(TEXT_SEL)) {
+    if (!ty5a.pass) break;
+    if (!isVisible(el)) continue;
+    const csb = getComputedStyle(el);
+    if (csb.writingMode && csb.writingMode.indexOf('vertical') === 0) continue;
+    const fsb = parseFloat(csb.fontSize) || 16;
+    for (const node of el.childNodes) {
+      if (node.nodeType !== Node.TEXT_NODE) continue;
+      const raw = node.textContent;
+      let hit = false;
+      for (let i = 0; i < raw.length - 1; i++) {
+        if (!isSyllable(raw[i]) || !isSyllable(raw[i + 1])) continue;
+        breakRange.setStart(node, i);
+        breakRange.setEnd(node, i + 2);
+        const rects = breakRange.getClientRects();
+        if (rects.length < 2) continue; // 같은 줄 — 정상
+        const tops = [...rects].map((r) => r.top);
+        if (Math.max(...tops) - Math.min(...tops) > fsb / 2) {
+          const ctx = raw.slice(Math.max(0, i - 6), i + 8).replace(/\s+/g, ' ').trim();
+          ty5a = { pass: false, evidence: `"${ctx}" 어절 중간 줄바꿈 (word-break:keep-all 누락)` };
+          hit = true;
+          break;
+        }
+      }
+      if (hit) break;
+    }
+  }
+
   // DE3 contrast: 첫 승격 범위는 "단색 배경 위 텍스트"로 제한한다.
   // 이미지·그라데이션·반투명 배경/잉크는 오판정하지 않고 skip 카운트에 명시한다.
   const parseRgb = (value) => {
@@ -294,7 +330,7 @@ function pageAnalyzer() {
   }
   if (de3Contrast.pass) de3Contrast.evidence = contrastSummary();
 
-  return { l1, s3, l2, ty1, ty2, de3Contrast };
+  return { l1, s3, l2, ty1, ty2, de3Contrast, ty5a };
 }
 
 // 로컬 HTML을 데스크탑 viewport로 렌더해 시각 레인 결과를 돌려준다.
@@ -310,7 +346,7 @@ export async function analyzeVisualTells(htmlPath) {
     // networkidle0은 폰트 *전송*까지만 보장한다 — 적용 후 리플로우 전에 재면
     // fontSize/clientWidth 판정(TY1/TY2)이 흔들린다 (slides-grab 검증 레인에서 채용).
     await page.evaluate(() => document.fonts?.ready);
-    const { l1, s3, l2, ty1, ty2, de3Contrast, warnings = [] } = await page.evaluate(pageAnalyzer);
+    const { l1, s3, l2, ty1, ty2, de3Contrast, ty5a, warnings = [] } = await page.evaluate(pageAnalyzer);
     return {
       findings: [
         { id: 'L1', name: 'uniform-card-grid', pass: l1.pass, evidence: l1.evidence ?? null },
@@ -319,6 +355,7 @@ export async function analyzeVisualTells(htmlPath) {
         { id: 'TY1', name: 'type-scale-chaos', pass: ty1.pass, evidence: ty1.evidence ?? null },
         { id: 'TY2', name: 'measure-discipline', pass: ty2.pass, evidence: ty2.evidence ?? null },
         { id: 'DE3', name: 'quality-floor', pass: de3Contrast.pass, evidence: de3Contrast.evidence ?? null },
+        { id: 'TY5', name: 'hangul-word-break', pass: ty5a.pass, evidence: ty5a.evidence ?? null },
       ],
       warnings,
     };

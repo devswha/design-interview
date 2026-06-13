@@ -245,3 +245,28 @@ test('warnings exempt code/pre/kbd/samp contexts', () => {
   const r = auditHtml('<pre>npm install --save-dev "thing" ...</pre><p>국밥 9,000원</p>');
   assert.deepEqual(r.warnings, []);
 });
+// ---------------------------------------------------------------------------
+// TY5-B/C 한글 조판 정적 경고 (WARN, 보수적)
+// ---------------------------------------------------------------------------
+
+test('TY5-B warns when Korean body has a Latin-only font stack', () => {
+  const r = auditHtml('<style>body{font-family:Inter,sans-serif}</style><p>국밥 한 그릇 9,000원</p>');
+  assert.equal(r.pass, true, 'WARN은 납품을 막지 않는다');
+  assert.ok(r.warnings.some((w) => w.name === 'hangul-no-korean-font'));
+});
+
+test('TY5-B silent when the stack already names a Korean font', () => {
+  const r = auditHtml('<style>body{font-family:Pretendard,sans-serif}</style><p>국밥 한 그릇 9,000원</p>');
+  assert.ok(!r.warnings.some((w) => w.name === 'hangul-no-korean-font'));
+});
+
+test('TY5-C warns on Korean fake italic', () => {
+  const r = auditHtml('<p style="font-style:italic">강조하고 싶은 한글 문장</p>');
+  assert.equal(r.pass, true);
+  assert.ok(r.warnings.some((w) => w.name === 'hangul-fake-italic'));
+});
+
+test('TY5-B/C stay silent on non-Korean pages', () => {
+  const r = auditHtml('<style>body{font-family:Inter,sans-serif;font-style:italic}</style><p>English only paragraph, nothing to flag</p>');
+  assert.ok(!r.warnings.some((w) => w.name.startsWith('hangul-')));
+});
