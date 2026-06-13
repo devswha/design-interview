@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Centered Columns Left Text</title>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;font-size:16px}
+  section{padding:64px 0}
+  .col{max-width:560px;margin:0 auto;text-align:left}
+</style></head>
+<body>
+  <!-- L2/S3 분리 증명 픽스처: 모든 섹션이 *기하적으로* 가운데 좁은 컬럼이지만
+       텍스트는 전부 좌정렬 — L2 fail, S3 pass 여야 한다(승격 불변식). -->
+  <section>
+    <div class="col">
+      <h2>Workflow overview</h2>
+      <p>Plan the week before it starts. Capture tasks as they arrive and sort them once a day.</p>
+    </div>
+  </section>
+  <section>
+    <div class="col">
+      <h2>Daily review</h2>
+      <p>Close the day by moving unfinished items forward and noting what blocked them.</p>
+    </div>
+  </section>
+  <section>
+    <div class="col">
+      <h2>Weekly summary</h2>
+      <p>Every Friday the board compiles a short summary you can paste into the team channel.</p>
+    </div>
+  </section>
+</body>
+</html>

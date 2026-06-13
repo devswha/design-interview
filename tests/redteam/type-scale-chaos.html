@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>LaunchPad — AI Marketing Suite</title>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;font-size:16px}
+  .hero{padding:72px 24px;text-align:center}
+  .hero h1{font-size:56px;margin:0 0 12px}
+  .hero .sub{font-size:21.6px}   /* 1px 버킷으로 22에 합산 */
+  .hero button{font-size:18px;padding:12px 28px}
+  .badge{font-size:12px}
+  .features{padding:56px 24px}
+  .features h2{font-size:38px}
+  .features h3{font-size:25px}
+  .features p{font-size:15px}
+  .stats{padding:40px 24px}
+  .stats .big{font-size:31px}
+  .stats .label{font-size:13.4px} /* 1px 버킷으로 13에 합산 */
+  footer p{font-size:11px}
+</style></head>
+<body>
+  <!-- TY1 fail 픽스처: 보이는 텍스트 크기만 10종(56/22/18/12/38/25/15/31/13/11)
+       — 임계 7종을 초과. 소수점 크기는 1px 버킷으로 합산되어야 한다. -->
+  <div class="hero">
+    <h1>Unleash Your Marketing Potential</h1>
+    <p class="sub">The all-in-one platform for modern growth teams.</p>
+    <button>Start Free Trial</button>
+    <div class="badge">No credit card required</div>
+  </div>
+  <div class="features">
+    <h2>Why teams choose LaunchPad</h2>
+    <h3>Automated campaigns</h3>
+    <p>Set up once and let the engine optimize delivery.</p>
+  </div>
+  <div class="stats">
+    <div class="big">12,000+ campaigns shipped</div>
+    <div class="label">measured across active workspaces</div>
+  </div>
+  <footer>
+    <p>All trademarks belong to their respective owners.</p>
+  </footer>
+</body>
+</html>

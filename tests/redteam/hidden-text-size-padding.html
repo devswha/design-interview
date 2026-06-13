@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Hidden Text Size Padding</title>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;font-size:16px}
+  main{max-width:640px;margin:0 auto;padding:48px 0}
+  h1{font-size:32px}
+  .note{font-size:14px}
+  .offscreen{position:absolute;left:-9999px;font-size:11px}
+  .srclip{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden;font-size:9px}
+  .clippath{clip-path:inset(100%);font-size:23px}
+  .ghost{opacity:0;font-size:27px}
+  .ghostwrap{opacity:0.01}
+  .ghostwrap p{font-size:29px}
+  .pixel{width:1px;height:1px;overflow:hidden;font-size:13px}
+</style></head>
+<body>
+  <main>
+    <h1>Visible heading</h1>
+    <p>Visible paragraph at the base size.</p>
+    <p class="note">Visible small print note.</p>
+    <!-- 아래는 전부 숨김 텍스트(오프스크린/clip/clip-path/opacity/1px 박스) —
+         TY1 폰트 크기 집계를 부풀리면 안 된다. 보이는 크기는 32/16/14의 3종뿐. -->
+    <p class="offscreen">Offscreen padding text.</p>
+    <p class="srclip">Clipped sr-only padding text.</p>
+    <p class="clippath">Clip-path hidden padding text.</p>
+    <p class="ghost">Transparent padding text.</p>
+    <div class="ghostwrap"><p>Ancestor-transparent padding text.</p></div>
+    <p class="pixel">One pixel box padding text.</p>
+  </main>
+</body>
+</html>

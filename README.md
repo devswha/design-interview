@@ -1,6 +1,6 @@
 # design-interview
 
-**Interview-driven page tailoring.** slop 소스를 받아, 디자인 인터뷰로 컨셉·방향을 사용자에게 받아낸 뒤, AI 티 안 나는 랜딩/상세 페이지를 제작하는 에이전트 스킬.
+**Interview-driven page tailoring.** slop 소스를 받아, 디자인 인터뷰로 컨셉·방향을 사용자에게 받아낸 뒤, AI 티 안 나는 랜딩/상세/제안서 페이지를 제작하는 에이전트 스킬. 금지 목록(design-tells)과 시니어 원칙(design-principles)을 양면 규율로 쓴다.
 
 AI가 혼자 디자인하지 않는다. 컨셉이 사용자 승인으로 잠기기 전에는 한 줄의 HTML도 생성하지 않는다.
 
@@ -63,8 +63,9 @@ npm run benchmark
 | 경로 | 역할 |
 |---|---|
 | `SKILL.md` | 스킬 본문 — 5단계 오케스트레이션 |
-| `core/interview.md` | 6차원 인터뷰 프레임워크 + 명료도 점수 모델 |
+| `core/interview.md` | 6차원 인터뷰 프레임워크 + 명료도 점수 모델 (+ 제안서 장르 보정) |
 | `core/design-tells.md` | AI 디자인 텔 금지 목록 (빌드 규율 + 납품 감사 체크리스트) |
+| `core/design-principles.md` | 시니어 디자인 원칙 24종 — 텔의 양성 대응물 (토큰 규율 + 제안서 장르 + 기계 검사 레인) |
 | `templates/concept-sheet.md` | Phase 2 컨셉 시트 양식 |
 | `src/intake.js` | 클레임 추출기 + SSRF 가드 URL fetch |
 | `src/preview.js` | inert 프리뷰 빌더 — CSP + 무스크립트 radio 토글 |

@@ -60,6 +60,24 @@ Phase 0의 URL 경로를 코드로.
 - [ ] patina 연동: 설치 감지 시 Phase 5 카피 감사를 `patina --score`로 자동 위임
 - [ ] 데모 자산: before/after GIF, slop score 배지
 
+## M6 — 시니어 디자이너 고도화 (양성 원칙 레이어)
+
+음성 텔 목록만으로는 "AI 티 없음"까지만 간다. 시니어가 *하는* 것의 레이어를 추가
+(리서치: 10개 소스 207개 원시 원칙 → 적대적 종합·비평 → 24개 채택, `artifacts/research/`).
+
+- [x] `core/design-principles.md` — 24개 원칙 (TY/SP/CO/LA/HI/CN/IM/DE/PR), 레인 표기, 충돌 해소 기록
+- [x] SKILL.md 통합 — Phase 2 토큰 커밋, Phase 3 토큰 우선 빌드 + 양성 규율, Phase 5 원칙 감사 (기계/LLM 레인 분리 유지)
+- [x] 제안서(proposal) 페이지 유형 — `--page proposal`, 인터뷰 차원 재해석, 컨셉 시트 제안서 블록, PR1 스파인
+- [x] 정적 기계 검사 4종 승격: TY4(패밀리 규율)·CO1(색 리터럴 예산)·DE1(그림자 물리)·DE3(품질 바닥선 + warn 채널)
+- [x] 시각 기계 검사 3종: L2 승격(M3 백로그 해소)·TY1(타입 스케일)·TY2(행길이/본문 크기) + isVisible 강화(opacity/오프스크린/클립 디코이 방어)
+- [x] DE1 포커스 링 스코핑(:focus류 box-shadow는 고도 예산 제외 — DE3 권장 대체와의 자가당착 해소) + shot/geometry에 `document.fonts.ready` 대기(slides-grab 채용 — 웹폰트 적용 전 측정 방지)
+- [ ] 승격 대기 (비평 통과, 구현 유예): HI2 뷰포트 CTA 카운트, LA3 듀얼 렌더, PR1 정적 스파인(장르 플래그 필요), CO1 arm b(원형 hue 클러스터), TY5 한글 조건부
+- [ ] C5 left-accent-card 기계 승격 검토 (slides-grab 검토에서 채용한 신규 LLM 텔 — 정적 기준 스케치: border-left solid 채도색 + radius 동일 룰 + 반복 카운트) / 모바일 가로 오버플로 기하 검사 (LA3 듀얼 렌더와 합류)
+- [ ] 대비(4.5:1) 렌더 시점 기계 검사 — 최고가치 시각 후보
+- [ ] img alt 정적 검사 (장식 alt="" 허용)
+- [ ] 다크 극성 수치 — CO2/CO3/DE1의 다크 캔버스 대응 수치 리서치
+- [ ] 기각 기록: L3(우회 취약), TY3(line-height:normal 함정), DE2(상속 속성 — 정적 부적합, 시각 재설계 필요)
+
 ## 운영 원칙
 
 - 텔 추가는 반드시 픽스처 + baseline 갱신과 한 커밋으로 (M2 게이트가 강제)

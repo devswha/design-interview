@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Opacity Decoy Section</title>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;font-size:16px}
+  section{padding:64px 0;text-align:center}
+  .decoy{opacity:0;text-align:left;padding:64px 24px}
+</style></head>
+<body>
+  <!-- opacity:0 좌정렬 미끼 섹션 하나로 L2의 '전 섹션 가운데 정렬(100%)' 조건을
+       무력화하려는 시도 — 강화된 isVisible이 미끼를 제외해 3/3으로 fail 유지. -->
+  <section>
+    <h2>Everything centered one</h2>
+    <p>Centered paragraph copy one.</p>
+  </section>
+  <section>
+    <h2>Everything centered two</h2>
+    <p>Centered paragraph copy two.</p>
+  </section>
+  <section>
+    <h2>Everything centered three</h2>
+    <p>Centered paragraph copy three.</p>
+  </section>
+  <section class="decoy">
+    <h2>Left decoy heading</h2>
+    <p>This decoy paragraph is left aligned and fully transparent.</p>
+  </section>
+</body>
+</html>

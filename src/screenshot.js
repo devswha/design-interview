@@ -44,6 +44,9 @@ export async function captureFile(htmlPath, { outBase, viewports = ['desktop', '
       const page = await browser.newPage();
       await page.setViewport(vp);
       await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+      // 폰트 적용 완료까지 대기 — 전송 완료(networkidle0)와 렌더 적용은 다르다
+      // (slides-grab 검증 레인에서 채용한 안정화).
+      await page.evaluate(() => document.fonts?.ready);
       const path = `${base}.${name}.png`;
       await page.screenshot({ path, fullPage: true });
       await page.close();
