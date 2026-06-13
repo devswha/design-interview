@@ -1,9 +1,11 @@
 {
-  "comment": "픽스처별 기대 기계 판정. 텔 추가/수정 시 이 파일을 같은 커밋에서 갱신한다 (ROADMAP 운영 원칙).",
+  "comment": "픽스처별 기대 기계 판정. 텔 추가/수정 시 이 파일을 같은 커밋에서 갱신한다 (ROADMAP 운영 원칙). warnings 채널은 비교 대상이 아니다 — failed만 본다.",
   "fixtures": {
     "examples/slop-source.html": { "failed": ["C1", "T1", "T2", "T4"] },
     "tests/fixtures/slop/saas-landing.html": { "failed": ["T2", "T4", "S5"] },
     "tests/fixtures/slop/feature-grid.html": { "failed": [], "note": "정적 레인은 통과 — L1은 시각 레인(geometry.test.js)에서 잡힌다" },
-    "tests/fixtures/clean/restaurant.html": { "failed": [] }
+    "tests/fixtures/slop/principle-violations.html": { "failed": ["C1", "T1", "T2", "T4", "S5", "TY4", "CO1", "DE1", "DE3"], "note": "design-principles 위반 종합 — 새 정적 텔 4종(TY4/CO1/DE1/DE3) 전부 fail이어야 한다" },
+    "tests/fixtures/clean/restaurant.html": { "failed": [] },
+    "tests/redteam/svg-attr-color-smuggle.html": { "failed": [], "note": "CO1 한계 고정 — SVG fill/stroke 속성 색은 예산 밖(수용된 miss). 이 항목은 fp 회귀 가드다" }
   }
 }

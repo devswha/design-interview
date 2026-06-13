@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>색 밀반입 — SVG presentation attribute</title>
+<style>
+  /* CSS 쪽은 예산 안쪽: 리터럴 5색뿐. 액센트는 전부 아래 SVG 속성에 숨겼다. */
+  body{font-family:Georgia,serif;background:#faf8f4;color:#1f1d1a;line-height:1.7}
+  .wrap{max-width:640px;padding:32px 24px}
+  .note{color:#6b645a;border-left:3px solid #d9d2c5;padding-left:12px}
+  a{color:#2b4c7e}
+</style></head>
+<body>
+  <!-- CO1 알려진 한계(의도된 수용): extractCssRules는 style 블록과 style 속성만
+       읽으므로 SVG presentation attribute(fill=, stroke=)로 들어온 색은 예산에
+       잡히지 않는다. 아래 차트는 16색을 속성으로 밀반입하지만 CO1은 pass다.
+       이 miss는 한정적이다 — SVG 밖 본문/배경/버튼 색은 여전히 CSS를 거쳐야
+       하고, 렌더된 결과는 시각 레인과 SKILL.md Phase 5 LLM 체크리스트가 본다.
+       속성 색까지 세려면 extractCss 계층 자체를 확장해야 하므로 별도 결정으로 남긴다. -->
+  <div class="wrap">
+    <h1>분기 매출 구성</h1>
+    <p>지역별 매출 비중을 도넛 차트로 표시했습니다. 수치는 회계팀 마감 기준입니다.</p>
+    <svg width="320" height="120" viewBox="0 0 320 120" role="img" aria-label="지역별 매출">
+      <rect x="0" y="10" width="40" height="100" fill="#ff3b30"/>
+      <rect x="40" y="30" width="40" height="80" fill="#ff9500" stroke="#ffcc00"/>
+      <rect x="80" y="20" width="40" height="90" fill="#34c759" stroke="#30d158"/>
+      <rect x="120" y="50" width="40" height="60" fill="#00c7be"/>
+      <rect x="160" y="40" width="40" height="70" fill="#007aff" stroke="#5ac8fa"/>
+      <rect x="200" y="60" width="40" height="50" fill="#5856d6"/>
+      <rect x="240" y="35" width="40" height="75" fill="#af52de" stroke="#bf5af2"/>
+      <rect x="280" y="55" width="40" height="55" fill="#ff2d55"/>
+      <circle cx="20" cy="5" r="4" fill="#a2845e"/>
+      <circle cx="60" cy="5" r="4" fill="#8e8e93"/>
+      <circle cx="100" cy="5" r="4" fill="#48484a"/>
+      <circle cx="140" cy="5" r="4" fill="#d70015"/>
+    </svg>
+    <p class="note">차트 16색은 전부 SVG fill/stroke 속성이다 — CO1 예산(12) 초과지만 정적 레인은 못 본다.</p>
+  </div>
+</body>
+</html>
