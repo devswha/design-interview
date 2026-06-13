@@ -169,8 +169,15 @@ test('TY2 arm b: sub-15.5px body paragraph inside <main> fails', opts, async () 
   assert.match(ty2.evidence, /13px \(min 15\.5px\)/);
 });
 
-test('TY2 arm b: page without <main> silently skips the size check', opts, async () => {
-  const { findings } = await analyzeVisualTells(fixture('tests/redteam/no-main-small-paragraph.html'))
+test('TY2 arm b: page without <main> now catches the dominant small body block', opts, async () => {
+  const { findings } = await analyzeVisualTells(fixture('tests/redteam/no-main-small-paragraph.html'));
+  const ty2 = findings.find((f) => f.id === 'TY2');
+  assert.equal(ty2.pass, false);
+  assert.match(ty2.evidence, /min 15\.5px/);
+});
+
+test('TY2 arm b: no-main page where only footer/legal is small stays clean (오탐0)', opts, async () => {
+  const { findings } = await analyzeVisualTells(fixture('tests/redteam/no-main-footer-legal.html'));
   assert.equal(findings.find((f) => f.id === 'TY2').pass, true);
 });
 

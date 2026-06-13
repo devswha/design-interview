@@ -170,10 +170,23 @@ function pageAnalyzer() {
   // TY2 measure-discipline: <p>만 검사 — li는 의도적 보류(마커·중첩 리스트의 폭
   // 계산이 불안정해 오탐 위험; 별도 승격 때 다룬다).
   //   (a) 렌더 텍스트 120자 초과 <p>는 clientWidth / font-size(≈em 단위 행길이) ≤ 40
-  //   (b) <main> 안 80자 초과 <p>는 font-size ≥ 15.5px
-  // <main>이 없는 페이지는 (b)를 조용히 건너뛴다 — 문서화된 허용 미검출.
+  //   (b) 본문 영역 80자 초과 <p>는 font-size ≥ 15.5px. 본문 영역 = <main>이 있으면
+  //       그 안; 없으면 <body> 루트의 지배 본문 블록(footer/nav/aside/small/figcaption/
+  //       [aria-hidden]·숨김 제외, 80자+ <p> 중 글자수 최대) — <main> 부재 구멍을 닫는다.
   let ty2 = { pass: true };
   const mainEl = document.querySelector('main');
+  // <main> 없으면 지배 본문 블록 하나를 (b) 대상으로 삼는다 — 비본문 랜드마크·작은
+  // 글씨(footer/약관 등)는 제외해 fail arm 오탐을 막는다.
+  let bodyDominant = null;
+  if (!mainEl) {
+    const cands = [...document.querySelectorAll('p')].filter((p) =>
+      isVisible(p)
+      && !p.closest('footer,nav,aside,small,figcaption,[aria-hidden="true"]')
+      && p.textContent.replace(/\s+/g, ' ').trim().length > 80);
+    for (const p of cands) {
+      if (!bodyDominant || p.textContent.trim().length > bodyDominant.textContent.trim().length) bodyDominant = p;
+    }
+  }
   for (const p of document.querySelectorAll('p')) {
     if (!isVisible(p)) continue;
     const text = p.textContent.replace(/\s+/g, ' ').trim();
@@ -185,7 +198,8 @@ function pageAnalyzer() {
         break;
       }
     }
-    if (mainEl && mainEl.contains(p) && text.length > 80 && fontSize < 15.5) {
+    const inScope = mainEl ? mainEl.contains(p) : p === bodyDominant;
+    if (inScope && text.length > 80 && fontSize < 15.5) {
       ty2 = { pass: false, evidence: `"${text.slice(0, 40)}…" set at ${fontSize}px (min 15.5px)` };
       break;
     }
