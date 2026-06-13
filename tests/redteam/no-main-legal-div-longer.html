@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>No main, long legal div but body dominates by size</title>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;font-size:16px}
+  .wrap{max-width:600px;margin:0 auto;padding:40px}
+  .wrap p{font-size:18px;line-height:1.6}
+  .legal{max-width:600px;margin:0 auto;padding:0 40px}
+  .legal p{font-size:12px;color:#666;line-height:1.5;max-width:34em}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>About the service</h1>
+    <p>Body paragraph one is set at eighteen pixels, comfortably above the floor, describing the product in clear plain language written for the people who actually use it every day.</p>
+    <p>Body paragraph two is also eighteen pixels and continues that explanation at length so the char-weighted dominant body size across the page is clearly eighteen rather than twelve.</p>
+    <p>Body paragraph three keeps adding readable eighteen-pixel prose, ensuring the real body copy out-weighs the fine print by total character count and not merely by paragraph count.</p>
+  </div>
+  <div class="legal">
+    <p>This single fine-print legal paragraph at twelve pixels sits in a generic div and is deliberately longer than any one body paragraph, covering renewal terms, cancellation windows, pricing changes, and liability disclaimers, to prove the TY2 fallback selects the dominant body size by character weight rather than naively choosing the longest paragraph and falsely blocking the page.</p>
+  </div>
+</body>
+</html>

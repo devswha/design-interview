@@ -175,16 +175,29 @@ function pageAnalyzer() {
   //       [aria-hidden]·숨김 제외, 80자+ <p> 중 글자수 최대) — <main> 부재 구멍을 닫는다.
   let ty2 = { pass: true };
   const mainEl = document.querySelector('main');
-  // <main> 없으면 지배 본문 블록 하나를 (b) 대상으로 삼는다 — 비본문 랜드마크·작은
-  // 글씨(footer/약관 등)는 제외해 fail arm 오탐을 막는다.
+  // <main> 없으면 지배 본문 블록 하나를 (b) 대상으로 삼는다. 비본문 랜드마크/롤과
+  // 작은 글씨를 제외하고, **글자수 가중 최빈 font-size**(지배 본문 크기)를 쓰는
+  // 가장 긴 <p>를 고른다 — 소수 fine-print/약관이 본문으로 오선택되어 fail나는 것을 막는다.
+  const EXCLUDE_SEL = 'footer,nav,aside,small,figcaption,header,[aria-hidden="true"],[role="contentinfo"],[role="navigation"],[role="complementary"],[role="banner"]';
   let bodyDominant = null;
   if (!mainEl) {
     const cands = [...document.querySelectorAll('p')].filter((p) =>
       isVisible(p)
-      && !p.closest('footer,nav,aside,small,figcaption,[aria-hidden="true"]')
+      && !p.closest(EXCLUDE_SEL)
       && p.textContent.replace(/\s+/g, ' ').trim().length > 80);
+    const sizeWeight = new Map();
     for (const p of cands) {
-      if (!bodyDominant || p.textContent.trim().length > bodyDominant.textContent.trim().length) bodyDominant = p;
+      const fs = Math.round(parseFloat(getComputedStyle(p).fontSize));
+      sizeWeight.set(fs, (sizeWeight.get(fs) ?? 0) + p.textContent.replace(/\s+/g, ' ').trim().length);
+    }
+    let domSize = null;
+    let domW = -1;
+    for (const [fs, w] of sizeWeight) if (w > domW) { domW = w; domSize = fs; }
+    if (domSize !== null) {
+      for (const p of cands) {
+        if (Math.round(parseFloat(getComputedStyle(p).fontSize)) !== domSize) continue;
+        if (!bodyDominant || p.textContent.trim().length > bodyDominant.textContent.trim().length) bodyDominant = p;
+      }
     }
   }
   for (const p of document.querySelectorAll('p')) {
@@ -209,7 +222,8 @@ function pageAnalyzer() {
   // 브라우저가 한글 음절 사이 아무 데서나 끊는다. 공백·구두점 없이 인접한
   // 한글 완성형 음절 쌍이 실제로 서로 다른 줄에 렌더되면 fail. 보수적:
   // 텍스트 노드 단위로만 보므로 <br>/inline 경계는 노드가 갈려 자연 제외되고,
-  // 세로쓰기(writing-mode: vertical-*)는 top 차이가 의미 없어 건너뛴다.
+  // 세로쓰기(writing-mode: vertical-*)와 transform 적용 요소는 rect top이 신뢰
+  // 불가라 건너뛴다(회전·스큐가 같은 줄 글자에 top 차이를 만들어 오탐 방지).
   let ty5a = { pass: true };
   const isSyllable = (ch) => ch >= '가' && ch <= '힣';
   const breakRange = document.createRange();
@@ -218,6 +232,11 @@ function pageAnalyzer() {
     if (!isVisible(el)) continue;
     const csb = getComputedStyle(el);
     if (csb.writingMode && csb.writingMode.indexOf('vertical') === 0) continue;
+    let transformed = false;
+    for (let n = el; n; n = n.parentElement) {
+      if (getComputedStyle(n).transform !== 'none') { transformed = true; break; }
+    }
+    if (transformed) continue;
     const fsb = parseFloat(csb.fontSize) || 16;
     for (const node of el.childNodes) {
       if (node.nodeType !== Node.TEXT_NODE) continue;

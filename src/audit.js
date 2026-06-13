@@ -553,7 +553,6 @@ function collectWarnings(html, rules, vars) {
   // (body/html/:root/*/p/h1-6/li)와 인라인 한글 요소로만 좁혀 잡음을 억제한다.
   if (/[가-힣]/.test(text)) {
     const KOREAN_FONT = /pretendard|apple sd gothic|noto sans (?:kr|cjk)|malgun|nanum|gothic a1|spoqa|gowun|kopub|ibm plex sans kr|gmarket|sunflower|sandoll/i;
-    const GENERIC = /(?:^|[\s,])(?:serif|sans-serif|system-ui|ui-serif|ui-sans-serif|ui-rounded)(?:$|[\s,!])/i;
     const BROAD = new Set(['body', 'html', ':root', '*', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']);
     const isBroad = (sel) => sel.split(',').some((s) => BROAD.has(s.trim().toLowerCase()));
     let bDone = false;
@@ -564,7 +563,7 @@ function collectWarnings(html, rules, vars) {
       for (const d of parseDeclarations(r.body)) {
         if (!bDone && (d.prop === 'font-family' || d.prop === 'font')) {
           const stack = resolveVars(d.value, vars ?? new Map());
-          if (!/var\(/i.test(stack) && GENERIC.test(stack) && !KOREAN_FONT.test(stack)) {
+          if (!/var\(/i.test(stack) && !/^(?:inherit|initial|unset|revert)$/i.test(stack.trim()) && !KOREAN_FONT.test(stack)) {
             warnings.push({ name: 'hangul-no-korean-font', lane: 'static', evidence: `한글 본문에 명시적 한글 폰트 없음 — "${stack.slice(0, 48)}" (OS별 시스템 폴백 렌더 불일치)` });
             bDone = true;
           }
@@ -591,7 +590,7 @@ function collectWarnings(html, rules, vars) {
   // 알려진 폰트 CDN 호스트(link/@import/preconnect) 또는 @font-face의 원격 src.
   const FONT_HOST = /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net|p\.typekit\.net|use\.fontawesome\.com|fonts\.bunny\.net|fonts\.cdnfonts\.com/i;
   let webfontUrl = null;
-  const hostHit = String(html).match(new RegExp(`https?://[^"')\\s]*(?:${FONT_HOST.source})[^"')\\s]*`, 'i'));
+  const hostHit = String(html).match(new RegExp(`https?://[^"')\\s]*(?:(?:${FONT_HOST.source})|font)[^"')\\s]*`, 'i'));
   if (hostHit) webfontUrl = hostHit[0];
   if (!webfontUrl) {
     const ff = String(html).match(/@font-face\s*\{[^}]*\burl\(\s*['"]?\s*(https?:\/\/[^'")\s]+)/i);

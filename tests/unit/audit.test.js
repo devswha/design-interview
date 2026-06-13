@@ -289,3 +289,18 @@ test('webfont ① silent on self-hosted/relative and system fonts', () => {
   const r = auditHtml('<style>@font-face{font-family:Local;src:url(./fonts/local.woff2)}body{font-family:Local,system-ui,sans-serif}</style><p>hello world paragraph</p>');
   assert.ok(!r.warnings.some((w) => w.name === 'webfont-cdn-dependency'));
 });
+
+test('TY5-B fires even when the Latin stack has no generic fallback', () => {
+  const r = auditHtml('<style>body{font-family:Inter}</style><p>국밥 한 그릇 9,000원</p>');
+  assert.ok(r.warnings.some((w) => w.name === 'hangul-no-korean-font'));
+});
+
+test('TY5-B silent on a CSS-wide keyword stack (inherit)', () => {
+  const r = auditHtml('<style>p{font-family:inherit}</style><p>국밥 한 그릇 9,000원</p>');
+  assert.ok(!r.warnings.some((w) => w.name === 'hangul-no-korean-font'));
+});
+
+test('webfont ① catches a vendor CDN font stylesheet by url', () => {
+  const r = auditHtml('<link rel="stylesheet" href="https://cdn.vendor.example/fonts/inter.css"><p>hello world paragraph</p>');
+  assert.ok(r.warnings.some((w) => w.name === 'webfont-cdn-dependency'));
+});

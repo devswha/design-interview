@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Hangul under transform (guard)</title>
+<style>
+  body{margin:0;font-family:Pretendard,'Noto Sans KR',sans-serif}
+  main{max-width:760px;margin:0 auto;padding:64px}
+  /* 회전 적용 — Range rect top이 신뢰 불가. 좁아서 줄바꿈이 나더라도
+     transform 가드가 TY5-A를 건너뛰어 거짓 fail을 내지 않아야 한다. */
+  .tilt{width:120px;font-size:20px;line-height:1.6;transform:rotate(6deg)}
+</style>
+</head>
+<body>
+<main>
+  <h1>회전 배너</h1>
+  <p class="tilt">디자인인터뷰는사용자와상담한뒤맞춤페이지를짓는도구</p>
+</main>
+</body>
+</html>

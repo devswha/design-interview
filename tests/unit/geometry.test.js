@@ -231,3 +231,15 @@ test('webfont ② silent when no @font-face is declared (clean guard)', opts, as
   const { warnings } = await analyzeVisualTells(fixture('tests/redteam/hangul-keepall-clean.html'));
   assert.ok(!warnings.some((w) => w.name === 'webfont-not-applied'));
 });
+
+// ── 오탐0 가드: transform / no-main dominance ──
+
+test('TY5-A skips transformed text (rect top unreliable, no false fail)', opts, async () => {
+  const { findings } = await analyzeVisualTells(fixture('tests/redteam/hangul-transform-clean.html'));
+  assert.equal(findings.find((f) => f.id === 'TY5').pass, true);
+});
+
+test('TY2 no-main ignores a long fine-print div when body size dominates', opts, async () => {
+  const { findings } = await analyzeVisualTells(fixture('tests/redteam/no-main-legal-div-longer.html'));
+  assert.equal(findings.find((f) => f.id === 'TY2').pass, true);
+});
