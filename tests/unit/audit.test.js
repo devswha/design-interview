@@ -270,3 +270,22 @@ test('TY5-B/C stay silent on non-Korean pages', () => {
   const r = auditHtml('<style>body{font-family:Inter,sans-serif;font-style:italic}</style><p>English only paragraph, nothing to flag</p>');
   assert.ok(!r.warnings.some((w) => w.name.startsWith('hangul-')));
 });
+// ---------------------------------------------------------------------------
+// webfont ① 원격 CDN 폰트 의존 (정적 WARN)
+// ---------------------------------------------------------------------------
+
+test('webfont ① warns on a Google Fonts <link> dependency', () => {
+  const r = auditHtml('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter"><p>hello world paragraph</p>');
+  assert.equal(r.pass, true, 'WARN은 납품을 막지 않는다');
+  assert.ok(r.warnings.some((w) => w.name === 'webfont-cdn-dependency'));
+});
+
+test('webfont ① warns on a remote @font-face src', () => {
+  const r = auditHtml('<style>@font-face{font-family:X;src:url(https://cdn.example.com/x.woff2)}body{font-family:X,sans-serif}</style><p>hello world paragraph</p>');
+  assert.ok(r.warnings.some((w) => w.name === 'webfont-cdn-dependency'));
+});
+
+test('webfont ① silent on self-hosted/relative and system fonts', () => {
+  const r = auditHtml('<style>@font-face{font-family:Local;src:url(./fonts/local.woff2)}body{font-family:Local,system-ui,sans-serif}</style><p>hello world paragraph</p>');
+  assert.ok(!r.warnings.some((w) => w.name === 'webfont-cdn-dependency'));
+});

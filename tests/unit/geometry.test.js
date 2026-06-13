@@ -212,3 +212,15 @@ test('TY5 hangul: keep-all spaced text does not fire (clean guard, 오탐0)', op
   const { findings } = await analyzeVisualTells(fixture('tests/redteam/hangul-keepall-clean.html'));
   assert.equal(findings.find((f) => f.id === 'TY5').pass, true);
 });
+
+// ── webfont ② 선언 폰트 미적용 (시각 WARN, 보수적) ──
+
+test('webfont ② warns when a declared @font-face fails to load', opts, async () => {
+  const { warnings } = await analyzeVisualTells(fixture('tests/redteam/webfont-not-applied.html'));
+  assert.ok(warnings.some((w) => w.name === 'webfont-not-applied'), JSON.stringify(warnings));
+});
+
+test('webfont ② silent when no @font-face is declared (clean guard)', opts, async () => {
+  const { warnings } = await analyzeVisualTells(fixture('tests/redteam/hangul-keepall-clean.html'));
+  assert.ok(!warnings.some((w) => w.name === 'webfont-not-applied'));
+});

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Webfont CDN dependency</title>
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap">
+<style>
+  body{margin:0;font-family:Inter,system-ui,sans-serif}
+  main{max-width:680px;margin:0 auto;padding:48px}
+  h1{font-size:30px;line-height:1.2}
+  p{font-size:18px;line-height:1.6;max-width:36em}
+</style>
+</head>
+<body>
+<main>
+  <h1>Remote font dependency</h1>
+  <p>This page pulls its typeface from a remote CDN. If the CDN is blocked or offline the page silently falls back, so the audit flags the dependency and recommends self-hosting.</p>
+</main>
+</body>
+</html>

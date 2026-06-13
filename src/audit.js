@@ -586,6 +586,20 @@ function collectWarnings(html, rules, vars) {
       }
     }
   }
+
+  // webfont ① 원격 CDN 폰트 의존 (정적 WARN) — 자가호스팅/인라인이면 무경고.
+  // 알려진 폰트 CDN 호스트(link/@import/preconnect) 또는 @font-face의 원격 src.
+  const FONT_HOST = /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net|p\.typekit\.net|use\.fontawesome\.com|fonts\.bunny\.net|fonts\.cdnfonts\.com/i;
+  let webfontUrl = null;
+  const hostHit = String(html).match(new RegExp(`https?://[^"')\\s]*(?:${FONT_HOST.source})[^"')\\s]*`, 'i'));
+  if (hostHit) webfontUrl = hostHit[0];
+  if (!webfontUrl) {
+    const ff = String(html).match(/@font-face\s*\{[^}]*\burl\(\s*['"]?\s*(https?:\/\/[^'")\s]+)/i);
+    if (ff) webfontUrl = ff[1];
+  }
+  if (webfontUrl) {
+    warnings.push({ name: 'webfont-cdn-dependency', lane: 'static', evidence: `원격 CDN 폰트 의존: ${webfontUrl.slice(0, 56)} — 자가호스팅/인라인 권장(오프라인·차단 시 폴백)` });
+  }
   return warnings;
 }
 

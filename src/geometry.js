@@ -330,7 +330,29 @@ function pageAnalyzer() {
   }
   if (de3Contrast.pass) de3Contrast.evidence = contrastSummary();
 
-  return { l1, s3, l2, ty1, ty2, de3Contrast, ty5a };
+  // webfont ② 선언 폰트 미적용(확정 fallback) — 시각 WARN, 보수적.
+  // @font-face로 선언된 family인데 document.fonts.check가 false면 미로드 →
+  // 그 요소는 fallback으로 렌더·측정된다. 시스템 폰트(미선언 family)는 제외.
+  const warnings = [];
+  try {
+    const declared = new Set();
+    document.fonts.forEach((ff) => declared.add(ff.family.replace(/^["']|["']$/g, '')));
+    if (declared.size > 0) {
+      const seen = new Set();
+      for (const el of document.querySelectorAll('body, body *')) {
+        if (!isVisible(el)) continue;
+        const fam = getComputedStyle(el).fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '');
+        if (!fam || seen.has(fam)) continue;
+        seen.add(fam);
+        if (declared.has(fam) && !document.fonts.check(`16px "${fam}"`)) {
+          warnings.push({ name: 'webfont-not-applied', lane: 'visual', evidence: `선언 폰트 "${fam}" 미로드 — fallback으로 렌더·측정됨` });
+          break;
+        }
+      }
+    }
+  } catch (e) { /* FontFaceSet 미지원/접근 불가 — 조용히 skip */ }
+
+  return { l1, s3, l2, ty1, ty2, de3Contrast, ty5a, warnings };
 }
 
 // 로컬 HTML을 데스크탑 viewport로 렌더해 시각 레인 결과를 돌려준다.

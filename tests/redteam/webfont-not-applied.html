@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Webfont not applied</title>
+<style>
+  @font-face{font-family:'PhantomSans';src:url(https://nonexistent.invalid/phantom.woff2) format('woff2')}
+  body{margin:0;font-family:'PhantomSans',sans-serif}
+  main{max-width:680px;margin:0 auto;padding:48px}
+  h1{font-size:30px;line-height:1.2}
+  p{font-size:18px;line-height:1.6;max-width:36em}
+</style>
+</head>
+<body>
+<main>
+  <h1>This typeface never loads</h1>
+  <p>The declared PhantomSans face points at a broken remote src, so the browser renders and measures a fallback. The audit must report that as a warning, not silently trust the declared family.</p>
+</main>
+</body>
+</html>
