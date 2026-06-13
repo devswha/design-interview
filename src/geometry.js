@@ -297,8 +297,9 @@ function pageAnalyzer() {
   return { l1, s3, l2, ty1, ty2, de3Contrast };
 }
 
-// 로컬 HTML을 데스크탑 viewport로 렌더해 시각 텔 findings를 돌려준다.
-// 반환 형식은 audit.js findings와 동일: [{ id, name, pass, evidence }]
+// 로컬 HTML을 데스크탑 viewport로 렌더해 시각 레인 결과를 돌려준다.
+// 반환 형식: { findings: [{ id, name, pass, evidence }], warnings: [{ name, lane, evidence }] }.
+// warnings는 fail로 승격되지 않는 시각 경고 채널(audit.js combineAudits가 static과 concat).
 export async function analyzeVisualTells(htmlPath) {
   const puppeteer = await loadPuppeteer('visual checks (L1/L2/S3/TY1/TY2/DE3 contrast)');
   const browser = await puppeteer.launch({ headless: 'new' });
@@ -309,15 +310,18 @@ export async function analyzeVisualTells(htmlPath) {
     // networkidle0은 폰트 *전송*까지만 보장한다 — 적용 후 리플로우 전에 재면
     // fontSize/clientWidth 판정(TY1/TY2)이 흔들린다 (slides-grab 검증 레인에서 채용).
     await page.evaluate(() => document.fonts?.ready);
-    const { l1, s3, l2, ty1, ty2, de3Contrast } = await page.evaluate(pageAnalyzer);
-    return [
-      { id: 'L1', name: 'uniform-card-grid', pass: l1.pass, evidence: l1.evidence ?? null },
-      { id: 'L2', name: 'center-everything', pass: l2.pass, evidence: l2.evidence ?? null },
-      { id: 'S3', name: 'perfect-symmetry', pass: s3.pass, evidence: s3.evidence ?? null },
-      { id: 'TY1', name: 'type-scale-chaos', pass: ty1.pass, evidence: ty1.evidence ?? null },
-      { id: 'TY2', name: 'measure-discipline', pass: ty2.pass, evidence: ty2.evidence ?? null },
-      { id: 'DE3', name: 'quality-floor', pass: de3Contrast.pass, evidence: de3Contrast.evidence ?? null },
-    ];
+    const { l1, s3, l2, ty1, ty2, de3Contrast, warnings = [] } = await page.evaluate(pageAnalyzer);
+    return {
+      findings: [
+        { id: 'L1', name: 'uniform-card-grid', pass: l1.pass, evidence: l1.evidence ?? null },
+        { id: 'L2', name: 'center-everything', pass: l2.pass, evidence: l2.evidence ?? null },
+        { id: 'S3', name: 'perfect-symmetry', pass: s3.pass, evidence: s3.evidence ?? null },
+        { id: 'TY1', name: 'type-scale-chaos', pass: ty1.pass, evidence: ty1.evidence ?? null },
+        { id: 'TY2', name: 'measure-discipline', pass: ty2.pass, evidence: ty2.evidence ?? null },
+        { id: 'DE3', name: 'quality-floor', pass: de3Contrast.pass, evidence: de3Contrast.evidence ?? null },
+      ],
+      warnings,
+    };
   } finally {
     await browser.close();
   }

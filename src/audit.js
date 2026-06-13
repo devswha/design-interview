@@ -537,16 +537,16 @@ function checkQualityFloor(html, rules) {
 
 // craft 경고 수집 — 절대 fail로 승격하지 않는다. findings/failed/exit code와
 // benchmark 모두 warnings를 무시한다. code/pre/kbd/samp 안의 텍스트는 면제.
-function collectWarnings(html) {
+function collectWarnings(html, rules, vars) {
   const warnings = [];
   const text = stripTags(String(html).replace(/<(code|pre|kbd|samp)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' '));
   const snippet = (i) => `"${text.slice(Math.max(0, i - 10), i + 14).replace(/\s+/g, ' ').trim()}"`;
   const quote = text.match(/[\p{L}\p{N}]["']|["'][\p{L}\p{N}]/u);
-  if (quote) warnings.push({ name: 'straight-quotes', evidence: snippet(quote.index) });
+  if (quote) warnings.push({ name: 'straight-quotes', lane: 'static', evidence: snippet(quote.index) });
   const dash = text.search(/--/);
-  if (dash >= 0) warnings.push({ name: 'double-hyphen', evidence: snippet(dash) });
+  if (dash >= 0) warnings.push({ name: 'double-hyphen', lane: 'static', evidence: snippet(dash) });
   const dots = text.search(/\.\.\./);
-  if (dots >= 0) warnings.push({ name: 'ascii-ellipsis', evidence: snippet(dots) });
+  if (dots >= 0) warnings.push({ name: 'ascii-ellipsis', lane: 'static', evidence: snippet(dots) });
   return warnings;
 }
 
@@ -578,32 +578,36 @@ export function auditHtml(html) {
     failed: failed.map((f) => f.id),
     slopScore: failed.length / findings.length,
     pass: failed.length === 0,
-    warnings: collectWarnings(html),
+    warnings: collectWarnings(html, rules, vars),
   };
 }
 
-// 정적 감사 결과에 시각 레인(geometry.js) findings를 합류시킨다. warnings는
-// 정적 레인에서만 나오므로 그대로 통과시킨다.
+// 정적 감사 결과에 시각 레인(geometry.js) 결과를 합류시킨다. visual은 배열
+// (legacy) 또는 { findings, warnings } 둘 다 받는다 — normalize 후 findings는
+// 병합, warnings는 static+visual을 concat한다. WARN은 절대 fail로 승격되지
+// 않으므로 failed/slopScore/pass는 findings만 본다(WARN↔fail 의미 분리).
 //
 // 같은 원칙 ID가 정적/시각 암으로 나뉘어 들어오는 경우(DE3 quality-floor의
 // 대비 검사 등)는 하나의 finding으로 병합한다. 같은 원칙을 두 번 denominator에
 // 넣으면 이중 채점이 되므로, pass는 AND, evidence는 순서대로 결합한다.
-export function combineAudits(staticResult, visualFindings) {
+export function combineAudits(staticResult, visual) {
+  const visualFindings = Array.isArray(visual) ? visual : (visual?.findings ?? []);
+  const visualWarnings = Array.isArray(visual) ? [] : (visual?.warnings ?? []);
   const findings = staticResult.findings.map((f) => ({ ...f }));
   const indexById = new Map(findings.map((f, i) => [f.id, i]));
-  for (const visual of visualFindings) {
-    const existingIndex = indexById.get(visual.id);
+  for (const v of visualFindings) {
+    const existingIndex = indexById.get(v.id);
     if (existingIndex === undefined) {
-      indexById.set(visual.id, findings.length);
-      findings.push({ ...visual });
+      indexById.set(v.id, findings.length);
+      findings.push({ ...v });
       continue;
     }
 
     const existing = findings[existingIndex];
-    const evidence = [existing.evidence, visual.evidence].filter(Boolean).join('; ');
+    const evidence = [existing.evidence, v.evidence].filter(Boolean).join('; ');
     findings[existingIndex] = {
       ...existing,
-      pass: existing.pass && visual.pass,
+      pass: existing.pass && v.pass,
       evidence: evidence || null,
     };
   }
@@ -613,7 +617,7 @@ export function combineAudits(staticResult, visualFindings) {
     failed,
     slopScore: failed.length / findings.length,
     pass: failed.length === 0,
-    warnings: staticResult.warnings ?? [],
+    warnings: [...(staticResult.warnings ?? []), ...visualWarnings],
   };
 }
 
