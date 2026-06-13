@@ -552,7 +552,7 @@ function collectWarnings(html, rules, vars) {
   // regex CSS 파서는 selector→요소 매칭을 못 하므로 broad selector
   // (body/html/:root/*/p/h1-6/li)와 인라인 한글 요소로만 좁혀 잡음을 억제한다.
   if (/[가-힣]/.test(text)) {
-    const KOREAN_FONT = /pretendard|apple sd gothic|noto sans (?:kr|cjk)|malgun|nanum|gothic a1|spoqa|gowun|kopub|ibm plex sans kr|gmarket|sunflower|sandoll/i;
+    const KOREAN_FONT = /pretendard|apple sd gothic|noto (?:sans|serif) (?:kr|cjk)|malgun|nanum|gothic a1|spoqa|gowun|kopub|ibm plex sans kr|gmarket|sunflower|sandoll/i;
     const BROAD = new Set(['body', 'html', ':root', '*', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']);
     const isBroad = (sel) => sel.split(',').some((s) => BROAD.has(s.trim().toLowerCase()));
     let bDone = false;

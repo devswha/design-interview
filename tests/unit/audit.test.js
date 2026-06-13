@@ -256,8 +256,10 @@ test('TY5-B warns when Korean body has a Latin-only font stack', () => {
 });
 
 test('TY5-B silent when the stack already names a Korean font', () => {
-  const r = auditHtml('<style>body{font-family:Pretendard,sans-serif}</style><p>국밥 한 그릇 9,000원</p>');
-  assert.ok(!r.warnings.some((w) => w.name === 'hangul-no-korean-font'));
+  for (const stack of ['Pretendard,sans-serif', "'Noto Serif KR',serif", "'Noto Sans KR',sans-serif"]) {
+    const r = auditHtml(`<style>body{font-family:${stack}}</style><p>국밥 한 그릇 9,000원</p>`);
+    assert.ok(!r.warnings.some((w) => w.name === 'hangul-no-korean-font'), `Korean font in "${stack}" should silence TY5-B`);
+  }
 });
 
 test('TY5-C warns on Korean fake italic', () => {
