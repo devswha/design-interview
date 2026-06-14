@@ -63,6 +63,7 @@ sidecar가 없는 파일은 빌드에 사용할 수 없다. AI생성·크롤 에
 
 - 원격 CDN 폰트(`fonts.googleapis.com` 등) 의존 → webfont ① WARN (audit 정적 레인).
 - 모든 폰트는 `@font-face { src: url('./assets/fonts/…') }` 상대경로로 선언한다.
+- **본문 폰트도 반드시 자가호스팅한다.** `--font-body`를 시스템 전용 스택(`Pretendard`·`Apple SD Gothic Neo`만)으로 두면 그 폰트가 미설치된 환경에서 본문이 못생긴 기본 폰트로 깨진다. 번들 `assets/fonts/pretendard-variable.woff2`(가변 — 전 굵기 1파일)를 기본 본문으로 `@font-face` 선언하고 `--font-body` 첫 자리에 둔다. 시스템 폰트는 *폴백*으로만.
 - 이미지·텍스처는 HTML 파일 기준 상대경로 `src="assets/textures/…"`.
 - 아이콘 SVG는 `<svg>` 인라인 삽입 — `<img src>` 또는 `<use xlink:href>` 원격 참조 금지.
 
@@ -73,18 +74,24 @@ sidecar가 없는 파일은 빌드에 사용할 수 없다. AI생성·크롤 에
 Phase 3 토큰 먼저(`:root` 선언) 시:
 
 ```css
-/* 자가호스팅 폰트 */
+/* 자가호스팅 폰트 — 디스플레이 + 본문 둘 다 (본문을 시스템 폰트에 맡기지 않는다) */
 @font-face {
   font-family: 'Hahmlet';
   src: url('./assets/fonts/hahmlet-korean-700-normal.woff2') format('woff2');
   font-weight: 700;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Pretendard';
+  src: url('./assets/fonts/pretendard-variable.woff2') format('woff2');
+  font-weight: 45 920;  /* 가변: 본문~볼드 한 파일 */
+  font-display: swap;
+}
 
 :root {
   /* 타입 토큰 */
-  --font-display: 'Hahmlet', 'Apple SD Gothic Neo', sans-serif;
-  --font-body: Pretendard, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-display: 'Hahmlet', 'Pretendard', sans-serif;
+  --font-body: 'Pretendard', system-ui, sans-serif;  /* 번들 자가호스팅 — 미설치 폴백 방지 */
 
   /* 팔레트 토큰 (assets/palettes/ 에서 확정) */
   --bg: #f9f7f4;
@@ -110,7 +117,8 @@ before/after 실측(`design-principles.md` 시각 임팩트 절)의 **(a) 진짜
 
 | 종류 | 파일 | 비고 |
 |---|---|---|
-| fonts | `fonts/hahmlet-{korean-700,korean-800,latin-700}-normal.woff2` | OFL, 자가호스팅 디스플레이 세리프 |
+| fonts (display) | `fonts/hahmlet-{korean-700,korean-800,latin-700}-normal.woff2` | OFL, 자가호스팅 디스플레이 세리프(굵은 제목용) |
+| fonts (body) | `fonts/pretendard-variable.woff2` | OFL, 자가호스팅 본문 가변 폰트(한글+라틴, weight 45~920). **본문 기본** — 시스템 폰트 의존 금지 |
 | icons | `icons/{anthropic,claude-ai,openai,gemini,perplexity,notion,figma,vercel}.svg` | 실제 브랜드 로고(svgl). **트레이드마크 — 명목적 참조 한정**, "고객/파트너" 클레임 근거 없으면 S2 위반 |
 | icons | `icons/patina-{mark,badge,icon}.svg` | patina 자체 브랜드(devswha/patina, MIT). 제안서의 주체라 주체적 사용 |
 | images | `images/patina-before-after.svg`, `images/patina-og.svg` | patina 실제 소셜/before-after 카드(MIT). **실제 산출물 증거** — 제안서 증거 섹션 임베드(`<img src>`) |

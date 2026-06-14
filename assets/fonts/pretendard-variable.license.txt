@@ -1,0 +1,5 @@
+asset: pretendard-variable.woff2
+license: SIL OFL 1.1
+source: https://github.com/orioncactus/pretendard (v1.3.9, dist/web/variable)
+usage: 본문 자가호스팅 한글+라틴 가변 폰트(weight 45~920). display(Hahmlet)와 페어링하는 기본 본문 폰트.
+collected: 2026-06-14
