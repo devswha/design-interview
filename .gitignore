@@ -2,3 +2,8 @@ node_modules/
 *.preview.html
 .env
 .DS_Store
+
+# gjc 런타임/세션 상태 — 세션마다 자동 변경되므로 추적하지 않는다.
+# (계획·스펙 산출물 .gjc/plans, .gjc/specs는 계속 추적)
+.gjc/state/
+.gjc/ultragoal/
