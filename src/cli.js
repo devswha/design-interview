@@ -19,6 +19,7 @@ function usage() {
       '  audit   <page.html> [--visual]  # 결정론적 design-tell 감사 (exit 1 on fail)',
       '  shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)',
       '  assets  <dir> [--concept-sheet <path>] [--json]  # 에셋 advisory 검사 (always exit 0; 입력오류만 exit 2)',
+      '  crawl   <url> [--out <dir>] [--name <file>] [--json]  # consent-gated 외부 에셋 수집 (SSRF 가드; 사용자 허락 후)',
     ].join('\n'),
   );
   process.exit(2);
@@ -40,7 +41,7 @@ async function readInput(path) {
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
-if (!['intake', 'preview', 'audit', 'shot', 'assets'].includes(cmd) || rest.length === 0) usage();
+if (!['intake', 'preview', 'audit', 'shot', 'assets', 'crawl'].includes(cmd) || rest.length === 0) usage();
 
 if (cmd === 'intake') {
   const json = rest.includes('--json');
@@ -127,6 +128,37 @@ if (cmd === 'assets') {
   if (conceptSheetPath) opts.conceptSheetPath = resolve(conceptSheetPath);
   const report = await auditAssets(resolvedDir, opts);
   console.log(json ? JSON.stringify(report, null, 2) : formatAssetReport(report));
+  process.exit(0);
+}
+
+if (cmd === 'crawl') {
+  const json = rest.includes('--json');
+  let outDir = 'assets/images';
+  let name;
+  const positional = [];
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === '--json') continue;
+    else if (rest[i] === '--out') {
+      outDir = rest[++i];
+      if (outDir === undefined) fail('--out requires a path', 2);
+    } else if (rest[i] === '--name') {
+      name = rest[++i];
+      if (name === undefined) fail('--name requires a value', 2);
+    } else positional.push(rest[i]);
+  }
+  const url = positional[0];
+  if (!url) usage();
+  // consent-gated: 실제 수집 여부는 호출 전 사용자 허락을 받는다(SKILL.md). 명령은 실행자다.
+  console.error('주의: consent-gated 외부 수집 — 사용자 허락 후에만 실행. license는 sidecar에서 수동 확인.');
+  const { crawlAsset } = await import('./crawl.js');
+  let result;
+  try {
+    result = await crawlAsset(url, { outDir: resolve(outDir), name });
+  } catch (err) {
+    if (err.userError) fail(err.message, 2); // URL 아님·파일명 추론 불가 등 입력 오류
+    fail(`crawl failed: ${err.message}`, 1); // SSRF 차단·fetch 실패·캡 초과
+  }
+  console.log(json ? JSON.stringify(result, null, 2) : `${result.filePath}\n${result.sidecarPath}`);
   process.exit(0);
 }
 

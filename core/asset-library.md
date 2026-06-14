@@ -149,12 +149,15 @@ Phase 1 인터뷰 sourcing plan 응답 및 Phase 2 에셋 계획에서 per-asset
 크롤은 **사용자 허락(consent) 후에만** 실행한다. 두 경로:
 
 1. **스크린샷 (레퍼런스·실재 화면)**: 기존 `node src/cli.js shot <url>` 재사용 → `refs/screenshots/` 저장. 신규 코드 없음.
-2. **바이너리 에셋 (실 로고·이미지 파일)**: `src/intake.js`의 `fetchBinary(url) → Buffer` 사용. `assertSafeUrl`·`guardedLookup`(DNS 사설 주소 거부)·5MB/30s 캡을 `fetchSource`와 동일하게 공유(SSRF 가드 재사용, 신규 런타임 의존 0).
+2. **바이너리 에셋 (실 로고·이미지 파일)**: `node src/cli.js crawl <url> [--out <dir>] [--name <file>]` 실행 → SSRF 가드(`assertSafeUrl`·`guardedLookup`·5MB/30s 캡, `src/intake.js` `fetchBinary` 공유)를 통과한 뒤 카테고리 디렉터리에 저장하고 provenance sidecar를 **자동** 작성한다. 신규 런타임 의존 0.
+   - 예: `node src/cli.js crawl https://brand.example/logo.svg --out assets/icons`
+   - exit: 성공 0 / SSRF 차단·fetch 실패·캡 초과 1 / 비URL·파일명 추론 불가 2.
 
 수집 결과 규칙:
-- 카테고리 디렉터리(`assets/images/`, `assets/icons/` 등)에 저장.
-- provenance/license `.license.txt` sidecar **필수**. `source: crawled:https://원본URL` 명시.
-- sidecar 없으면 빌드 사용 불가.
+- 카테고리 디렉터리(`assets/images/`, `assets/icons/` 등)에 저장(`--out`).
+- provenance/license `.license.txt` sidecar **자동 작성** — `source: crawled:<원본URL>`, `license: REVIEW-REQUIRED`(사용 전 수동 확인).
+- 수집물을 "고객/파트너" 등 실재로 거짓주장하면 S2 위반 — 명목적 근거 확인 후 사용.
+- sidecar 없으면 빌드 사용 불가(크롤은 자동 작성하므로 충족).
 
 ---
 
