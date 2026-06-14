@@ -1,0 +1,4 @@
+asset: patina-mark.svg
+source: ~/workspace/patina/assets/brand/patina-mark.svg (devswha/patina)
+license: MIT (project brand asset; subject of this proposal)
+usage: 제안서 표지 — 제품 본인 식별. 명목적/주체적 사용.

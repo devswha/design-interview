@@ -1,0 +1,4 @@
+asset: patina-before-after.svg
+source: ~/workspace/patina/assets/social/patina-before-after.svg  (devswha/patina)
+license: MIT (제품 본인 브랜드·소셜 에셋; 본 제안서의 주체)
+usage: 실제 before/after 소셜 카드 — slop→clean 실증 (제안서 증거 임베드). 명목적/주체적 사용.

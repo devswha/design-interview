@@ -1,0 +1,4 @@
+asset: patina-icon.svg
+source: ~/workspace/patina/assets/icons/patina-icon.svg  (devswha/patina)
+license: MIT (제품 본인 브랜드·소셜 에셋; 본 제안서의 주체)
+usage: 앱 아이콘 (다크 백플레이트). 명목적/주체적 사용.

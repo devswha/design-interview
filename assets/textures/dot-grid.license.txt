@@ -1,0 +1,4 @@
+asset: dot-grid.svg
+source: 직접 제작 (self-authored geometric pattern)
+license: CC0
+usage: 배경 타일 텍스처 (background-image + background-size, CSS opacity). 장식 한정.

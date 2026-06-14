@@ -12,6 +12,7 @@ assets/
   fonts/          ← 자가호스팅 woff2 (@font-face 상대경로)
   textures/       ← 배경 이미지·노이즈·종이 재질 (jpg/png/webp)
   icons/          ← 인라인 SVG 소스 (최적화 후 HTML에 인라인 삽입)
+  images/         ← 실재 이미지·스크린샷·소셜카드·제품 아티팩트 (embeddable, `<img src>` 상대경로). 직접 제작 SVG 다이어그램·실사·실제 산출물만 — undraw/스톡/생성이미지 금지(S4)
   palettes/       ← 팔레트 JSON/CSS 스니펫 (--accent, --bg 등)
 refs/
   screenshots/    ← Phase 1 레퍼런스 URL 스크린샷 (node src/cli.js shot)
@@ -109,7 +110,9 @@ before/after 실측(`design-principles.md` 시각 임팩트 절)의 **(a) 진짜
 |---|---|---|
 | fonts | `fonts/hahmlet-{korean-700,korean-800,latin-700}-normal.woff2` | OFL, 자가호스팅 디스플레이 세리프 |
 | icons | `icons/{anthropic,claude-ai,openai,gemini,perplexity,notion,figma,vercel}.svg` | 실제 브랜드 로고(svgl). **트레이드마크 — 명목적 참조 한정**, "고객/파트너" 클레임 근거 없으면 S2 위반 |
-| textures | `textures/paper-noise.svg` | feTurbulence 직접 생성(CC0) |
+| icons | `icons/patina-{mark,badge,icon}.svg` | patina 자체 브랜드(devswha/patina, MIT). 제안서의 주체라 주체적 사용 |
+| images | `images/patina-before-after.svg`, `images/patina-og.svg` | patina 실제 소셜/before-after 카드(MIT). **실제 산출물 증거** — 제안서 증거 섹션 임베드(`<img src>`) |
+| textures | `textures/paper-noise.svg`, `textures/dot-grid.svg`, `textures/hatch-diagonal.svg` | feTurbulence·도트그리드·대각해치 직접 생성(CC0). background-image 타일 |
 
 전부 `.license.txt` sidecar 동반. **(a) 원칙**: 만든(undraw·스톡) 자산이 아니라 *구해온/실재* 자산만 — 빌드는 이 인벤토리에서 인라인 조립한다.
 **(b) 폴라리티 빌드 패턴**: 다크 캔버스 밴드를 1곳 이상 두고 라이트 섹션과 교차(`<section class="band-dark">` + 그 위 라이트 인셋 패널), 강조색은 다크 위에 점으로. 2칼럼은 불균등(좌사진/우데이터 등). **(c) 초점**: 섹션마다 지배 요소 1개(HI2 one-winner 교차참조) — shot 자기검수로 확인.
