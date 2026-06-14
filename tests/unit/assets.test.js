@@ -373,3 +373,26 @@ test('CG-001: 권한 없는 디렉터리 → exit 2', { skip: process.getuid?.()
     await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 });
+
+// sidecar 네이밍 회귀: 기존 라이브러리는 strip-ext(figma.license.txt),
+// 신규는 keep-ext(openai.svg.license.txt) — 검사기가 둘 다 인식해야 실제 assets/가 오탐 안 난다.
+test('sidecar: strip-ext / keep-ext 두 형식 모두 인식', async () => {
+  const { mkdtemp, writeFile: wf, mkdir, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const dir = await mkdtemp(join(tmpdir(), 'di-sidecar-'));
+  try {
+    await mkdir(join(dir, 'icons'), { recursive: true });
+    const nominative = 'license: trademark\nsource: brand kit\nusage: nominative reference';
+    // strip-ext (기존 라이브러리 방식)
+    await wf(join(dir, 'icons/figma.svg'), '<svg/>');
+    await wf(join(dir, 'icons/figma.license.txt'), nominative);
+    // keep-ext (신규 방식)
+    await wf(join(dir, 'icons/openai.svg'), '<svg/>');
+    await wf(join(dir, 'icons/openai.svg.license.txt'), nominative);
+    const r = await auditAssets(dir);
+    assert.equal(r.missingSidecar.length, 0, '두 형식 모두 sidecar로 인식돼야 (누락 0)');
+    assert.equal(r.suspectFabrication.length, 0, '명목적 근거 있으면 logo-as-customer 의심 음성');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

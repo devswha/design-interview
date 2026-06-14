@@ -200,7 +200,12 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
         continue;
       }
 
-      const hasSidecar = sidecarSet.has(entry.name);
+      // sidecar 파일명: keep-ext(foo.svg.license.txt) 또는 strip-ext(foo.license.txt) 둘 다 인정.
+      const base = entry.name.slice(0, entry.name.length - extname(entry.name).length);
+      const sidecarKey = sidecarSet.has(entry.name)
+        ? entry.name
+        : (base !== entry.name && sidecarSet.has(base) ? base : null);
+      const hasSidecar = sidecarKey !== null;
 
       let sidecar = {};
       let source;
@@ -208,7 +213,7 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
       if (hasSidecar) {
         try {
           const sidecarText = await readFile(
-            join(currentDir, entry.name + '.license.txt'),
+            join(currentDir, sidecarKey + '.license.txt'),
             'utf8',
           );
           sidecar = parseSidecar(sidecarText);
