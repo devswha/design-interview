@@ -1,0 +1,5 @@
+asset: assets/samples/icons/placeholder-mark.svg
+license: CC0 1.0 Universal (Public Domain Dedication)
+source: 직접 제작 — 기하 도형(rect/line/circle)으로 구성. 외부 소스 없음. 트레이드마크 없음.
+usage: 브랜드 마크/아이콘 플레이스홀더. 실제 로고 확정 전 임시 사용. 색상(#333333)은 fork 후 교체.
+collected: 2026-06-14

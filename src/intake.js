@@ -7,6 +7,8 @@
 // SSRF 가드는 2단이다: ①사전 검증(assertSafeUrl — 스킴/호스트/DNS),
 // ②연결 시점 검증(node http/https의 lookup 훅) — 검증과 연결 사이에
 // DNS 응답이 바뀌는 리바인딩을 차단한다.
+//
+// fetchBinary 결과는 호출자가 카테고리 디렉터리(assets/icons|images|textures)에 저장하고 .license.txt sidecar(source/license/출처)를 동반해야 한다(NF2).
 
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -230,7 +232,7 @@ function requestOnce(url, { lookupImpl, signal }) {
   });
 }
 
-function readCappedBody(res, cap) {
+function readCappedBody(res, cap, { encoding = 'utf8' } = {}) {
   return new Promise((resolvePromise, rejectPromise) => {
     const chunks = [];
     let total = 0;
@@ -243,14 +245,20 @@ function readCappedBody(res, cap) {
       }
       chunks.push(chunk);
     });
-    res.on('end', () => resolvePromise(Buffer.concat(chunks).toString('utf8')));
+    res.on('end', () => {
+      const buf = Buffer.concat(chunks);
+      resolvePromise(encoding === null ? buf : buf.toString(encoding));
+    });
     res.on('error', rejectPromise);
   });
 }
 
-// SSRF 가드를 통과한 URL을 텍스트로 가져온다. 리다이렉트는 매 hop 재검증.
+// SSRF 가드를 통과한 URL을 가져온다. 리다이렉트는 매 hop 재검증.
+// encoding 'utf8'(기본)이면 문자열, null이면 Buffer 반환.
 // requestImpl은 테스트 주입용 — 형태는 requestOnce와 동일.
-export async function fetchSource(rawUrl, { requestImpl = requestOnce, lookupImpl = dnsLookup } = {}) {
+// 보안 핵심 경로(사전검증·연결시점 가드·hop 재검증·캡)는 여기 한 곳뿐 —
+// fetchSource/fetchBinary가 인코딩만 달리해 공유한다.
+async function fetchGuarded(rawUrl, { requestImpl = requestOnce, lookupImpl = dnsLookup, encoding = 'utf8' } = {}) {
   let url = await assertSafeUrl(rawUrl, { lookupImpl });
   const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
@@ -267,7 +275,17 @@ export async function fetchSource(rawUrl, { requestImpl = requestOnce, lookupImp
       res.resume?.();
       throw new Error(`fetch failed: ${status} ${res.statusMessage ?? ''}`.trim());
     }
-    return readCappedBody(res, FETCH_MAX_BYTES);
+    return readCappedBody(res, FETCH_MAX_BYTES, { encoding });
   }
   throw new Error(`too many redirects (max ${MAX_REDIRECTS})`);
+}
+
+// SSRF 가드를 통과한 URL을 텍스트로 가져온다.
+export function fetchSource(rawUrl, opts = {}) {
+  return fetchGuarded(rawUrl, { ...opts, encoding: 'utf8' });
+}
+
+// SSRF 가드를 통과한 URL을 바이너리(Buffer)로 가져온다. 가드는 fetchSource와 동일 경로 공유.
+export function fetchBinary(rawUrl, opts = {}) {
+  return fetchGuarded(rawUrl, { ...opts, encoding: null });
 }

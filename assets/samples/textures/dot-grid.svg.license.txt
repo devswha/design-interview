@@ -1,0 +1,5 @@
+asset: assets/samples/textures/dot-grid.svg
+license: CC0 1.0 Universal (Public Domain Dedication)
+source: 직접 제작 — SVG pattern/circle 요소로 생성. 외부 소스 없음.
+usage: 배경 도트 그리드 패턴. 20×20px 타일 단위로 반복 사용. 색상·반지름은 fork 후 조정.
+collected: 2026-06-14

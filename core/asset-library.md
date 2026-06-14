@@ -12,8 +12,9 @@ assets/
   fonts/          ← 자가호스팅 woff2 (@font-face 상대경로)
   textures/       ← 배경 이미지·노이즈·종이 재질 (jpg/png/webp)
   icons/          ← 인라인 SVG 소스 (최적화 후 HTML에 인라인 삽입)
-  images/         ← 실재 이미지·스크린샷·소셜카드·제품 아티팩트 (embeddable, `<img src>` 상대경로). 직접 제작 SVG 다이어그램·실사·실제 산출물만 — undraw/스톡/생성이미지 금지(S4)
+  images/         ← 실재 이미지·스크린샷·소셜카드·제품 아티팩트 (embeddable, `<img src>` 상대경로). 게으른·범용·안 어울리는 이미지(슬롭 룩) 금지(S4); sidecar source 명시 + 아트디렉션·통합이면 AI생성·스톡 합법
   palettes/       ← 팔레트 JSON/CSS 스니펫 (--accent, --bg 등)
+  samples/        ← 스킬 번들 스타터 에셋 (CC0·자작). 보유 0개일 때 sourcing plan '(3) samples' 경로로 사용
 refs/
   screenshots/    ← Phase 1 레퍼런스 URL 스크린샷 (node src/cli.js shot)
   brief/          ← 클라이언트 브리프·무드보드 파일
@@ -29,23 +30,24 @@ refs/
 |---|---|
 | **Phase 0** (Intake) | 소스와 함께 제공된 폰트·이미지·SVG·팔레트 파일을 `assets/` 하위에 저장. 라이선스 sidecar 즉시 작성. |
 | **Phase 1** (Interview) | 레퍼런스 URL을 `node src/cli.js intake <url>` SSRF 게이트 통과 후 `shot`으로 스크린샷 캡처 → `refs/screenshots/` 저장. 파일명을 컨셉 시트 reference 행에 기록. |
-| **Phase 2** (Concept Lock) | 컨셉 시트 에셋 선택 행에 실제 사용할 파일을 확정 기록. `assets/`·`refs/`에 없는 파일은 Phase 0/1로 되돌아가 수집한다. |
+| **Phase 2** (Concept Lock) | 컨셉 시트 에셋 계획(Sourcing Plan) 행에 실제 사용할 파일 + 소싱 경로(path/generate/samples/crawl)를 확정 기록. `assets/`·`refs/`에 없는 파일은 Phase 0/1로 되돌아가 수집한다. |
 | **Phase 3** (Build) | `:root` 토큰 선언 시 `@font-face`(상대경로)·CSS 변수·인라인 SVG를 실제 파일에서 조립. 원격 URL 참조 금지(CDN 비권장). |
 
 ---
 
 ## 라이선스 sidecar 규칙
 
-모든 에셋 파일 옆에 `<filename>.license.txt`를 둔다. 최소 기록:
+모든 에셋 파일 옆에 `<filename>.license.txt`를 둔다. 최소 기록(AI생성·크롤 에셋은 `source` 필드 필수):
 
 ```
 파일: hahmlet-korean-700-normal.woff2
 라이선스: SIL OFL 1.1
 출처: https://fonts.google.com/specimen/Hahmlet
+source: fonts.google.com
 수집일: 2026-06-14
 ```
 
-sidecar가 없는 파일은 빌드에 사용할 수 없다.
+sidecar가 없는 파일은 빌드에 사용할 수 없다. AI생성·크롤 에셋은 `source: AI-generated:codex` / `source: crawled:https://…` 형식으로 `source` 필드를 반드시 명시한다.
 
 ---
 
@@ -53,7 +55,7 @@ sidecar가 없는 파일은 빌드에 사용할 수 없다.
 
 - **픽셀 카피 금지**: 클라이언트 브리프나 레퍼런스의 디자인 요소를 픽셀 단위로 복제하지 않는다. 아이디어만 채택하고 산문·이미지·레이아웃은 재창작한다.
 - **빌릴 것 / 버릴 것**: 컨셉 시트의 "하지 않을 것" 목록에서 레퍼런스의 버릴 요소를 명시한다. 가져오는 것은 역할(색, 텍스처 느낌, 타이포 성격)이지 형태가 아니다.
-- **S4 stock-illustration 금지**: undraw류 SVG 일러스트, 의미 없는 3D 블롭은 `assets/icons/`에 저장해도 빌드 사용 금지. 실사 사진·직접 제작 SVG 다이어그램만 합법.
+- **S4 재정의 — generic-image**: 소스 불문(AI생성·스톡·실사), 게으른·범용·디폴트·안 어울리는 이미지(슬롭 룩)만 금지. sidecar source 명시 + 아트디렉션·통합이면 합법. undraw/스톡/AI생성 자체 금지 아님 — **게으른 사용** 금지.
 
 ---
 
@@ -116,3 +118,68 @@ before/after 실측(`design-principles.md` 시각 임팩트 절)의 **(a) 진짜
 
 전부 `.license.txt` sidecar 동반. **(a) 원칙**: 만든(undraw·스톡) 자산이 아니라 *구해온/실재* 자산만 — 빌드는 이 인벤토리에서 인라인 조립한다.
 **(b) 폴라리티 빌드 패턴**: 다크 캔버스 밴드를 1곳 이상 두고 라이트 섹션과 교차(`<section class="band-dark">` + 그 위 라이트 인셋 패널), 강조색은 다크 위에 점으로. 2칼럼은 불균등(좌사진/우데이터 등). **(c) 초점**: 섹션마다 지배 요소 1개(HI2 one-winner 교차참조) — shot 자기검수로 확인.
+
+---
+
+## 소싱 4경로
+
+Phase 1 인터뷰 sourcing plan 응답 및 Phase 2 에셋 계획에서 per-asset으로 선택:
+
+| 경로 | 설명 | sidecar `source` 예시 |
+|---|---|---|
+| **(1) path** | 사용자 보유 폴더 경로 직접 제공 | `source: user-provided` |
+| **(2) generate** | codex CLI · ChatGPT image · 자작 SVG 제작 | `source: AI-generated:codex` / `source: self-authored` |
+| **(3) samples** | 번들 샘플 `assets/samples/` 즉시 사용 | `source: bundle-sample` |
+| **(4) crawl** | consent-gated 크롤 (실재-only) | `source: crawled:https://…` |
+
+**직접 입력 / 없음** 폴백: 에셋이 0개여도 진행하되, per-asset 경로 선택은 반드시 기록한다.
+
+---
+
+## 크롤 절차 (consent + 가드)
+
+크롤은 **사용자 허락(consent) 후에만** 실행한다. 두 경로:
+
+1. **스크린샷 (레퍼런스·실재 화면)**: 기존 `node src/cli.js shot <url>` 재사용 → `refs/screenshots/` 저장. 신규 코드 없음.
+2. **바이너리 에셋 (실 로고·이미지 파일)**: `src/intake.js`의 `fetchBinary(url) → Buffer` 사용. `assertSafeUrl`·`guardedLookup`(DNS 사설 주소 거부)·5MB/30s 캡을 `fetchSource`와 동일하게 공유(SSRF 가드 재사용, 신규 런타임 의존 0).
+
+수집 결과 규칙:
+- 카테고리 디렉터리(`assets/images/`, `assets/icons/` 등)에 저장.
+- provenance/license `.license.txt` sidecar **필수**. `source: crawled:https://원본URL` 명시.
+- sidecar 없으면 빌드 사용 불가.
+
+---
+
+## 에셋 검사 CLI
+
+```
+node src/cli.js assets <dir> [--concept-sheet <path>] [--json]
+```
+
+advisory 검사 3종 출력:
+
+- **종류별 개수**: logo · image · texture · font · other (total N)
+- **sidecar 누락** 목록: `.license.txt` 없는 파일
+- **가짜-실재 의심** 목록: sidecar 근거 기반 의심 표시만 (advisory; 최종 판정은 LLM 레인)
+
+**exit 계약 (고정):**
+- **always exit 0** — suspect/missing 개수와 완전 독립. 입력 오류(dir 미지정·없음·파일아님)만 exit 2.
+- best-effort 검사 — 누락·의심은 권고일 뿐.
+- **S2 가짜-실재 최종 판정 권위는 LLM 레인 단일**; 기계는 sidecar 근거 의심 표시만(이중채점 금지).
+- **CI 차단 게이트로 쓰지 말 것** — blocking이 필요하면 `node src/cli.js audit` 레인 사용.
+
+---
+
+## 번들 샘플
+
+`assets/samples/` — CC0·자작 스타터 파일. sourcing plan 경로 **(3) samples** 사용 시 참조.
+
+```
+assets/samples/
+  textures/paper-noise.svg         ← feTurbulence 자작, CC0
+  textures/dot-grid.svg            ← 도트그리드 자작, CC0
+  icons/placeholder-mark.svg       ← 자작 플레이스홀더 마크, CC0
+  icons/wordmark-placeholder.svg   ← 자작 워드마크 플레이스홀더, CC0
+```
+
+각 파일에 `.license.txt` sidecar 동반 (`source: self-authored`, `라이선스: CC0`).

@@ -1,0 +1,5 @@
+asset: assets/samples/icons/wordmark-placeholder.svg
+license: CC0 1.0 Universal (Public Domain Dedication)
+source: 직접 제작 — circle·text 요소로 구성. system-ui 폰트 스택(시스템 폰트, 별도 라이선스 불필요). 트레이드마크 없음.
+usage: 워드마크/로고타입 플레이스홀더. 실제 브랜드 워드마크 확정 전 레이아웃 예약용. 'BRAND' 텍스트와 색상(#111111)은 fork 후 교체.
+collected: 2026-06-14

@@ -1,0 +1,4 @@
+license: CC0
+source: self-authored
+asset: hero.png
+usage: hero section background

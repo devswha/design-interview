@@ -31,7 +31,7 @@ patina의 패턴 팩에 해당하는 시각 도메인 금지 목록. 빌드(Phas
 - `S1 testimonial-fabrication` — 출처 없는 후기 카드. 신뢰 사기이자 강한 AI 텔. → 실제 후기가 없으면 섹션을 만들지 않는다.
 - `S2 logo-wall-placeholder` — "trusted by" 가짜 로고 월. → 동일.
 - `S3 perfect-symmetry` — 모든 여백·크기가 수학적으로 균일. → 의도적 비대칭 최소 1곳 (SKILL.md Phase 3 규칙).
-- `S4 stock-illustration` — undraw류 일러스트, 의미 없는 3D 블롭. → 실제 제품 스크린샷, 없으면 타이포그래피로 해결.
+- `S4 generic-image` — 소스 불문(AI생성·스톡·실사), 게으른·범용·디폴트·안 어울리는 이미지(슬롭 룩) 금지. sidecar source 명시 + 아트디렉션·통합이면 합법. → 목적 있는 이미지로 대체하거나 타이포그래피로 해결.
 - `S5 border-radius-uniform` — 전 요소 동일 radius (특히 12–16px). → 요소 위계별로 다르게, 또는 0.
 — 단, 컨셉 시트가 radius 위계를 명시하면 균일 radius 합법(advisory 경고만).
 
@@ -54,7 +54,7 @@ patina의 패턴 팩에 해당하는 시각 도메인 금지 목록. 빌드(Phas
 |---|---|---|
 | **하드 차단 (blocking, exit 1)** | 기계·정적: **C1**(보라 그라데이션)·**T1**(이모지 불릿)·**T2**(hype 어휘)·**T4**(대칭 3연) | fail = 납품 불가, Phase 3 수정 후 재감사 |
 | **하드 차단 (blocking, exit 1)** | 품질 바닥선: **DE3** 정적 품질 바닥선 + **DE3** 시각 렌더 대비 + **TY5-A** 한글 어절 중간 줄바꿈 | fail = 납품 불가 |
-| **하드 차단 (blocking, exit 1)** | LLM 레인: **S1**(가짜 후기)·**S2**(가짜 로고)·**M1~M4**(장식 모션) | LLM 체크리스트 위반 = Phase 3 복귀 |
+| **하드 차단 (blocking, exit 1)** | LLM 레인: **S1**(가짜 후기)·**S2**(가짜-실재 날조: 가짜 로고·스크린샷·데이터)·**M1~M4**(장식 모션) | LLM 체크리스트 위반 = Phase 3 복귀. **S2 최종 판정 권위는 LLM 레인 단일**; assets 기계 검사(`node src/cli.js assets`)는 sidecar 근거 의심 표시만(이중채점 금지) |
 | **소프트 권고 (advisory)** | 기계·정적: **TY4**(패밀리 수)·**CO1**(색 예산·단일 강조)·**DE1**(그림자 캡)·**S5**(radius 균일) | findings에 기록, exit 무영향 |
 | **소프트 권고 (advisory)** | 기계·시각: **L1**(균일 카드 그리드)·**L2**(전부 중앙)·**S3**(완전 대칭)·**TY1**(타입 스케일)·**TY2**(행길이·본문 크기) | findings에 기록, exit 무영향 |
 
@@ -63,7 +63,7 @@ advisory도 기계가 탐지하되 exit에 영향을 주지 않는다 — benchm
 - **기계 레인 (정적)** (`node src/cli.js audit <built.html>`): C1, T1, T2, T4는 하드 차단; TY4·CO1·DE1·S5는 advisory findings. DE3 정적 품질 바닥선은 하드 차단. TY5-B/C(한글 폴백 스택·가짜 이탤릭)·webfont ①(원격 CDN 폰트 의존) WARN도 이 레인.
 - **기계 레인 (시각)** (`--visual` 플래그, requires puppeteer): TY5-A·DE3 렌더 대비는 하드 차단; L1·L2·S3·TY1·TY2는 advisory findings. webfont ②(선언 @font-face 미로드 → fallback 측정) WARN도 시각 레인. DE3는 정적 암과 시각 암을 같은 ID로 병합해 한 번만 채점한다. WARN(DE3 craft·TY5-B/C·webfont)은 `warnings` 배열로만 흐르고 채점·exit에 영향 없다.
   - L2는 섹션별 판정(단일 컬럼 기하 AND (기하 중앙 OR 텍스트 중앙 다수), 전 섹션이 100% 해당일 때만 발화), S3는 페이지 전체 text-align 비율 — 서로 다른 입력에서 발화한다 (양방향 분리 증명 픽스처: `tests/redteam/`).
-- **LLM 레인**: 의미 판단이 필요한 나머지(L3, L4, C5, S1/S2/S4, T3, T5, **M1~M4 장식 모션**)는 Phase 5에서 체크리스트로 점검한다. S1·S2·M1~M4는 하드 차단.
+- **LLM 레인**: 의미 판단이 필요한 나머지(L3, L4, C5, S1/S2/S4, T3, T5, **M1~M4 장식 모션**)는 Phase 5에서 체크리스트로 점검한다. S1·S2·M1~M4는 하드 차단. **S2(가짜-실재 — 실재 거짓주장 에셋 날조: 가짜 로고·스크린샷·데이터) 최종 판정 권위는 LLM 레인 단일**; assets 기계 검사는 sidecar 근거 의심 표시만(이중채점 금지). **S4(generic-image)는 LLM 레인 잔류 — 기계 비승격**.
   - M1~M4(장식 모션)·MO 어포던스(hover-only 등)는 LLM 레인 잔류 — 기계 승격은 `design-principles.md` "MO 기계 승격 후보"의 중첩 파서 게이트(M8.2) 통과가 선결. reduced-motion 미가드(b1)는 승격 시 WARN 레인.
   - L3는 기계 승격이 적대 심사에서 기각됨(보수적 기준조차 패딩 6px 넛지 하나로 우회 가능). LLM 레인 잔류, SP3(design-principles)와 단일 계기.
 

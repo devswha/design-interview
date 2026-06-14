@@ -5,17 +5,22 @@
 // 에러 규율: 사용자 입력 문제(없는 파일 등)는 스택트레이스 없이 메시지 + exit 2,
 // 감사 fail은 exit 1, 시각 레인 폴백은 puppeteer 미설치(ERR_PUPPETEER_MISSING)만.
 
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, stat, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { buildPreviewHtml } from './preview.js';
 import { auditHtml, formatAuditReport, combineAudits } from './audit.js';
 
 function usage() {
-  console.error(`usage: design-interview <command>
-  intake  <file-or-url> [--json]  # 보존 클레임 추출 (URL은 SSRF 가드 통과 필수)
-  preview <built.html> [--against <slop.html>] [--out <file>]
-  audit   <page.html> [--visual]  # 결정론적 design-tell 감사 (exit 1 on fail)
-  shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)`);
+  console.error(
+    [
+      'usage: design-interview <command>',
+      '  intake  <file-or-url> [--json]  # 보존 클레임 추출 (URL은 SSRF 가드 통과 필수)',
+      '  preview <built.html> [--against <slop.html>] [--out <file>]',
+      '  audit   <page.html> [--visual]  # 결정론적 design-tell 감사 (exit 1 on fail)',
+      '  shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)',
+      '  assets  <dir> [--concept-sheet <path>] [--json]  # 에셋 advisory 검사 (always exit 0; 입력오류만 exit 2)',
+    ].join('\n'),
+  );
   process.exit(2);
 }
 
@@ -35,7 +40,7 @@ async function readInput(path) {
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
-if (!['intake', 'preview', 'audit', 'shot'].includes(cmd) || rest.length === 0) usage();
+if (!['intake', 'preview', 'audit', 'shot', 'assets'].includes(cmd) || rest.length === 0) usage();
 
 if (cmd === 'intake') {
   const json = rest.includes('--json');
@@ -86,6 +91,43 @@ if (cmd === 'shot') {
   } catch (err) {
     fail(err.message, 1);
   }
+}
+
+if (cmd === 'assets') {
+  const json = rest.includes('--json');
+  const positional = [];
+  let conceptSheetPath;
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === '--json') continue;
+    else if (rest[i] === '--concept-sheet') {
+      conceptSheetPath = rest[++i];
+      if (conceptSheetPath === undefined) fail('--concept-sheet requires a path', 2);
+    }
+    else positional.push(rest[i]);
+  }
+  const dir = positional[0];
+  if (!dir) usage();
+  const resolvedDir = resolve(dir);
+  let dirStat;
+  try {
+    dirStat = await stat(resolvedDir);
+  } catch (err) {
+    fail(`cannot read ${dir}: ${err.message}`, 2);
+  }
+  if (!dirStat.isDirectory()) fail(`cannot read ${dir}: not a directory`, 2);
+  // 인자 디렉터리 자체를 읽을 수 없으면(권한 등) 입력 오류로 exit 2.
+  // (중첩 하위 디렉터리의 읽기 실패는 auditAssets에서 best-effort로 skip한다.)
+  try {
+    await readdir(resolvedDir);
+  } catch (err) {
+    fail(`cannot read ${dir}: ${err.message}`, 2);
+  }
+  const { auditAssets, formatAssetReport } = await import('./assets.js');
+  const opts = {};
+  if (conceptSheetPath) opts.conceptSheetPath = resolve(conceptSheetPath);
+  const report = await auditAssets(resolvedDir, opts);
+  console.log(json ? JSON.stringify(report, null, 2) : formatAssetReport(report));
+  process.exit(0);
 }
 
 const args = { _: [] };

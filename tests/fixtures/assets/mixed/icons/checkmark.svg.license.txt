@@ -1,0 +1,4 @@
+license: CC0
+source: self-authored
+asset: checkmark.svg
+usage: UI checkmark icon

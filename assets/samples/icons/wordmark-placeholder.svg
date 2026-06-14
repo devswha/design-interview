@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="48" viewBox="0 0 160 48">
+  <!--
+    wordmark-placeholder.svg — 자작 워드마크 플레이스홀더.
+    로고타입이 없을 때 레이아웃 공간을 확보하기 위한 중립 워드마크.
+    'BRAND' 텍스트는 실제 브랜드명으로 교체한다.
+  -->
+  <!-- 배경 없음(transparent) — 다양한 배경색 위에 올려 사용 -->
+  <g font-family="system-ui, -apple-system, sans-serif">
+    <!-- 마크: 작은 원 두 개 -->
+    <circle cx="16" cy="24" r="7" fill="#111111"/>
+    <circle cx="27" cy="24" r="7" fill="#111111" opacity="0.35"/>
+    <!-- 워드마크 텍스트 -->
+    <text x="42" y="30"
+          font-size="18"
+          font-weight="700"
+          fill="#111111"
+          letter-spacing="-0.3">BRAND</text>
+  </g>
+</svg>

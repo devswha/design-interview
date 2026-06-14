@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+  <!--
+    dot-grid.svg — CC0 자작 도트 그리드 패턴.
+    <pattern> 타일로 반복해 전체 배경에 적용.
+    예: <rect fill="url(#dotgrid)" width="100%" height="100%"/>
+  -->
+  <defs>
+    <pattern id="dotgrid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="1" fill="#c8c8c8"/>
+    </pattern>
+  </defs>
+  <rect width="20" height="20" fill="url(#dotgrid)"/>
+</svg>

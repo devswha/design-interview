@@ -1,0 +1,5 @@
+asset: assets/samples/textures/paper-noise.svg
+license: CC0 1.0 Universal (Public Domain Dedication)
+source: 직접 제작 — SVG feTurbulence fractalNoise 필터로 생성. 외부 소스 없음.
+usage: 배경 오버레이 텍스처. opacity 0.1–0.5 범위에서 적용. 타일링 가능(stitchTiles=stitch).
+collected: 2026-06-14
