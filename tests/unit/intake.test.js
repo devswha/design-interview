@@ -36,6 +36,27 @@ test('claims dedupe and table renders', () => {
   assert.match(buildClaimTable({ claims: [] }), /추출된 클레임 없음/);
 });
 
+test('context window never splits a surrogate pair (no lone surrogate �)', () => {
+  // 🚀(U+1F680) 직후에 클레임을 두면, 클레임 기준 span 컷이
+  // 이모지 서로게이트 페어 한가운데를 가를 수 있다.
+  const src = '지금 시작하기 🚀 템플릿 30개 포함, 손쉽게 활용하세요.';
+  const { claims } = extractClaims(src);
+  const q = claims.find((c) => c.kind === 'quantity' && c.value === '30개');
+  assert.ok(q, '수량 클레임이 추출돼야 한다');
+  // 외톨이 서로게이트(0xD800–0xDFFF without partner)가 남으면 안 된다.
+  for (let i = 0; i < q.context.length; i++) {
+    const code = q.context.charCodeAt(i);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = q.context.charCodeAt(i + 1);
+      assert.ok(next >= 0xdc00 && next <= 0xdfff, `lone high surrogate at ${i}`);
+      i += 1;
+    } else {
+      assert.ok(!(code >= 0xdc00 && code <= 0xdfff), `lone low surrogate at ${i}`);
+    }
+  }
+  assert.ok(!q.context.includes('\ufffd'), 'replacement char must not appear');
+});
+
 test('ssrf: private address detection', () => {
   for (const addr of ['127.0.0.1', '10.0.0.5', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.169.254', '::1', 'fe80::1', '::ffff:127.0.0.1']) {
     assert.equal(isPrivateAddress(addr), true, addr);

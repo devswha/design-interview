@@ -43,8 +43,13 @@ function boundForScan(text) {
 }
 
 function contextAround(text, index, length, span = 40) {
-  const start = Math.max(0, index - span);
-  const end = Math.min(text.length, index + length + span);
+  let start = Math.max(0, index - span);
+  let end = Math.min(text.length, index + length + span);
+  // 서로게이트 페어 한가운데서 자르면 외톨이 서로게이트(�)가 남는다.
+  // start가 low 서로게이트면 그 앞의 high가 잘려나간 것 → 한 칸 민다.
+  // end 직전이 high 서로게이트면 뒤의 low가 잘려나갈 것 → 한 칸 당긴다.
+  if (start > 0 && text.charCodeAt(start) >= 0xdc00 && text.charCodeAt(start) <= 0xdfff) start += 1;
+  if (end < text.length && text.charCodeAt(end - 1) >= 0xd800 && text.charCodeAt(end - 1) <= 0xdbff) end -= 1;
   return text.slice(start, end).replace(/\s+/g, ' ').trim();
 }
 
