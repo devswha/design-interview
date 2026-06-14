@@ -20,14 +20,16 @@ const rows = [];
 
 for (const [path, expected] of Object.entries(baseline.fixtures)) {
   const html = await readFile(resolve(root, path), 'utf8');
-  const actual = auditHtml(html).failed;
-  const want = new Set(expected.failed);
+  const actual = auditHtml(html).failed; // 전체 failed(blocking∪advisory) — 탐지기 정확도 게이트
+  // baseline은 {expectedBlocking, expectedAdvisory}로 분할 표기하되 비교는 합집합(레거시 .failed도 수용).
+  const expectedFailed = expected.failed ?? [...(expected.expectedBlocking ?? []), ...(expected.expectedAdvisory ?? [])];
+  const want = new Set(expectedFailed);
   const got = new Set(actual);
-  const miss = expected.failed.filter((id) => !got.has(id));
+  const miss = expectedFailed.filter((id) => !got.has(id));
   const fp = actual.filter((id) => !want.has(id));
   const ok = miss.length === 0 && fp.length === 0;
   if (!ok) regressions++;
-  rows.push({ path, expected: expected.failed.join(',') || '-', actual: actual.join(',') || '-', miss, fp, ok });
+  rows.push({ path, expected: expectedFailed.join(',') || '-', actual: actual.join(',') || '-', miss, fp, ok });
 }
 
 console.log('design-interview benchmark — machine audit vs baseline\n');

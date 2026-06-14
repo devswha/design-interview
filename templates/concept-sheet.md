@@ -35,6 +35,7 @@
 | 시그니처 무브 | {최대 1개 — 최강 차별점에서 도출, 없으면 "없음"} | HI2/LA2 |
 | 모션 역할·예산 | {motion-role: none/orientation/feedback/progress/reveal/delight · motion-budget: 0/micro-only/one-signature — CSS-first 무JS} | MO1/MO4 |
 | 시각 임팩트 | {첫 viewport 지배요소 1개 · 타입스케일 드라마(양끝) · 대비 헤드룸} | 시각 임팩트/HI2 |
+| 에셋 선택 | {자가호스팅 폰트(`assets/fonts/`) · 이미지/텍스처(`assets/textures/`) · 인라인 SVG(`assets/icons/`) · 팔레트(`assets/palettes/`) — `refs/`에서 고른 파일명 명시} | asset-library |
 
 ## 섹션 구조 (위→아래)
 

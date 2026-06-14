@@ -42,7 +42,7 @@ test('e2e 2/4 audit: static machine checks block delivery', async () => {
 test('e2e 2/4b audit --visual: geometry lane joins the verdict', { skip: !hasPuppeteer }, async () => {
   const r = await cli('audit', SLOP, '--visual');
   assert.equal(r.code, 1);
-  assert.match(r.stdout, /FAIL\s+S3 perfect-symmetry/);
+  assert.match(r.stdout, /advise\s+S3 perfect-symmetry/); // S3는 억제 휴리스틱 → advisory(차단 아님)
   assert.match(r.stdout, /L1 uniform-card-grid/);
 });
 

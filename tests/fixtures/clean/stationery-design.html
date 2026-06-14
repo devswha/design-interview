@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스킬, 사실 별거 아니에요 — 스킬샵 크리에이터 가이드</title>
+<style>
+  :root {
+    --paper:#f4f5f2; --surface:#fbfbfa; --ink:#1b1e1b; --muted:#6a706a;
+    --line:#cdd3cb; --grid:#e4e8e2; --accent:#2c3a63; --accent-soft:#e9ecf3;
+    --fs-display:3rem; --fs-h2:1.5rem; --fs-h3:1.1875rem; --fs-body:1.0625rem; --fs-small:1rem; --fs-label:.78rem;
+    --u:8px; --s2:8px; --s3:16px; --s4:24px; --s5:32px; --s6:48px; --s7:64px; --s8:96px; --s9:128px;
+    --sans:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","SFMono-Regular","Menlo","Consolas",monospace;
+    --measure:40em;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size:17px; scroll-padding-top:56px; }
+  body { background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:var(--fs-body);
+         line-height:1.72; word-break:keep-all; overflow-wrap:break-word; -webkit-font-smoothing:antialiased; }
+  ::selection { background:var(--accent); color:var(--paper); }
+  :root { accent-color:var(--accent); }
+  .num { font-family:var(--mono); font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; letter-spacing:-.01em; }
+
+  /* 절제 — micro 모션만, 전부 reduced-motion 가드 */
+  @media (prefers-reduced-motion: no-preference) {
+    a, summary, .step, .cta { transition: color .15s ease, background-color .15s ease, border-color .15s ease; }
+  }
+  a:focus-visible, summary:focus-visible, .cta:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* 方眼 그리드 = 시그니처 (장식 패널·CTA에만, 본문 텍스트는 솔리드 위) */
+  .graph { background-color:var(--surface);
+    background-image:repeating-linear-gradient(to right, transparent 0 23px, var(--grid) 23px 24px),
+                     repeating-linear-gradient(to bottom, transparent 0 23px, var(--grid) 23px 24px); }
+
+  .topbar { position:sticky; top:0; z-index:50; display:flex; align-items:center; justify-content:space-between;
+            padding:var(--s3) clamp(var(--s4),5vw,var(--s7)); background:var(--paper); border-bottom:1px solid var(--ink); }
+  .topbar .brand { font-size:var(--fs-label); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .topbar nav { display:flex; gap:var(--s4); }
+  .topbar nav a { font-size:var(--fs-label); color:var(--muted); text-decoration:none; letter-spacing:.02em; }
+  .topbar nav a:hover { color:var(--accent); }
+  @media (max-width:680px){ .topbar nav { display:none } }
+
+  main { max-width:1000px; margin:0 auto; padding:0 clamp(var(--s4),5vw,var(--s7)); }
+  .prose { max-width:var(--measure); }
+
+  /* 노트 섹션 — 모노 번호 탭 + 얇은 ruled 라인 */
+  section.note { padding:var(--s8) 0; border-bottom:1px solid var(--line); display:grid; grid-template-columns:64px 1fr; gap:0 var(--s5); }
+  section.note > .idx { font-size:var(--fs-label); color:var(--accent); letter-spacing:.04em; padding-top:6px; }
+  section.note > .body { min-width:0; }
+  @media (max-width:640px){ section.note { grid-template-columns:1fr; gap:var(--s3) } section.note > .idx { padding-top:0 } }
+
+  h1,h2,h3 { font-weight:700; letter-spacing:-.02em; line-height:1.12; }
+  h2 { font-size:var(--fs-h2); margin-bottom:var(--s4); }
+  h3 { font-size:var(--fs-h3); font-weight:600; margin:var(--s5) 0 var(--s2); letter-spacing:-.01em; }
+  p { margin-bottom:var(--s3); max-width:var(--measure); }
+  p:last-child { margin-bottom:0; }
+  strong { font-weight:700; }
+  em { font-style:normal; color:var(--accent); font-weight:600; border-bottom:1.5px solid var(--accent); }
+  .label { font-size:var(--fs-label); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  a.inline { color:var(--accent); text-decoration:none; border-bottom:1px solid var(--line); }
+  a.inline:hover { border-color:var(--accent); }
+
+  /* HERO */
+  .hero { padding:var(--s8) 0 var(--s7); border-bottom:1px solid var(--ink); }
+  .hero .label { color:var(--accent); }
+  .hero h1 { font-size:var(--fs-display); margin:var(--s3) 0 var(--s4); max-width:13ch; letter-spacing:-.03em; }
+  .hero .sum { font-size:var(--fs-h3); color:var(--muted); max-width:var(--measure); margin-bottom:var(--s6); }
+  .actions { display:flex; flex-wrap:wrap; gap:var(--s3); align-items:center; }
+  .cta { display:inline-flex; align-items:center; gap:var(--s2); min-height:48px; background:var(--accent); color:var(--paper);
+         text-decoration:none; padding:0 var(--s5); border:1px solid var(--accent); font-weight:700; font-size:var(--fs-small); }
+  .cta:hover { background:var(--ink); border-color:var(--ink); }
+  .cta:active { background:#101210; }
+  .cta .num { color:var(--paper); }
+  .ghost { display:inline-flex; align-items:center; min-height:48px; padding:0 var(--s4); color:var(--accent); text-decoration:none; border-bottom:1px solid var(--line); }
+  .ghost:hover { border-color:var(--accent); }
+
+  /* 정의 인용 — 방안 카드 */
+  .define { margin:var(--s5) 0; border:1px solid var(--ink); padding:var(--s5); }
+  .define .label { color:var(--accent); display:block; margin-bottom:var(--s2); }
+  .define p { font-size:var(--fs-h3); font-weight:600; letter-spacing:-.01em; max-width:34ch; margin:0; }
+
+  /* 김밥 단계 — 가로 모노 칩 */
+  .slices { display:flex; flex-wrap:wrap; gap:0; margin:var(--s4) 0; border:1px solid var(--line); width:fit-content; max-width:100%; }
+  .slice { font-size:var(--fs-small); padding:var(--s2) var(--s4); border-right:1px solid var(--line); white-space:nowrap; }
+  .slice:last-child { border-right:0; }
+  .slice b { color:var(--accent); margin-right:6px; font-weight:600; }
+
+  /* 핵심 숫자 — 방안 위 모노 */
+  .figures { border-left:3px solid var(--accent); padding:6px 0 6px var(--s4); margin:var(--s5) 0; font-size:var(--fs-h3); max-width:var(--measure); }
+  .figures .num { color:var(--accent); font-weight:600; }
+
+  /* vs 표 — hairline 격자 */
+  table.vs { width:100%; border-collapse:collapse; margin:var(--s4) 0; font-size:var(--fs-small); }
+  table.vs th, table.vs td { border:1px solid var(--line); padding:var(--s3) var(--s4); text-align:left; vertical-align:top; }
+  table.vs th { font-size:var(--fs-label); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  table.vs th.y { color:var(--accent); }
+  table.vs td.y { background:var(--accent-soft); }
+
+  /* 5단계 — 方眼 패널 (시그니처) */
+  .loop { margin:var(--s5) 0; border:1px solid var(--ink); }
+  .loop .head { display:flex; justify-content:space-between; align-items:baseline; padding:var(--s4); border-bottom:1px solid var(--ink); }
+  .loop .head .label { color:var(--accent); }
+  .steps { }
+  .step { display:grid; grid-template-columns:48px 1fr; gap:var(--s4); padding:var(--s4); border-bottom:1px solid var(--grid); }
+  .step:last-child { border-bottom:0; }
+  .step .no { font-size:var(--fs-h3); color:var(--accent); }
+  .step:hover { background:var(--surface); }
+  .step.win { background:var(--accent-soft); }
+  .step .t { font-weight:600; margin-bottom:2px; }
+  .step .d { font-size:var(--fs-small); color:var(--muted); margin:0; max-width:46ch; }
+  .step.win .d { color:#474c47; }
+  .loopnote { font-size:var(--fs-label); color:var(--accent); letter-spacing:.04em; padding:var(--s3) var(--s4); border-top:1px solid var(--ink); }
+
+  details.qa { border-bottom:1px solid var(--line); }
+  details.qa summary { cursor:pointer; list-style:none; padding:var(--s3) 0; font-weight:600; display:flex; justify-content:space-between; gap:var(--s4); }
+  details.qa summary::-webkit-details-marker { display:none }
+  details.qa summary::after { content:"+"; color:var(--accent); }
+  details.qa[open] summary::after { content:"−" }
+  details.qa summary:hover { color:var(--accent) }
+  details.qa .a { padding:0 0 var(--s3); color:var(--muted); font-size:var(--fs-small); max-width:var(--measure); }
+
+  /* 최종 CTA — 方眼 패널 */
+  .final { margin:var(--s7) 0 var(--s8); border:1px solid var(--ink); padding:clamp(var(--s5),5vw,var(--s7)); }
+  .final .label { color:var(--accent); }
+  .final h2 { font-size:clamp(1.6rem,3.5vw,2.2rem); margin:var(--s3) 0 var(--s4); max-width:20ch; }
+  .final p { color:var(--muted); }
+  .fine { font-size:var(--fs-label); color:var(--muted); margin-top:var(--s4); display:block; letter-spacing:.03em; }
+  footer { border-top:1px solid var(--ink); padding:var(--s5) 0 var(--s8); font-size:var(--fs-label); color:var(--muted); letter-spacing:.03em; }
+  footer a { color:var(--accent); }
+  ol.plain { padding-left:var(--s4); } ol.plain li { margin-bottom:6px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">스킬샵 / 크리에이터 가이드</span>
+  <nav aria-label="섹션"><a href="#a">01 스킬이란</a><a href="#b">02 가치</a><a href="#c">03 5단계</a><a href="#d">04 참여</a></nav>
+</header>
+
+<main>
+  <section class="hero">
+    <span class="label">스킬샵 크리에이터 가이드 · 1기</span>
+    <h1>스킬, 사실 별거 아니에요</h1>
+    <p class="sum">한 줄로: <strong>내가 일을 판단하는 기준을 AI에 옮겨 심는 것.</strong> 코딩 한 줄 없이, 관심은 있는데 막막한 분들을 위해 적었습니다.</p>
+    <div class="actions">
+      <a class="cta" href="#d">1기 신청하기</a>
+      <a class="ghost" href="#a">스킬이 뭔지부터 보기</a>
+    </div>
+  </section>
+
+  <section class="note" id="a">
+    <div class="idx num">01</div>
+    <div class="body">
+      <span class="label">스킬이란</span>
+      <h2>“내가 판단하는 기준”을 옮겨 심는 것</h2>
+      <p class="prose">당신이 수년간 쌓은 “이건 좋고, 저건 별로다”라는 감각 — 그걸 AI에 옮겨 심어, 옆에 없어도 당신처럼 판단하게 만드는 겁니다. 코드가 아니라 <em>당신의 기준</em>이 핵심이에요.</p>
+      <div class="define">
+        <span class="label">정의</span>
+        <p>스킬 = 내가 이 일을 판단하고 처리하는 방식을, AI가 그대로 따라 하도록 포장해 둔 것.</p>
+      </div>
+      <h3>김밥은 썰어서 보여주세요</h3>
+      <p class="prose">“유튜브 자동화 스킬”은 통 김밥이라 안 팔려요. 썰어 단면을 보여줘야 합니다:</p>
+      <div class="slices">
+        <span class="slice"><b>1</b>주제 리서치</span><span class="slice"><b>2</b>대본</span><span class="slice"><b>3</b>녹화 애니메이션</span><span class="slice"><b>4</b>편집</span><span class="slice"><b>5</b>썸네일</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="note" id="b">
+    <div class="idx num">02</div>
+    <div class="body">
+      <span class="label">왜 가치가 있나</span>
+      <h2>지금은 ‘평균의 시대’</h2>
+      <p class="prose">AI로 누구나 평타 <span class="num">70</span>점은 뽑아요. 그래서 차별화되는 건 딱 하나 — <em>무엇이 진짜 좋은지 아는 안목</em>입니다. AI는 <span class="num">100</span>개를 만들지만, 그중 뭐가 좋은지는 몰라요.</p>
+      <p class="figures">사례 <span class="num">60</span>개를 분류 → AI가 내 판단을 <span class="num">90%</span> 따라오면 졸업. <span class="num">1/10</span> 가격에 24시간 재현.</p>
+      <p class="prose">“책임”까지 안 져도 돼요. 사용자가 미처 못 본 <strong>관점 하나</strong>만 짚어줘도 이미 값을 합니다.</p>
+      <table class="vs">
+        <thead><tr><th>스킬 없이</th><th class="y">스킬로</th></tr></thead>
+        <tbody>
+          <tr><td>AI가 뽑은 평균 70점</td><td class="y">전문가 기준이 탑재됨</td></tr>
+          <tr><td>“그럴듯한데 뭔가 아쉬움”</td><td class="y">“오, 이건 진짜 좋네”</td></tr>
+          <tr><td>매번 다른 품질</td><td class="y">일관된 고품질</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="note" id="c">
+    <div class="idx num">03</div>
+    <div class="body">
+      <span class="label">만드는 법</span>
+      <h2>스킬 만드는 5단계 닫힌 고리</h2>
+      <p class="prose">코딩 한 줄 안 합니다. 머릿속 판단을 밖으로 꺼내, AI랑 계속 맞춰보는 것. 한 바퀴 돌리고, 어긋난 데 고치고, 또 돌리고.</p>
+      <div class="loop graph">
+        <div class="head"><span class="label">닫힌 고리 / closed loop</span><span class="num label" style="color:var(--accent)">×5</span></div>
+        <div class="steps">
+          <div class="step"><span class="no num">01</span><div><p class="t">모으기 — 사례 <span class="num">60</span>개</p><p class="d">잘함 <span class="num">20</span> / 보통 <span class="num">20</span> / 별로 <span class="num">20</span>, 세 바구니로. 이 분류 안목 자체가 전문성.</p></div></div>
+          <div class="step"><span class="no num">02</span><div><p class="t">말로 평가 (녹화)</p><p class="d">절반(<span class="num">25~30</span>개)을 보며 소리 내어 판단. 나머지는 시험용으로 아껴둠.</p></div></div>
+          <div class="step"><span class="no num">03</span><div><p class="t">1차 스킬 추출</p><p class="d">말로 쏟은 기준을 규칙으로. 이 정리는 스킬샵 팀이 함께.</p></div></div>
+          <div class="step win"><span class="no num">04</span><div><p class="t">맞춰보기 — 캘리브레이션 · 여기가 핵심</p><p class="d">아껴둔 <span class="num">25</span>개로 AI 점수 vs 내 점수 비교. 어긋난 데가 곧 ‘나만 아는 관점’ — 추가하고 다시.</p></div></div>
+          <div class="step"><span class="no num">05</span><div><p class="t">졸업 — <span class="num">90%</span> 일치</p><p class="d">AI가 약 90% 따라오면 졸업. <span class="num">100%</span>일 필요 없어요 — 사람도 매번 일관되진 않으니까.</p></div></div>
+        </div>
+        <div class="loopnote">↺ 어긋나면 다시 01로 — 그래서 ‘닫힌’ 고리</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="note">
+    <div class="idx">—</div>
+    <div class="body">
+      <span class="label">합격선</span>
+      <h2>완벽이 아니라, 재현</h2>
+      <p class="prose">합격선은 “AI가 매번 100점”이 아니에요. <em>내 판단을 안정적으로 재현하는가</em>(<span class="num">90%</span> 일치), 놓쳤을 관점을 짚는가 — 그게 전부입니다. 시간으로 치면 <span class="num">4~8</span>시간의 안목 큐레이션이 제품 하나가 됩니다.</p>
+      <details class="qa"><summary>어느 정도까지 나와야 출시하나요?</summary><p class="a"><span class="num">90%</span> 일치면 충분합니다. 예술이 아니라 “당신이라면 했을 판단”의 재현이 기준이에요.</p></details>
+      <details class="qa"><summary>혼자 다 해야 하나요?</summary><p class="a"><span class="num">3</span>단계까지는 혼자서도 충분. 1차 추출·캘리브레이션·출시 전 품질 점검은 스킬샵 팀이 함께 합니다.</p></details>
+    </div>
+  </section>
+
+  <section class="note" id="d">
+    <div class="idx num">04</div>
+    <div class="body">
+      <div class="final graph">
+        <span class="label">1기 크리에이터 모집 중</span>
+        <h2>“나도 하겠는데?”로 바뀌셨길 바라요</h2>
+        <p class="prose">줌으로 가볍게 <span class="num">1~2</span>시간. 기획부터 스킬 개발·상세 페이지·마케팅까지 함께 만듭니다. 당신은 안목만 가져오세요 — 결제·정산·노출·CS는 저희가.</p>
+        <div class="actions" style="margin-top:var(--s4)">
+          <a class="cta" href="https://skills.ag/creators">1기 신청 — skills.ag/creators</a>
+        </div>
+        <span class="fine">신청 후 팀에서 연락 · 코딩 필요 없음 · 1기 소수 한정</span>
+      </div>
+    </div>
+  </section>
+
+  <footer><p>스킬샵 팀 · <a href="https://skills.ag/creators">skills.ag/creators</a></p></footer>
+</main>
+</body>
+</html>

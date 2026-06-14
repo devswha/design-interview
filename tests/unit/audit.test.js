@@ -348,3 +348,32 @@ test('motion WARN: guarded-motion clean fixture is silent, exp output stays WARN
   assert.deepEqual(r.failed, [], 'exp stays slop 0%');
   assert.deepEqual(r.warnings, [], 'exp stays WARN0 — all motion is reduced-motion guarded');
 });
+
+// ---------------------------------------------------------------------------
+// 2채널 분할 — 차단(품질바닥선+지문) vs 권고(억제 휴리스틱). pass = blocking만.
+// ---------------------------------------------------------------------------
+
+test('audit 2-channel: advisory-only fail passes the delivery gate', () => {
+  // CO1(색 예산 초과)은 억제 휴리스틱 = advisory → 차단 안 함
+  const r = auditHtml(`<style>${hexList(13)}</style><p>가나다 본문</p>`);
+  assert.ok(r.advisoryFailed.includes('CO1'), 'CO1은 advisory 채널');
+  assert.deepEqual(r.blockingFailed, [], '차단 채널 비어있음');
+  assert.equal(r.pass, true, 'advisory만 실패하면 납품 게이트 통과(pass=true)');
+  assert.ok(r.failed.includes('CO1'), 'failed(union)에는 여전히 포함 — benchmark 탐지');
+  assert.equal(typeof r.slopScore, 'number', 'slopScore 키 존속(하위호환)');
+});
+
+test('audit 2-channel: deterministic fingerprint (C1) blocks delivery', () => {
+  const r = auditHtml('<section style="background:linear-gradient(135deg,#667eea,#764ba2)"><h1>x</h1></section>');
+  assert.ok(r.blockingFailed.includes('C1'), 'C1 보라그라데는 blocking 지문');
+  assert.equal(r.pass, false, 'blocking 발화 시 납품 불가');
+});
+
+test('audit 2-channel: TY4 3-family is advisory (good type system not blocked)', () => {
+  const r = auditHtml(`<style>
+    body{font-family:Inter,sans-serif} h1{font-family:Georgia,serif}
+    .n{font-family:'Space Mono',monospace} .b{font-family:'Space Mono',monospace}
+  </style><p>가나다 본문</p>`);
+  assert.ok(r.advisoryFailed.includes('TY4'), 'TY4는 억제 휴리스틱 = advisory');
+  assert.equal(r.pass, true, '세리프+산스+모노 같은 의도된 타입 시스템은 차단 안 됨');
+});

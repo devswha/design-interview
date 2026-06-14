@@ -404,13 +404,15 @@ export async function analyzeVisualTells(htmlPath) {
     const { l1, s3, l2, ty1, ty2, de3Contrast, ty5a, warnings = [] } = await page.evaluate(pageAnalyzer);
     return {
       findings: [
-        { id: 'L1', name: 'uniform-card-grid', pass: l1.pass, evidence: l1.evidence ?? null },
-        { id: 'L2', name: 'center-everything', pass: l2.pass, evidence: l2.evidence ?? null },
-        { id: 'S3', name: 'perfect-symmetry', pass: s3.pass, evidence: s3.evidence ?? null },
-        { id: 'TY1', name: 'type-scale-chaos', pass: ty1.pass, evidence: ty1.evidence ?? null },
-        { id: 'TY2', name: 'measure-discipline', pass: ty2.pass, evidence: ty2.evidence ?? null },
-        { id: 'DE3', name: 'quality-floor', pass: de3Contrast.pass, evidence: de3Contrast.evidence ?? null },
-        { id: 'TY5', name: 'hangul-word-break', pass: ty5a.pass, evidence: ty5a.evidence ?? null },
+        // 억제 휴리스틱 = advisory (납품 차단 안 함, 의도 초과 가능)
+        { id: 'L1', name: 'uniform-card-grid', severity: 'advisory', pass: l1.pass, evidence: l1.evidence ?? null },
+        { id: 'L2', name: 'center-everything', severity: 'advisory', pass: l2.pass, evidence: l2.evidence ?? null },
+        { id: 'S3', name: 'perfect-symmetry', severity: 'advisory', pass: s3.pass, evidence: s3.evidence ?? null },
+        { id: 'TY1', name: 'type-scale-chaos', severity: 'advisory', pass: ty1.pass, evidence: ty1.evidence ?? null },
+        { id: 'TY2', name: 'measure-discipline', severity: 'advisory', pass: ty2.pass, evidence: ty2.evidence ?? null },
+        // 품질 바닥선 = blocking
+        { id: 'DE3', name: 'quality-floor', severity: 'blocking', pass: de3Contrast.pass, evidence: de3Contrast.evidence ?? null },
+        { id: 'TY5', name: 'hangul-word-break', severity: 'blocking', pass: ty5a.pass, evidence: ty5a.evidence ?? null },
       ],
       warnings,
     };

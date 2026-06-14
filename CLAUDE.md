@@ -9,7 +9,7 @@ design-interview is an agent skill plus a deterministic verification CLI. It tak
 - **SKILL.md** — the LLM orchestration prompt (5 phases: intake → interview → concept lock → build → preview loop → audit/delivery). Interviewing and page building happen here, driven by `core/interview.md` (6-dimension clarity scoring, threshold 0.80), `core/design-tells.md` (forbidden-pattern list), and `core/design-principles.md` (24 positive senior-designer principles — token discipline, the proposal genre rules, and the conflict-resolution log that bounds each principle).
 - **src/** — deterministic CLI lanes (`node src/cli.js intake|preview|audit|shot`). No LLM self-grading: numbers come from code. The skill calls these lanes at phase boundaries.
 
-Two hard gates in the skill: no HTML is generated before the concept sheet (`templates/concept-sheet.md`) is approved, and delivery is blocked while `audit` exits 1.
+Two hard gates in the skill: no HTML is generated before the concept sheet (`templates/concept-sheet.md`) is approved, and delivery is blocked while `audit` exits 1. The audit is a **two-channel guardrail**: **blocking (exit 1)** covers the quality floor (DE3 static + DE3 visual contrast) + hard-fingerprint machine tells (C1/T1/T2/T4) + visual floor (TY5-A) + LLM hard tells (S1/S2/M1–M4); **advisory** (exit unaffected) covers suppression heuristics (TY4/CO1/DE1/S5 static; L1/L2/S3/TY1/TY2 visual) — findings logged but delivery not blocked. The **benchmark gate** (`npm run benchmark`) and the **CLI exit gate** are separate: benchmark compares full detection accuracy including advisory items; CLI exit fires only on blocking items.
 
 ## Commands
 
@@ -64,6 +64,7 @@ puppeteer is optional (ROADMAP principle: everything except the visual lane must
 - **Intake SSRF guard** (`src/intake.js`): two stages — pre-validation (scheme/host/DNS) plus a connection-time `lookup` hook on the http/https request, defeating DNS rebinding between check and connect. Blocks private/loopback/link-local/metadata ranges (including IPv4-mapped IPv6 forms), revalidates every redirect hop, caps at 5MB/30s. Anything `scheme://`-shaped goes through the URL guard, never the file-read path.
 - **Inert preview** (`src/preview.js`): scripts/inline handlers/`javascript:` URLs stripped, CSP `script-src 'none'`, view toggle is a no-script radio hack, chrome selectors are `dsiv-`-prefixed with `!important` so the audited page's CSS cannot override review chrome.
 - **Claim preservation**: source copy is *meant* to be rewritten in the concept-sheet voice, but rewriting is bounded — meaning, polarity, and causality must survive. Only the claims (numbers/prices/percentages/durations/features) extracted at intake are strictly immutable (patina MPS principle); Phase 5 diffs them against the built page.
+- **Self-hosted assets and license sidecar** (`core/asset-library.md`): fonts, images, textures, and palettes used in a build live under `assets/`; each carries a `.license.txt` sidecar. Pixel-copying from a brief or stock source without a license sidecar is prohibited. Remote CDN runtime dependencies are discouraged — self-hosting preserves the single-file, zero-runtime-dependency output invariant.
 
 ## Conventions
 

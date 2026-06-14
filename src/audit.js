@@ -678,15 +678,18 @@ function collectWarnings(html, rules, vars) {
 }
 
 export const MACHINE_CHECKS = [
-  { id: 'C1', name: 'purple-gradient', run: (html, css) => checkPurpleGradient(css) },
-  { id: 'T1', name: 'emoji-bullets', run: (html) => checkEmojiBullets(html) },
-  { id: 'T2', name: 'hype-adjectives', run: (html) => checkHypeAdjectives(html) },
-  { id: 'T4', name: 'symmetric-heading-pairs', run: (html) => checkSymmetricHeadingPairs(html) },
-  { id: 'S5', name: 'border-radius-uniform', run: (html, css) => checkUniformRadius(css) },
-  { id: 'TY4', name: 'type-family-discipline', run: (html, css, rules, vars) => checkTypeFamilyDiscipline(rules, vars) },
-  { id: 'CO1', name: 'color-literal-budget', run: (html, css, rules) => checkColorLiteralBudget(rules) },
-  { id: 'DE1', name: 'shadow-physics-budget', run: (html, css, rules, vars) => checkShadowPhysics(rules, vars) },
-  { id: 'DE3', name: 'quality-floor', run: (html, css, rules) => checkQualityFloor(html, rules) },
+  // 결정론적 슬롭 지문 = 차단(blocking). 강등 불가 — exit 1.
+  { id: 'C1', name: 'purple-gradient', severity: 'blocking', run: (html, css) => checkPurpleGradient(css) },
+  { id: 'T1', name: 'emoji-bullets', severity: 'blocking', run: (html) => checkEmojiBullets(html) },
+  { id: 'T2', name: 'hype-adjectives', severity: 'blocking', run: (html) => checkHypeAdjectives(html) },
+  { id: 'T4', name: 'symmetric-heading-pairs', severity: 'blocking', run: (html) => checkSymmetricHeadingPairs(html) },
+  // 억제 휴리스틱 = 권고(advisory). 컨셉 시트가 의도를 명시하면 초과 합법 — exit 무영향.
+  { id: 'S5', name: 'border-radius-uniform', severity: 'advisory', run: (html, css) => checkUniformRadius(css) },
+  { id: 'TY4', name: 'type-family-discipline', severity: 'advisory', run: (html, css, rules, vars) => checkTypeFamilyDiscipline(rules, vars) },
+  { id: 'CO1', name: 'color-literal-budget', severity: 'advisory', run: (html, css, rules) => checkColorLiteralBudget(rules) },
+  { id: 'DE1', name: 'shadow-physics-budget', severity: 'advisory', run: (html, css, rules, vars) => checkShadowPhysics(rules, vars) },
+  // 품질 바닥선 = 차단(blocking).
+  { id: 'DE3', name: 'quality-floor', severity: 'blocking', run: (html, css, rules) => checkQualityFloor(html, rules) },
 ];
 
 // 기계 감사 진입점. score는 통과율(0..1) — patina --score와 반대 방향이
@@ -695,16 +698,22 @@ export function auditHtml(html) {
   const css = extractCss(html);
   const rules = extractCssRules(html);
   const vars = rootVarMap(rules);
-  const findings = MACHINE_CHECKS.map(({ id, name, run }) => {
+  const findings = MACHINE_CHECKS.map(({ id, name, severity, run }) => {
     const { pass, evidence = null } = run(html, css, rules, vars);
-    return { id, name, pass, evidence };
+    return { id, name, severity, pass, evidence };
   });
   const failed = findings.filter((f) => !f.pass);
+  // severity !== 'advisory' = blocking(누락 시 fail-safe blocking). pass는 blocking만 본다.
+  const blockingFailed = failed.filter((f) => f.severity !== 'advisory');
+  const advisoryFailed = failed.filter((f) => f.severity === 'advisory');
   return {
     findings,
     failed: failed.map((f) => f.id),
+    blockingFailed: blockingFailed.map((f) => f.id),
+    advisoryFailed: advisoryFailed.map((f) => f.id),
     slopScore: failed.length / findings.length,
-    pass: failed.length === 0,
+    blockingScore: blockingFailed.length / findings.length,
+    pass: blockingFailed.length === 0,
     warnings: collectWarnings(html, rules, vars),
   };
 }
@@ -726,7 +735,7 @@ export function combineAudits(staticResult, visual) {
     const existingIndex = indexById.get(v.id);
     if (existingIndex === undefined) {
       indexById.set(v.id, findings.length);
-      findings.push({ ...v });
+      findings.push({ severity: 'blocking', ...v });
       continue;
     }
 
@@ -738,12 +747,17 @@ export function combineAudits(staticResult, visual) {
       evidence: evidence || null,
     };
   }
-  const failed = findings.filter((f) => !f.pass).map((f) => f.id);
+  const failedF = findings.filter((f) => !f.pass);
+  const blockingFailed = failedF.filter((f) => f.severity !== 'advisory');
+  const advisoryFailed = failedF.filter((f) => f.severity === 'advisory');
   return {
     findings,
-    failed,
-    slopScore: failed.length / findings.length,
-    pass: failed.length === 0,
+    failed: failedF.map((f) => f.id),
+    blockingFailed: blockingFailed.map((f) => f.id),
+    advisoryFailed: advisoryFailed.map((f) => f.id),
+    slopScore: failedF.length / findings.length,
+    blockingScore: blockingFailed.length / findings.length,
+    pass: blockingFailed.length === 0,
     warnings: [...(staticResult.warnings ?? []), ...visualWarnings],
   };
 }
@@ -751,15 +765,19 @@ export function combineAudits(staticResult, visual) {
 export function formatAuditReport(result, { source = '' } = {}) {
   const lines = [`design-tell audit${source ? ` — ${source}` : ''}`];
   for (const f of result.findings) {
-    lines.push(`  ${f.pass ? 'pass' : 'FAIL'}  ${f.id} ${f.name}${f.evidence ? `  ← ${f.evidence}` : ''}`);
+    // pass / FAIL(차단) / advise(권고 — 납품 차단 안 함)
+    const tag = f.pass ? 'pass' : (f.severity === 'advisory' ? 'advise' : 'FAIL');
+    lines.push(`  ${tag}  ${f.id} ${f.name}${f.evidence ? `  ← ${f.evidence}` : ''}`);
   }
   // warnings는 craft 권고일 뿐 — pass/exit code에 영향 없음
   for (const w of result.warnings ?? []) {
     lines.push(`  WARN  ${w.name}  ← ${w.evidence}`);
   }
-  lines.push(`  slop score: ${(result.slopScore * 100).toFixed(0)}% (${result.failed.length}/${result.findings.length} tells)`);
+  const blocking = result.blockingFailed ?? result.failed;
+  const advisory = result.advisoryFailed ?? [];
+  lines.push(`  blocking: ${blocking.length} (${blocking.join(',') || '-'}) · advisory: ${advisory.length} (${advisory.join(',') || '-'}) · slop ${(result.slopScore * 100).toFixed(0)}%`);
   lines.push(result.pass
-    ? '  machine checks clean — SKILL.md Phase 5 LLM 체크리스트로 계속'
-    : '  납품 불가 — Phase 3으로 돌아가 수정 후 재감사');
+    ? `  납품 가능 — 차단 0건${advisory.length ? ` (권고 ${advisory.length}건은 의도 확인 후 유지 가능)` : ''}. SKILL.md Phase 5 LLM 체크리스트로 계속`
+    : '  납품 불가 — 차단(품질 바닥선/슬롭 지문) 발화. Phase 3으로 돌아가 수정 후 재감사');
   return lines.join('\n');
 }
