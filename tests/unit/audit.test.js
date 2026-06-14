@@ -306,3 +306,45 @@ test('webfont ① catches a vendor CDN font stylesheet by url', () => {
   const r = auditHtml('<link rel="stylesheet" href="https://cdn.vendor.example/fonts/inter.css"><p>hello world paragraph</p>');
   assert.ok(r.warnings.some((w) => w.name === 'webfont-cdn-dependency'));
 });
+
+// ---------------------------------------------------------------------------
+// b1 reduced-motion 미가드 모션 (정적 WARN, MO2/DE3 교차 — fail 아님)
+// ---------------------------------------------------------------------------
+
+const hasMotionWarn = (r) => r.warnings.some((w) => w.name === 'motion-not-reduced-motion-guarded');
+
+test('motion WARN fires on unguarded transition and animation, never fails', () => {
+  const r = auditHtml('<style>.x{transition:transform .25s ease}.y{animation:spin 2s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style><p>가나다 본문</p>');
+  assert.equal(r.pass, true, 'WARN은 납품을 막지 않는다');
+  assert.deepEqual(r.failed, []);
+  assert.ok(hasMotionWarn(r));
+});
+
+test('motion WARN silent when motion is inside prefers-reduced-motion: no-preference', () => {
+  const r = auditHtml('<style>@media (prefers-reduced-motion: no-preference){.x{transition:transform .25s ease}.y{animation:spin 2s linear infinite}}@keyframes spin{to{transform:rotate(360deg)}}</style><p>가나다 본문</p>');
+  assert.ok(!hasMotionWarn(r));
+});
+
+test('motion WARN silent on zero-duration / none and @keyframes from/to do not leak', () => {
+  const zero = auditHtml('<style>.x{transition:color 0s}.y{animation:none}</style><p>본문</p>');
+  assert.ok(!hasMotionWarn(zero));
+  // @keyframes 안의 from/to 셀렉터는 규칙으로 누출되지 않는다(중첩 스캐너가 @keyframes 블록을 건너뜀)
+  const kf = auditHtml('<style>@keyframes spin{from{transform:none}to{transform:rotate(360deg)}}</style><p>본문</p>');
+  assert.ok(!hasMotionWarn(kf), '@keyframes 정의만으로는 미가드 모션이 아니다');
+});
+
+test('motion WARN not bypassed by an empty reduced-motion guard block', () => {
+  const r = auditHtml('<style>@media (prefers-reduced-motion: no-preference){}.x{transition:transform .3s ease}</style><p>본문</p>');
+  assert.ok(hasMotionWarn(r), '모션 위치로 판정 — 빈 가드 블록 우회 불가');
+});
+
+test('motion WARN: guarded-motion clean fixture is silent, exp output stays WARN0', async () => {
+  const guarded = await readFile(new URL('../../tests/fixtures/clean/reduced-motion-guarded.html', import.meta.url), 'utf8');
+  assert.ok(!hasMotionWarn(auditHtml(guarded)), 'guarded fixture must not warn');
+  const unguarded = await readFile(new URL('../../tests/redteam/motion-unguarded.html', import.meta.url), 'utf8');
+  assert.ok(hasMotionWarn(auditHtml(unguarded)), 'unguarded fixture must warn');
+  const exp = await readFile(new URL('../../exp-skillshop-mo.html', import.meta.url), 'utf8');
+  const r = auditHtml(exp);
+  assert.deepEqual(r.failed, [], 'exp stays slop 0%');
+  assert.deepEqual(r.warnings, [], 'exp stays WARN0 — all motion is reduced-motion guarded');
+});

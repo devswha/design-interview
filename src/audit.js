@@ -128,6 +128,75 @@ function extractCssRules(html) {
   return rules;
 }
 
+// @media/@supports 중첩을 보존하는 CSS 스캐너. extractCssRules(평탄)는 건드리지
+// 않는다(TY4/CO1/DE1/DE3 소비). 각 규칙이 @media (prefers-reduced-motion:
+// no-preference) 가드 안인지(guarded)를 함께 돌려준다. @keyframes/@font-face류
+// 블록은 내려가지 않는다 — from/to·폰트 정의는 규칙이 아니다.
+function extractRuleContexts(html) {
+  const out = [];
+  for (const [, css] of String(html).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)) {
+    walkCss(css.replace(/\/\*[\s\S]*?\*\//g, ' '), false, out);
+  }
+  return out;
+}
+
+function walkCss(css, guarded, out) {
+  const n = css.length;
+  let i = 0;
+  while (i < n) {
+    const open = css.indexOf('{', i);
+    if (open < 0) break;
+    const prelude = css.slice(i, open).trim();
+    let depth = 1;
+    let j = open + 1;
+    while (j < n && depth > 0) {
+      const c = css[j];
+      if (c === '{') depth += 1;
+      else if (c === '}') depth -= 1;
+      j += 1;
+    }
+    const block = css.slice(open + 1, j - 1);
+    i = j;
+    if (!prelude) continue;
+    if (prelude.startsWith('@')) {
+      const at = prelude.slice(1).split(/[\s({]/)[0].toLowerCase();
+      if (['keyframes', '-webkit-keyframes', '-moz-keyframes', 'font-face', 'page', 'property', 'counter-style'].includes(at)) continue;
+      const childGuarded = guarded || (/^@media\b/i.test(prelude) && /prefers-reduced-motion\s*:\s*no-preference/i.test(prelude));
+      walkCss(block, childGuarded, out);
+    } else {
+      out.push({ selector: prelude, body: block, guarded });
+    }
+  }
+}
+
+// 0이 아닌 시간값(.18s, 200ms)이 하나라도 있으면 true. 0s/0ms만이면 false.
+function hasNonZeroTime(value) {
+  const times = String(value).match(/(-?\d*\.?\d+)\s*(?:ms|s)\b/gi);
+  return times ? times.some((t) => parseFloat(t) > 0) : false;
+}
+
+// b1 (MO2/DE3 교차) — reduced-motion 미가드 모션. transition(0 아님)·animation
+// (none 아님)이 @media (prefers-reduced-motion: no-preference) 밖에 선언되면 WARN.
+// 중첩 보존 스캐너로 판정하므로 exp(전 모션 가드)는 WARN0. WARN 전용 —
+// findings/failed/slopScore/baseline 무영향. 빈 가드 블록 우회 불가(모션 위치로 판정).
+function checkReducedMotionGuard(html) {
+  for (const r of extractRuleContexts(html)) {
+    if (r.guarded) continue;
+    for (const d of parseDeclarations(r.body)) {
+      if ((d.prop === 'transition' || d.prop === 'transition-duration') && hasNonZeroTime(d.value)) {
+        return { selector: r.selector, prop: d.prop, value: d.value };
+      }
+      if (d.prop === 'animation' && !/^\s*none\s*$/i.test(d.value) && hasNonZeroTime(d.value)) {
+        return { selector: r.selector, prop: d.prop, value: d.value };
+      }
+      if (d.prop === 'animation-name' && d.value.trim() && !/^\s*none\s*$/i.test(d.value)) {
+        return { selector: r.selector, prop: d.prop, value: d.value };
+      }
+    }
+  }
+  return null;
+}
+
 function parseDeclarations(body) {
   return String(body).split(';').map((d) => {
     const i = d.indexOf(':');
@@ -599,6 +668,11 @@ function collectWarnings(html, rules, vars) {
   }
   if (webfontUrl) {
     warnings.push({ name: 'webfont-cdn-dependency', lane: 'static', evidence: `원격 CDN 폰트 의존: ${webfontUrl.slice(0, 56)} — 자가호스팅/인라인 권장(오프라인·차단 시 폴백)` });
+  }
+  // b1 — reduced-motion 미가드 모션 (WARN, MO2/DE3 교차참조).
+  const motion = checkReducedMotionGuard(html);
+  if (motion) {
+    warnings.push({ name: 'motion-not-reduced-motion-guarded', lane: 'static', evidence: `${motion.selector} { ${motion.prop}: ${motion.value.slice(0, 32)} } — @media (prefers-reduced-motion: no-preference) 밖 모션 (MO2 가드 권장)` });
   }
   return warnings;
 }

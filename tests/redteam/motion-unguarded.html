@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#faf8f4; --fg:#1f1d1a; }
+  body { background:var(--bg); color:var(--fg); font-family:'Pretendard','Noto Sans KR',sans-serif; word-break:keep-all; }
+  main { max-width:40em; margin:0 auto; padding:48px 24px; }
+  /* 가드 밖 모션 — b1 motion-not-reduced-motion-guarded WARN 발화해야 한다 */
+  .card { transition: transform .25s ease, box-shadow .25s ease; }
+  .spin { animation: spin 2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* 빈 가드 블록 우회 시도 — 모션 위치로 판정하므로 무효 */
+  @media (prefers-reduced-motion: no-preference) {}
+</style>
+</head>
+<body>
+<main>
+  <h1>미가드 모션 예제</h1>
+  <p>전이와 애니메이션이 prefers-reduced-motion 가드 밖에 선언되어 있습니다. 빈 가드 블록은 우회가 되지 않습니다.</p>
+  <p class="card">카드</p>
+  <div class="spin"></div>
+</main>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg:#f5f1e8; --surface:#fbf8f1; --fg:#211b12; --muted:#6a5d4a; --accent:#9a3b22; --line:#dccfb8;
+    --fs-d:2.6rem; --fs-h:1.4rem; --fs-b:1.0625rem; --fs-s:.95rem;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { font-size:17px; }
+  body { background:var(--bg); color:var(--fg); font-family:'Pretendard','Noto Sans KR',sans-serif; line-height:1.8; word-break:keep-all; }
+  main { max-width:42em; margin:0 auto; padding:64px 24px; }
+  h1 { font-size:var(--fs-d); line-height:1.2; margin-bottom:24px; }
+  h2 { font-size:var(--fs-h); margin:48px 0 12px; }
+  p { font-size:var(--fs-b); margin-bottom:16px; max-width:40em; }
+  small { font-size:var(--fs-s); color:var(--muted); }
+  a { color:var(--accent); text-decoration:underline; }
+  a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .progress { position:fixed; inset:0 0 auto 0; height:3px; background:var(--accent); transform:scaleX(0); transform-origin:0 50%; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:24px; margin:24px 0; }
+  /* MO4 안전 패턴: 콘텐츠는 항상 가시. scroll-driven은 진행바(비콘텐츠)에만.
+     content를 opacity:0로 숨기지 않으므로 시각 레인이 scroll=0에서 전부 측정한다. */
+  @media (prefers-reduced-motion: no-preference) {
+    a { transition: color .18s ease; }
+    @supports (animation-timeline: scroll()) {
+      .progress { animation: grow linear both; animation-timeline: scroll(root); }
+    }
+  }
+  @keyframes grow { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"></div>
+<main>
+  <h1>스크롤 구동 모션, 측정 안전</h1>
+  <p>이 페이지는 읽기 진행 바에만 scroll-driven 애니메이션을 씁니다. 본문 콘텐츠는 어떤 스크롤 위치에서도 opacity:0으로 숨겨지지 않으므로, 시각 감사 레인이 scroll=0에서 전부 측정합니다.</p>
+  <h2>왼쪽 정렬 본문</h2>
+  <p>좌측 정렬 단락이라 L2(전부 중앙) 텔에 걸리지 않습니다. 행 길이도 40em 이하로 묶여 TY2를 지킵니다. 충분히 길게 적어 측정 대상이 되도록 합니다.</p>
+  <div class="panel">
+    <h2>패널 하나</h2>
+    <p>표면 구분은 1px 보더 + 약한 배경 명도차로. 균일 카드 그리드(L1)가 아니라 단일 비대칭 패널입니다. <a href="#x">링크</a>도 밑줄과 포커스 링을 갖습니다.</p>
+    <small>각주성 작은 글씨는 small로.</small>
+  </div>
+  <p>마지막 단락. 진행 바를 제외하면 정적이며, 모션은 전부 reduced-motion 가드 안에 있습니다.</p>
+</main>
+</body>
+</html>

@@ -78,6 +78,21 @@ Phase 0의 URL 경로를 코드로.
 - [ ] 다크 극성 수치 — CO2/CO3/DE1의 다크 캔버스 대응 수치 리서치
 - [ ] 기각 기록: L3(우회 취약), TY3(line-height:normal 함정), DE2(상속 속성 — 정적 부적합, 시각 재설계 필요)
 
+## M8 — 모션·인터랙션 + 시각 임팩트 빌드 레이어
+
+음성 텔 + 양성 원칙만으로는 "AI 티 없음·시니어 크래프트"까지 가지만, 산출물이 *정적·밋밋*하다는 공백이 남는다. 실험으로 병목이 빌드 레이어임을 확정(`exp-skillshop-mo.html`: slop 0%·인터랙션 풍부 vs `v0-after-with-skill.html`: 7%·인터랙션 0). 레퍼런스 파이프(M7)가 아니라 빌드 규율이 레버다.
+
+- [x] `core/design-principles.md` — MO 원칙군(MO1 목적 모션·MO2 물리·MO3 어포던스·MO4 CSS-first·inert-safe) + "시각 임팩트" 절, 이중채점 매트릭스(reduced-motion·transition:all·focus-visible=DE3, 44px=HI2 교차참조), 충돌해소 기록 1번 MO 승격
+- [x] `core/design-tells.md` — 모션 텔 M1~M4(animated-decoration-background/gratuitous-parallax/typewriter-loop/autoplay-carousel), LLM 레인 등재
+- [x] SKILL.md — Phase 2 모션·시각 토큰 커밋(motion-role/budget), Phase 3 MO 빌드 규율, Phase 4 shot 첫 viewport·모션 점검, Phase 5 LLM 체크리스트 MO 암
+- [x] `templates/concept-sheet.md` — 모션 역할·예산 + 시각 임팩트 토큰 행
+- [ ] **M8.2 기계검사 (게이트형, 파서 전제)**: at-rule/@keyframes 중첩 보존 파서 헬퍼 신설(extractCssRules 불변) + 양방향 픽스처(exp=clean) + scroll-driven reveal 시각 픽스처. 헬퍼가 적대 심사 통과 후에만 b1(reduced-motion 미가드)을 **WARN**(collectWarnings 단독·MACHINE_CHECKS 미등록·baseline 무변경)으로 승격. b3 hover-only는 decoy 우회를 닫기 전까지 LLM 잔류. 미통과 시 옵션 A(전부 LLM) 잔류
+- 합의 계획: `.gjc/plans/ralplan/2026-06-14-mo-layer/pending-approval.md`
+
+## M7 — 레퍼런스 인텔리전스 (후순위, 별도 run)
+
+`docs/reference-gallery-feature-upgrade-plan.md`. 실험상 레퍼런스는 출력 품질의 병목이 아니므로 M8 이후로 재배치. **M7.1**(문서·프롬프트: `core/reference-sources.md` + interview reference 점수화 + 컨셉시트 레퍼런스 브리프)만 별도 run으로 유지, **M7.2/M7.3**(reference-intake CLI)은 디스코프. 주의: 레퍼런스 플랜 5절(motion-role/budget/fallback)은 **M8이 이미 흡수**했으므로 M7.1에서 재추가 금지(병행 컨벤션 표류 차단).
+
 ## 운영 원칙
 
 - 텔 추가는 반드시 픽스처 + baseline 갱신과 한 커밋으로 (M2 게이트가 강제)

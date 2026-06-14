@@ -33,6 +33,8 @@
 | 스페이싱 스케일 | {예: 4/8 기반 {8,16,24,32,48,64,96}} | SP1 |
 | 극성 | {라이트/다크 — 명시 선택, 디폴트 없음} | CO2 |
 | 시그니처 무브 | {최대 1개 — 최강 차별점에서 도출, 없으면 "없음"} | HI2/LA2 |
+| 모션 역할·예산 | {motion-role: none/orientation/feedback/progress/reveal/delight · motion-budget: 0/micro-only/one-signature — CSS-first 무JS} | MO1/MO4 |
+| 시각 임팩트 | {첫 viewport 지배요소 1개 · 타입스케일 드라마(양끝) · 대비 헤드룸} | 시각 임팩트/HI2 |
 
 ## 섹션 구조 (위→아래)
 

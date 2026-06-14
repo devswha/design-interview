@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#faf8f4; --fg:#1f1d1a; --accent:#9a3b22; }
+  body { background:var(--bg); color:var(--fg); font-family:'Pretendard','Noto Sans KR',sans-serif; word-break:keep-all; }
+  main { max-width:40em; margin:0 auto; padding:48px 24px; }
+  a { color:var(--accent); text-decoration:underline; }
+  a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  /* 모든 모션은 reduced-motion 가드 안 — b1 WARN 없어야 한다 */
+  @media (prefers-reduced-motion: no-preference) {
+    a { transition: color .18s ease; }
+    .card { transition: box-shadow .22s ease, transform .22s ease; }
+    @supports (animation-timeline: scroll()) {
+      .bar { animation: grow linear both; animation-timeline: scroll(root); }
+    }
+  }
+  @keyframes grow { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+</style>
+</head>
+<body>
+<main>
+  <h1>가드된 모션 예제</h1>
+  <p>이 페이지의 모든 전이·애니메이션은 prefers-reduced-motion 가드 안에 있습니다. 본문은 충분히 길게 적어 측정 대상이 됩니다.</p>
+  <p class="card">호버하면 살짝 떠오르는 카드. <a href="#next">다음으로</a></p>
+  <div class="bar"></div>
+</main>
+</body>
+</html>

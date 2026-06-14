@@ -34,6 +34,13 @@ patina의 패턴 팩에 해당하는 시각 도메인 금지 목록. 빌드(Phas
 - `S4 stock-illustration` — undraw류 일러스트, 의미 없는 3D 블롭. → 실제 제품 스크린샷, 없으면 타이포그래피로 해결.
 - `S5 border-radius-uniform` — 전 요소 동일 radius (특히 12–16px). → 요소 위계별로 다르게, 또는 0.
 
+## 모션
+
+- `M1 animated-decoration-background` — 배경 aurora·sparkle·shader·그라데이션 무한 애니메이션(awwwards/v0류 디폴트, 가장 흔한 신규 모션 텔). → 정적 배경 또는 목적 있는 모션만(MO1). 깊이는 색·여백·위계로.
+- `M2 gratuitous-parallax` — 의미 없는 패럴랙스 스크롤(콘텐츠가 서로 다른 속도로 떠다님). → 깊이감은 위계·그림자 사다리로, 패럴랙스 금지.
+- `M3 typewriter-loop` — 무한 반복 타자기 효과·텍스트 모핑·글자 셔플. → 정적 카피, 강조는 웨이트·잉크 농도(HI1).
+- `M4 autoplay-carousel` — 자동재생 캐러셀·마퀴(사용자 제어 없는 자동 이동). → 핵심은 전부 보이게 펼치거나, 사용자 제어 disclosure/탭(MO3·MO4).
+
 ## 감사 사용법
 
 두 레인으로 나뉜다. 양성 원칙(`design-principles.md`)의 기계 검사도 같은 감사기에 합류한다:
@@ -41,7 +48,8 @@ patina의 패턴 팩에 해당하는 시각 도메인 금지 목록. 빌드(Phas
 - **기계 레인 (정적)** (`node src/cli.js audit <built.html>`): C1, T1, T2, T4, S5는 `src/audit.js`가 HTML/CSS 파싱으로 판정한다. 원칙 검사 TY4·CO1·DE1·DE3 정적 품질 바닥선, 그리고 TY5-B/C(한글 폴백 스택·가짜 이탤릭)·webfont ①(원격 CDN 폰트 의존) WARN도 이 레인.
 - **기계 레인 (시각)** (`--visual` 플래그, requires puppeteer): L1, **L2**, S3는 `src/geometry.js`가 렌더된 박스 좌표·계산 스타일로 판정한다. 원칙 검사 TY1·TY2·DE3 렌더 대비·TY5-A(한글 어절 중간 줄바꿈 fail)도 이 레인. webfont ②(선언 @font-face 미로드 → fallback 측정) WARN도 시각 레인. DE3는 정적 암과 시각 암을 같은 ID로 병합해 한 번만 채점한다. WARN(DE3 craft·TY5-B/C·webfont)은 `warnings` 배열로만 흐르고 채점·exit에 영향 없다.
   - L2는 섹션별 판정(단일 컬럼 기하 AND (기하 중앙 OR 텍스트 중앙 다수), 전 섹션이 100% 해당일 때만 fail), S3는 페이지 전체 text-align 비율 — 서로 다른 입력에서 발화한다 (양방향 분리 증명 픽스처: `tests/redteam/`).
-- **LLM 레인**: 의미 판단이 필요한 나머지(L3, L4, C5, S1/S2/S4, T3, T5)는 Phase 5에서 체크리스트로 점검한다.
+- **LLM 레인**: 의미 판단이 필요한 나머지(L3, L4, C5, S1/S2/S4, T3, T5, **M1~M4 장식 모션**)는 Phase 5에서 체크리스트로 점검한다.
+  - M1~M4(장식 모션)·MO 어포던스(hover-only 등)는 LLM 레인 잔류 — 기계 승격은 `design-principles.md` "MO 기계 승격 후보"의 중첩 파서 게이트(M8.2) 통과가 선결. reduced-motion 미가드(b1)는 승격 시 WARN 레인.
   - L3는 기계 승격이 적대 심사에서 기각됨(보수적 기준조차 패딩 6px 넛지 하나로 우회 가능). LLM 레인 잔류, SP3(design-principles)와 단일 계기.
 
 기계 레인이 커버하는 텔은 LLM이 자기 채점하지 않는다 (이중 채점 금지).

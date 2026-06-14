@@ -251,6 +251,46 @@ outline:none 금지; 애니메이션/트랜지션은 `@media (prefers-reduced-mo
 (::selection, accent-color, :focus-visible, ::marker, scrollbar-color), 직선 따옴표 청소. `audit --visual`은 단색 배경 위 텍스트 대비를 렌더 시점에 계산하고, 이미지·그라데이션·반투명/미지원 색은 실패가 아니라 skip 카운트로 보고한다.
 (출처: refero, GOV.UK, spark-joy, Butterick, open-design)
 
+## 모션·인터랙션 (MO)
+
+정적 완벽함도 AI 티다 — 사람이 만든 페이지는 누르면 반응하고 스크롤하면 살아 움직인다. 모션은 *장식*이 아니라 상태·연속성·방향을 전달하는 수단이다. 이 군의 전제: **CSS-first**(무JS) — 그래야 산출물이 단일 HTML 불변, 신규 의존성 0, inert preview 호환을 동시에 지킨다. cap-not-quota: 모션도 상한이지 처방이 아니다(모션 quota·고정 transition 디폴트·매 페이지 동일 시그니처 모션은 새 텔).
+
+### MO1 purposeful-motion-only [LLM + 빌드, 부분 기계·정적 후보]
+
+모션은 **방향·피드백·진행·상태변화**를 전달할 때만 존재한다. 합법: hover/focus 어포던스, 섹션당 ≤1회 절제된 scroll-reveal, disclosure(`<details>`)·accordion, 스티키 nav 축소, image-comparison, 읽기 진행 바. 장식 모션은 텔(`design-tells.md` M1~M4): 배경 aurora/sparkle/shader/그라데이션 애니메이션, 무의미 패럴랙스, 타자기 루프, 자동재생 캐러셀/마퀴. cap: **시그니처 모션 최대 1개**(반드시 N개 quota 금지 — 매 페이지 동일 모션은 그 자체로 지문).
+**적용**: 모션 하나를 넣기 전 "이게 어떤 상태 변화를 알리는가"에 답한다. 답이 "예뻐서"면 빼라. 컨셉 시트의 `motion-role`이 잠근 역할 밖 모션 금지.
+(출처: 60fps.design 모션 분류, 21st.dev 상호작용 패턴(장식 배경류는 기각), Anthropic frontend-design 플러그인, Polaris motion, exp-skillshop-mo 실증)
+
+### MO2 motion-physics [부분 기계 + LLM]
+
+transform·opacity 위주(width/height/top/left 등 **layout 트리거 애니메이션 금지** — 리플로우·저프레임), duration 120–400ms, ease-out 계열(linear는 연속 회전 등 등속에만), 60fps 목표. **reduced-motion 가드와 `transition: all` 금지는 DE3가 소유 → 재기술 금지, 교차참조만.** MO2의 LLM 암 = duration·easing 취향 판단.
+**적용**: 모든 `@keyframes`/`transition`/`animation`을 `@media (prefers-reduced-motion: no-preference)` 안에 둔다(DE3). transition 속성은 명시 나열(`transition: color .18s, box-shadow .22s`), `all` 금지.
+(출처: Material 모션 듀레이션, Polaris, WCAG 2.1 prefers-reduced-motion, RUI)
+
+### MO3 affordance [부분 기계 + LLM]
+
+인터랙티브 요소는 **hover + focus-visible + active** 상태를 동반한다(색만 바뀌지 말고 가시 변화 1개 이상), 포인터 커서, 히트영역 ≥44px(**HI2 소유 → 교차참조만**), **hover-only 노출 금지**(터치 기기엔 hover가 없다 — 정보·동작을 hover 뒤에 숨기지 않는다). focus-visible 가시성(대체 없는 `outline:none` 금지)은 **DE3 소유 → 교차참조만**. LLM 암 = active 피드백 적절성.
+**적용**: 링크·버튼·요약(summary)·카드에 hover와 :focus-visible를 같은 규칙군에서 정의. 호버에만 나타나는 메뉴/버튼 금지(포커스·탭으로도 도달 가능해야).
+(출처: GOV.UK 포커스·터치 타깃, Polaris interactive states, WCAG 2.5.5 타깃 크기)
+
+### MO4 css-first-inert-safe [빌드 + LLM]
+
+모든 인터랙션은 **무JS**로 구현한다: `transition`/`@keyframes`/`animation-timeline: scroll()·view()`/`:target`/`<details>`/`:focus-visible`/`position: sticky`/`scroll-behavior: smooth`. JS 0으로도 본문 가독·전환(CTA) 도달이 보장돼야 한다(프로그레시브 인핸스). scroll-driven은 `@supports (animation-timeline: scroll())`로 게이트하고 미지원 시 정적 가시로 무해 degrade. 산출물 단일 HTML·신규 런타임 의존성 0 불변. (메모: preview는 스크립트를 제거하므로 무JS 모션만 검수 화면에 살아남는다 — CSS-first가 곧 검수 가능성이다. 단 `audit --visual`은 inert preview가 아니라 원본 HTML을 렌더한다.)
+**적용**: 스크립트 없이 빌드. JS가 필요하다고 느끼면 거의 항상 CSS 셀렉터(`:target`/`:has`/`<details>`)나 scroll-driven으로 대체 가능하다.
+(출처: open web platform CSS scroll-driven animations, exp-skillshop-mo 실증, patina inert preview)
+
+**MO 이중채점 매트릭스 (코드 대조):** reduced-motion·`transition:all`·focus-visible outline → **DE3 소유**(checkQualityFloor arm); 히트영역 44px → **HI2 소유**(LLM, 기계 arm 없음). 단 **reduced-motion 자체는 현행 기계 arm이 없다**(DE3 산문만) — 모션 미가드를 기계로 잡는다면 그것이 reduced-motion 최초의 기계 승격이다(M2 픽스처+baseline 게이트 필요). MO 신규 검사는 위와 단일 계기(교차참조)로만 묶고 combineAudits에 신규/중복 denominator를 추가하지 않는다.
+
+## 시각 임팩트
+
+가시성·임팩트 부족도 "AI 슬롭"의 한 얼굴이다 — 위계가 평평하면 첫 화면이 무엇을 주는지 0.05초 안에 전달되지 않는다. 단 이 절은 상한이 아니라 *권장 헤드룸*이며, 기존 TY1/HI2 캡을 깨면 안 된다.
+
+- **첫 viewport 위계**: 첫 화면에 지배 요소 정확히 1개(**HI2 one-winner와 단일 계기 — 재채점 금지**). h1·1차 CTA·브랜드 신호가 스크롤 전에 분명해야 한다.
+- **대비 헤드룸**: DE3 4.5:1은 *가독 바닥선*이다. 위계 표현에는 그 위의 헤드룸(더 진한 잉크 티어, 더 큰 명도 대비)을 의도적으로 쓴다 — 바닥선에 턱걸이하지 말 것.
+- **타입스케일 드라마**: 디스플레이↔본문 비율을 극적으로(예: 본문 17px에 디스플레이 48–56px). 단 **TY1(가시 크기 ≤6, 하드캡 7) 위반 금지** — 드라마는 *새 크기 추가*가 아니라 스케일 양 끝 + 웨이트·잉크 농도(HI1 weight-before-size)로 낸다. 고정 비율 메뉴 금지(cap-not-quota).
+**적용**: Phase 4 shot 자기검수에서 첫 viewport만 따로 본다 — 지배 요소 1개·CTA 가시·대비 충분·타입 대비 극적인지.
+(출처: Lindgaard 2006(50ms 첫인상), Kurosu&Kashimura 1995·Tractinsky 2000(미적-사용성), Lavie&Tractinsky 2004(classical/expressive 미학), Cyr 2010(컬러 어필 문화 의존) — 전부 방향 근거, 전환율 직접 주장 금지)
+
 ## 제안서 장르 (PR) — `--page proposal`
 
 제안서는 랜딩이 아니라 **문서**다. 장르 플래그가 규칙을 바꾼다: 인쇄물 질감(밝은 캔버스, 그라데이션
@@ -300,7 +340,7 @@ conversion이 사전 해결(승인 또는 다음 미팅)되므로 그 차원은 
 소스 간 충돌과 해소 — 원칙의 경계를 정한 결정들이라 기록한다:
 
 1. **모션 문법**: Anthropic 플러그인(서프라이즈 호버·스태거 리빌) vs Polaris(호버 스케일 금지·
-   press-darkens 물리). → 둘 다 톤 스코프 옵션으로 기각, prefers-reduced-motion 가드만 채택(DE3).
+   press-darkens 물리). → **MO 군으로 승격**(MO1~MO4): 톤별 모션 처방은 여전히 기각하되, 모션을 *목적 단위*(MO1)·*물리*(MO2)·*어포던스*(MO3)·*CSS-first*(MO4)로 양성 규율화한다. prefers-reduced-motion 가드는 DE3 단독 소유 유지(MO2 교차참조). reference-gallery 플랜 5절(motion-role/motion-budget/reduced-motion-fallback)은 MO + 컨셉 시트 `motion-role`로 흡수됨 — M7.1에서 재추가 금지(병행 컨벤션 표류 차단).
 2. **라이트/다크 디폴트**: 플러그인(세대마다 극성 변주) vs refero(다크 디폴트 = AI 지문).
    → 어느 쪽도 디폴트 아님 — 극성은 컨셉 시트에서 명시적으로 잠근다.
 3. **그림자 철학**: 드라마틱(플러그인) vs 헤어라인 전용(Polaris) vs 2부 소프트(RUI). → 공유
@@ -337,3 +377,9 @@ conversion이 사전 해결(승인 또는 다음 미팅)되므로 그 차원은 
   속성 — 정적 레인 부적합, 시각 레인 재설계 필요).
 - **반응형 테이블**: PR1/PR2가 테이블 중심 제안서를 요구하나 모바일 테이블 변환 규칙 미정 —
   GOV.UK 반응형 테이블 패턴 참조.
+- **MO 기계 승격 후보** (M8.2 게이트, 파서 전제): reduced-motion 미가드 모션 정적검사(b1, WARN
+  레인 — reduced-motion 최초 기계 승격이라 M2 픽스처+baseline 게이트 필요)와 MO1 장식 애니메이션
+  검사(@keyframes가 background/filter/gradient 무한반복)는 **둘 다 at-rule/@keyframes 중첩
+  보존 파서 신설이 선결**이다(현 extractCssRules는 단일레벨이라 @media 가드 안/밖 구분 불가). 파서가
+  적대 심사를 통과한 뒤에만 b1을 WARN 승격하고 그 전까지 MO는 빌드+LLM 레인 잔류. hover-only
+  어포던스(b3)는 decoy :focus-visible 우회를 닫기 전까지 LLM 잔류.

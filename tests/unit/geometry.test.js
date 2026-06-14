@@ -243,3 +243,10 @@ test('TY2 no-main ignores a long fine-print div when body size dominates', opts,
   const { findings } = await analyzeVisualTells(fixture('tests/redteam/no-main-legal-div-longer.html'));
   assert.equal(findings.find((f) => f.id === 'TY2').pass, true);
 });
+
+test('scroll-driven reveal (MO4 safe pattern) is measured cleanly — no hiding/false-fail', opts, async () => {
+  const { findings } = await analyzeVisualTells(fixture('tests/redteam/scroll-driven-reveal.html'));
+  // 콘텐츠를 opacity:0로 숨기지 않는 MO4 안전 패턴 — 시각 레인이 scroll=0에서 전부 측정,
+  // L1/L2/S3/TY1/TY2/DE3 어느 것도 오판(은폐로 인한 false-pass/false-fail)하지 않는다.
+  assert.ok(findings.every((f) => f.pass), JSON.stringify(findings.filter((f) => !f.pass)));
+});

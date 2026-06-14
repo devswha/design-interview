@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스킬, 사실 별거 아니에요 — 스킬샵 크리에이터 가이드</title>
+<style>
+  /* === 토큰 (빌드 전 잠금) === */
+  :root {
+    /* 색: 역할 명명, 페이지 전체 ≤12, :root 밖 리터럴 ~0 */
+    --paper:      #f4efe3;
+    --surface:    #fbf8f1;
+    --ink:        #221b11;
+    --muted:      #6a5d4a;
+    --line:       #dccfb8;
+    --accent:     #a4361f;
+    --accent-deep:#7c2614;
+    --hi:         #efe4cb;
+    /* 타입 스케일 (≤6 가시 크기) */
+    --fs-display: clamp(2.5rem, 6vw, 3.3rem);
+    --fs-h2:      1.5rem;
+    --fs-h3:      1.1rem;
+    --fs-body:    1.0625rem;   /* 17px */
+    --fs-small:   0.94rem;     /* ~16px, 본문 바닥선 위 */
+    --fs-eyebrow: 0.8rem;
+    /* 스페이싱 스케일 */
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+    --s6:32px; --s7:48px; --s8:64px; --s9:96px; --s10:128px;
+    /* 폰트: 2패밀리, 역할 분담, 제네릭 폴백, CDN 의존 없음 */
+    --font-display: "Nanum Myeongjo", "Apple SD Gothic Neo", "AppleMyungjo", "Batang", serif;
+    --font-body: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    /* 그림자: 시그니처 ≤3, 물리 준수 */
+    --shadow-1: 0 2px 6px rgba(34,27,17,.07);
+    --shadow-2: 0 10px 22px rgba(34,27,17,.12);
+    --measure: 40em;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size:17px; scroll-padding-top:72px; }
+  body {
+    background:var(--paper); color:var(--ink);
+    font-family:var(--font-body); font-size:var(--fs-body);
+    line-height:1.8; word-break:keep-all; overflow-wrap:break-word;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection { background:var(--accent); color:#fdfaf4; }
+  :root { accent-color:var(--accent); }
+
+  /* === MO: 인터랙션·모션 (CSS-only, inert-safe) === */
+  /* 모션은 전부 reduced-motion no-preference 게이트 안에서만 */
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior:smooth; }
+    a, .cta, .step, .pillar, tbody tr, summary { transition: color .18s ease, background-color .18s ease, box-shadow .22s ease, transform .22s ease, border-color .18s ease; }
+    .reveal-hero { animation: heroIn .65s cubic-bezier(.2,.7,.2,1) both; }
+    @supports (animation-timeline: scroll()) {
+      .progress { animation: grow linear both; animation-timeline: scroll(root); transform-origin:0 50%; }
+      .topbar   { animation: shrink linear both; animation-timeline: scroll(root); animation-range: 0 180px; }
+    }
+  }
+  @keyframes heroIn { from { opacity:.001; transform:translateY(10px); } to { opacity:1; transform:none; } }
+  @keyframes grow   { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+  @keyframes shrink { to { padding-top:var(--s2); padding-bottom:var(--s2); box-shadow:var(--shadow-1); border-color:var(--line); } }
+
+  /* 포커스 가시성 (DE3) — 색만이 아니라 outline */
+  a:focus-visible, summary:focus-visible, .cta:focus-visible {
+    outline:2px solid var(--accent); outline-offset:3px; border-radius:2px;
+  }
+
+  /* === 상단: 읽기 진행 바 + 스티키 내비 === */
+  .progress {
+    position:fixed; inset:0 0 auto 0; height:3px; background:var(--accent);
+    transform:scaleX(0); z-index:60;
+  }
+  .topbar {
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:baseline; justify-content:space-between; gap:var(--s5);
+    padding:var(--s4) clamp(var(--s5), 5vw, var(--s8));
+    background:var(--paper); border-bottom:1px solid transparent;
+  }
+  .topbar .brand { font-family:var(--font-display); font-weight:700; font-size:var(--fs-small); letter-spacing:.02em; }
+  .topbar nav { display:flex; gap:var(--s5); }
+  .topbar nav a {
+    font-size:var(--fs-eyebrow); color:var(--muted); text-decoration:none; letter-spacing:.06em;
+    padding-bottom:2px; border-bottom:1px solid transparent;
+  }
+  .topbar nav a:hover, .topbar nav a:focus-visible { color:var(--accent); border-color:var(--accent); }
+  @media (max-width:620px){ .topbar nav { display:none; } }
+
+  main { max-width:720px; margin:0 auto; padding:var(--s8) clamp(var(--s5),5vw,var(--s7)) var(--s7); }
+
+  h1,h2,h3 { font-family:var(--font-display); line-height:1.32; font-weight:700; letter-spacing:-.01em; }
+  h1 { font-size:var(--fs-display); margin:var(--s3) 0 var(--s5); line-height:1.18; }
+  h2 { font-size:var(--fs-h2); margin:0 0 var(--s4); }
+  h3 { font-size:var(--fs-h3); margin:var(--s6) 0 var(--s3); }
+  p  { margin:0 0 var(--s4); max-width:var(--measure); }
+  strong { font-weight:700; }
+  em { font-style:normal; color:var(--accent); font-weight:600; }
+
+  /* 본문 링크: 밑줄 + 호버 애니메이션 (DE3 색만 금지) */
+  .prose a, p a, li a {
+    color:var(--accent); text-decoration:none;
+    background-image:linear-gradient(var(--accent),var(--accent));
+    background-size:100% 1px; background-position:0 100%; background-repeat:no-repeat;
+    padding-bottom:1px;
+  }
+  .prose a:hover, p a:hover { background-size:100% 2px; color:var(--accent-deep); }
+
+  .overline {
+    font-size:var(--fs-eyebrow); letter-spacing:.16em; color:var(--accent);
+    text-transform:uppercase; font-weight:600;
+  }
+  .lede { font-size:var(--fs-h3); color:var(--muted); margin:var(--s4) 0 var(--s5); max-width:var(--measure); }
+
+  .kicker {
+    font-family:var(--font-display); font-size:var(--fs-eyebrow); color:var(--accent);
+    letter-spacing:.2em; display:flex; align-items:center; gap:var(--s3); margin-bottom:var(--s3);
+  }
+  .kicker::before { content:""; width:28px; height:2px; background:var(--accent); display:inline-block; }
+  .section { margin-top:var(--s9); }
+  .section-tight { margin-top:var(--s8); }
+
+  /* 요약 박스 — 살짝 브레이크아웃(의도적 비대칭, 시그니처 1) */
+  .summary {
+    background:var(--surface); border:1px solid var(--line); border-radius:6px;
+    padding:var(--s6) clamp(var(--s5),4vw,var(--s7));
+    margin:var(--s6) calc(-1 * clamp(0px,2vw,var(--s5)));
+    box-shadow:var(--shadow-1);
+  }
+  .summary .tag { font-size:var(--fs-eyebrow); letter-spacing:.12em; color:var(--accent); font-weight:600; margin-bottom:var(--s3); }
+  .summary p { font-size:var(--fs-h3); line-height:1.7; }
+  .summary p:last-child { margin-bottom:0; }
+
+  .num { font-variant-numeric:tabular-nums; }
+
+  .lead-callout {
+    border-left:3px solid var(--accent); padding:var(--s2) 0 var(--s2) var(--s5);
+    margin:var(--s7) 0; font-size:var(--fs-h3); font-family:var(--font-display);
+  }
+  .pull {
+    font-family:var(--font-display); font-size:var(--fs-h3); line-height:1.5;
+    color:var(--ink); border-top:2px solid var(--accent); border-bottom:1px solid var(--line);
+    padding:var(--s5) 0; margin:var(--s6) var(--s8) var(--s6) 0;
+  }
+  .pull small { display:block; font-family:var(--font-body); font-size:var(--fs-small); color:var(--muted); margin-top:var(--s3); line-height:1.7; }
+
+  ol.plain, ul.plain { padding-left:var(--s5); margin:0 0 var(--s4); max-width:var(--measure); }
+  ol.plain li, ul.plain li { margin-bottom:var(--s2); }
+  ::marker { color:var(--accent); }
+
+  table { border-collapse:collapse; width:100%; margin:var(--s5) 0 var(--s3); font-size:var(--fs-small); }
+  caption { caption-side:bottom; text-align:left; font-size:var(--fs-eyebrow); color:var(--muted); padding-top:var(--s3); letter-spacing:.02em; }
+  th,td { border-bottom:1px solid var(--line); padding:var(--s3) var(--s4) var(--s3) 0; text-align:left; vertical-align:top; }
+  th { font-weight:600; font-size:var(--fs-eyebrow); color:var(--muted); letter-spacing:.04em; text-transform:uppercase; }
+  td.n { font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--accent); font-weight:600; }
+  tbody tr:hover { background:var(--hi); }
+  /* 비교표: '스킬로' 열 강조 (한 승자) */
+  table.versus td:last-child, table.versus th:last-child { background:var(--surface); padding-left:var(--s4); padding-right:var(--s4); }
+  table.versus th:last-child { color:var(--accent); }
+
+  /* === 5단계 타임라인 (균일 카드 그리드 회피) === */
+  .timeline { position:relative; margin-top:var(--s6); padding-left:var(--s6); border-left:2px solid var(--line); }
+  .step { position:relative; padding:var(--s4) 0 var(--s2); }
+  .step::before {
+    content:""; position:absolute; left:calc(-1 * var(--s6) - 6px); top:var(--s6);
+    width:10px; height:10px; border-radius:50%; background:var(--paper); border:2px solid var(--accent);
+  }
+  .step .no { font-family:var(--font-display); color:var(--accent); font-size:var(--fs-eyebrow); letter-spacing:.14em; font-weight:700; }
+  /* STEP 4 — 한 단계만 승격 (의도적 비대칭) */
+  .step.feature {
+    background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent);
+    border-radius:6px; padding:var(--s6) clamp(var(--s5),4vw,var(--s6)) var(--s4);
+    margin:var(--s5) calc(-1 * var(--s5)) var(--s5) calc(-1 * var(--s6)); box-shadow:var(--shadow-1);
+  }
+  .step.feature::before { top:var(--s7); background:var(--accent); }
+  .step.feature:hover { box-shadow:var(--shadow-2); transform:translateY(-2px); }
+
+  /* 보너스 — disclosure (장식 아닌 기능, 클레임 없음) */
+  details.note { border:1px solid var(--line); border-radius:6px; background:var(--surface); margin:var(--s4) 0; }
+  details.note summary {
+    cursor:pointer; list-style:none; padding:var(--s4) var(--s5);
+    font-size:var(--fs-small); font-weight:600; display:flex; align-items:center; gap:var(--s3);
+  }
+  details.note summary::-webkit-details-marker { display:none; }
+  details.note summary::before { content:"+"; color:var(--accent); font-family:var(--font-display); font-size:var(--fs-h3); line-height:1; }
+  details.note[open] summary::before { content:"–"; }
+  details.note summary:hover { color:var(--accent); }
+  details.note .body { padding:0 var(--s5) var(--s4); font-size:var(--fs-small); color:var(--muted); line-height:1.75; }
+
+  /* 2-col 비대칭 (1.5–2.2:1, 균일 카드 아님) */
+  .pillars { display:grid; grid-template-columns:1fr 1fr; gap:var(--s5) var(--s6); margin:var(--s5) 0; }
+  .pillar h3 { margin-top:0; }
+  .pillar.muted { color:var(--muted); }
+  .pillar ul { padding-left:var(--s5); }
+  @media (max-width:560px){ .pillars { grid-template-columns:1fr; } }
+
+  /* CTA */
+  .cta-block { border-top:2px solid var(--ink); margin-top:var(--s10); padding-top:var(--s6); }
+  .cta {
+    display:inline-flex; align-items:center; gap:var(--s2); min-height:48px;
+    background:var(--accent); color:#fdfaf4; text-decoration:none;
+    padding:var(--s3) var(--s6); border-radius:3px; font-weight:700; font-size:var(--fs-small);
+    margin:var(--s4) 0 var(--s3); box-shadow:var(--shadow-1);
+  }
+  .cta:hover { background:var(--accent-deep); box-shadow:var(--shadow-2); transform:translateY(-2px); }
+  .cta:active { transform:translateY(0); box-shadow:var(--shadow-1); }
+  small.fine { display:block; font-size:var(--fs-small); color:var(--muted); }
+  footer { margin-top:var(--s8); padding-top:var(--s5); border-top:1px solid var(--line); font-size:var(--fs-small); color:var(--muted); }
+  footer a { color:var(--accent); }
+
+  @media (max-width:560px){
+    h1 { line-height:1.22; }
+    .pull, .summary, .step.feature { margin-right:0; }
+    .summary, .step.feature { margin-left:0; margin-right:0; }
+  }
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"></div>
+
+<header class="topbar">
+  <span class="brand">스킬샵 크리에이터 가이드</span>
+  <nav aria-label="섹션">
+    <a href="#what">스킬이란</a>
+    <a href="#why">가치</a>
+    <a href="#how">5단계</a>
+    <a href="#join">참여</a>
+  </nav>
+</header>
+
+<main>
+  <section class="reveal-hero">
+    <span class="overline">스킬샵 크리에이터 가이드 · 1기</span>
+    <h1>스킬, 사실<br>별거 아니에요</h1>
+    <p class="lede">관심은 있는데 “스킬을 어떻게 만들지?” 막막한 분들을 위해 적었습니다.</p>
+    <p>1기 제안을 받고 “관심은 있는데, 솔직히 스킬이란 게 뭔지, 뭘 어떻게 만들어야 하는지 잘 모르겠어요”라고 답하신 분들이 꽤 계셨어요. 자연스러운 반응입니다. ‘스킬’이라는 단어에서 왠지 코딩 냄새가 나거든요. 이 글 하나로 “아, 뭐부터 하면 되는지 알겠다” 싶게 만들어 드릴게요. 커피 한 잔 들고 편하게 읽어주세요.</p>
+  </section>
+
+  <div class="summary">
+    <p class="tag">이 글 한 장 요약</p>
+    <p>스킬은 <strong>“내가 일을 판단하는 기준”을 AI에 옮겨 심는 것</strong>입니다. 내 분야의 진짜 사례 <strong class="num">60개</strong>를 잘함·보통·별로로 나누고, 보면서 말로 평가하고(녹화), 그 기준을 1차 스킬로 뽑은 뒤, AI 점수와 내 점수를 맞춰가면 돼요. AI가 내 판단을 약 <strong class="num">90%</strong> 따라오면 졸업, 곧 출시입니다.</p>
+    <p>합격선은 흠 하나 없는 결과물이 아니라 <strong>“내 기준의 안정적인 재현”</strong>이에요. 마음 편히 시작하셔도 됩니다.</p>
+  </div>
+
+  <p class="lead-callout">첫걸음은 코딩도 거창한 기획도 아닙니다. <strong>“내 분야의 결과물 60개를 모은다.”</strong> 이 한 줄만 기억하고 나머지를 읽으셔도 돼요. 정말로요.</p>
+
+  <section class="section" id="what">
+    <p class="kicker">하나</p>
+    <h2>그래서 ‘스킬’이 대체 뭔데요?</h2>
+    <p>거창한 거 아니에요. 한 문장으로 정리하면 이렇습니다.</p>
+    <blockquote class="pull">스킬 = “내가 이 일을 판단하고 처리하는 방식”을, AI가 그대로 따라 하도록 포장해 둔 것.</blockquote>
+    <p>당신이 수년간 쌓은 “이건 좋고, 저건 별로고, 이렇게 고치면 낫다”는 감각이 있잖아요. 그걸 AI한테 옮겨 심어서, 당신이 옆에 없어도 당신처럼 판단하게 만드는 거예요. 코드가 아니라 <strong>당신의 기준</strong>이 핵심입니다.</p>
+
+    <h3>김밥은 통째로 팔지 말고, 썰어서 보여주세요</h3>
+    <p>다들 처음엔 “유튜브 자동화 스킬 만들래요”, “입시 컨설팅 스킬 만들래요”라고 말해요. 좋은 시작인데, 듣는 사람 입장에선 통 김밥입니다. 겉만 봐선 “그게… 뭔데? 안에 뭐가 들었는데?” 싶어 안 사요. 그래서 썰어 단면을 보여줘야 합니다. ‘유튜브 자동화’를 썰어보면:</p>
+    <ol class="plain">
+      <li>영상 주제 리서치</li>
+      <li>대본 작성</li>
+      <li>녹화본 애니메이션</li>
+      <li>편집</li>
+      <li>썸네일 생성</li>
+    </ol>
+    <p>통째로는 “그게 뭔데?”였는데, 잘라놓으니 단계 하나하나가 와닿죠. 그러니 스스로에게 물어보세요. <em>내 일을 눈에 보이는 작업 단계로 썰면 어떤 조각들이 나오지?</em></p>
+  </section>
+
+  <section class="section" id="why">
+    <p class="kicker">둘</p>
+    <h2>그런데 이게 왜 가치가 있죠?</h2>
+    <p>“내 노하우가 그렇게 대단한가, 돈 받고 팔 만한가” 싶으실 거예요. 됩니다. 오히려 지금이라서 더 됩니다.</p>
+
+    <h3>지금은 ‘평균의 시대’예요</h3>
+    <p>AI가 등장하면서 누구나 평타 <span class="num">70점</span>짜리 결과물은 뽑게 됐어요. 그래서 역설적으로 차별화되는 건 딱 하나 — <strong>“무엇이 진짜 좋은지 아는 당신의 안목”</strong>입니다. AI는 <span class="num">100개</span>를 만들 수 있지만, 그중 뭐가 진짜 좋은지는 몰라요. 그걸 골라내는 취향과 판단이 이제 가장 비싼 자산이에요.</p>
+
+    <h3>“책임”까지 안 져도 돼요. “관점” 하나면 충분합니다</h3>
+    <p>스킬의 가치는 결과를 <span class="num">100%</span> 책임지는 게 아니에요. 사용자가 미처 생각 못 한 관점 하나만 짚어줘도 이미 돈 낼 가치가 있습니다.</p>
+    <blockquote class="pull">“디자인 포트폴리오가 <span class="num">30MB</span> 넘으면 센스 없어 보여요. <span class="num">5MB</span>로 압축하세요.”
+      <small>별거 아닌 것 같지만, 신입은 이걸 몰라 첫인상을 깎아먹습니다. 책에도 안 나오고요.</small>
+    </blockquote>
+
+    <h3>스킬 없이 쓸 때 vs 스킬로 쓸 때</h3>
+    <table class="versus">
+      <caption>차이는 전문가의 눈, 곧 판단 기준을 얹었느냐 하나입니다.</caption>
+      <thead><tr><th>스킬 없이</th><th>스킬로</th></tr></thead>
+      <tbody>
+        <tr><td>AI가 뽑은 평균 70점 결과물</td><td>전문가 기준이 탑재됨</td></tr>
+        <tr><td>“그럴듯한데 뭔가 아쉬움”</td><td>“오, 이건 진짜 좋네”</td></tr>
+        <tr><td>좋은지 나쁜지 판단 불가</td><td>놓칠 뻔한 관점까지 짚어줌</td></tr>
+        <tr><td>매번 다른 품질</td><td>일관된 고품질</td></tr>
+      </tbody>
+    </table>
+    <p>전문가가 수년간 영점 조절해 둔 ‘판단하는 뇌’를 <span class="num">1/10</span> 가격에 24시간 내 것처럼 쓰는 것. 그 뇌를 만드는 사람이 당신이에요.</p>
+  </section>
+
+  <section class="section" id="how">
+    <p class="kicker">셋</p>
+    <h2>스킬 만드는 5단계 ‘닫힌 고리’</h2>
+    <p>겁먹지 마세요. 코딩 한 줄 안 합니다. 핵심은 <strong>“평소 머릿속으로 하던 판단을 밖으로 꺼내, AI랑 계속 맞춰보는 것.”</strong> 한 바퀴 돌리고, 안 맞는 데 고치고, 또 돌리고. AI가 나랑 거의 똑같이 판단하면 끝입니다.</p>
+
+    <div class="timeline">
+      <div class="step">
+        <p class="no">STEP 1</p>
+        <h3>모으기 — 내 분야 예시 60개</h3>
+        <p>실제 사례 약 <strong class="num">60개</strong>를 모읍니다. 남의 것이든 내 것이든 실제 결과물이면 돼요. 그냥 모으지 않고 세 바구니로 나눠 담는 게 포인트.</p>
+        <table>
+          <caption>이 셋으로 나누는 안목 자체가 이미 당신의 전문성입니다.</caption>
+          <tbody>
+            <tr><td class="n">잘함 20</td><td>“이건 정말 잘 뽑았다”</td></tr>
+            <tr><td class="n">보통 20</td><td>나쁘진 않은데 평타</td></tr>
+            <tr><td class="n">별로 20</td><td>“이건 이래서 안 돼”</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="step">
+        <p class="no">STEP 2</p>
+        <h3>말로 평가하기 — 화면 녹화를 켜고</h3>
+        <p>모은 것 중 절반쯤(<span class="num">25~30개</span>)을 화면 녹화를 켠 채 하나씩 보며 소리 내어 평가하세요. 나머지 절반은 나중에 시험 문제로 아껴둡니다. “색감이 좋아 합격, 근데 여백이 좁아.” — 이런 식이면 됩니다.</p>
+        <details class="note">
+          <summary>보너스 — 이 녹화의 또 다른 쓸모</summary>
+          <div class="body">이 녹화 영상은 그 자체로 좋은 마케팅 자료가 됩니다. “전문가가 실제로 어떻게 판단하는지” 보여주는 콘텐츠라서, 스킬 홍보할 때 그대로 쓸 수 있어요.</div>
+        </details>
+      </div>
+
+      <div class="step">
+        <p class="no">STEP 3</p>
+        <h3>1차 스킬 추출하기</h3>
+        <p>말로 쏟아낸 내용 안에 당신의 판단 기준이 다 들어 있어요. 그걸 정리해 첫 버전을 뽑습니다 — “여백은 위아래로 충분히”, “폰트는 2종 이내”, “색은 3가지 이내”, “파일은 5MB 이하” 같은 것들요. 이 정리는 혼자 끙끙댈 필요 없어요. 당신은 <strong>판단</strong>을, 스킬샵 팀은 그걸 옮기는 <strong>손</strong>이 됩니다.</p>
+      </div>
+
+      <div class="step feature">
+        <p class="no">STEP 4 · 진짜 마법이 일어나는 곳</p>
+        <h3>맞춰보기 — 캘리브레이션</h3>
+        <p>아껴둔 나머지 <span class="num">25개</span>로 시험을 봅니다. AI가 채점하고, 내가 채점하고, 어디서 갈렸는지 비교해요.</p>
+        <table>
+          <caption>크게 어긋난 항목이 나오면, 거기가 보물입니다.</caption>
+          <thead><tr><th>사례</th><th>AI 점수</th><th>내 점수</th><th>결과</th></tr></thead>
+          <tbody>
+            <tr><td class="n">사례 1</td><td>잘함</td><td>잘함</td><td>일치</td></tr>
+            <tr><td class="n">사례 3</td><td>잘함</td><td>별로</td><td><strong>어긋남</strong></td></tr>
+            <tr><td class="n">사례 5</td><td>보통</td><td>잘함</td><td><strong>어긋남</strong></td></tr>
+          </tbody>
+        </table>
+        <p>“AI는 좋다는데 난 별론데?” — 그 차이가 곧 <strong>당신은 알지만 스킬엔 아직 없는 관점</strong>입니다. 추가하고 다시 채점하면 어긋남이 줄어요.</p>
+      </div>
+
+      <div class="step">
+        <p class="no">STEP 5</p>
+        <h3>졸업 — 90% 일치하면 끝</h3>
+        <p>돌리다 보면 어느 순간 AI가 당신과 약 <strong class="num">90%</strong> 일치합니다. 그 순간이 졸업식이에요. <span class="num">100%</span>일 필요 없어요. 사람도 매번 100% 일관되진 않으니까요. 90%면 “당신의 안목을 신뢰성 있게 재현”하는 데 충분합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="kicker">넷</p>
+    <h2>“어느 정도 퀄리티까지 나와야 출시하나요?”</h2>
+    <p>제일 많이 받는 질문이에요. 합격선은 생각보다 마음 편한 곳에 있습니다.</p>
+    <div class="pillars">
+      <div class="pillar muted">
+        <h3>합격선이 아닌 것</h3>
+        <ul class="plain">
+          <li>AI가 매번 100점을 뽑아야 한다</li>
+          <li>예술적인 결과물이어야 한다</li>
+          <li>흠잡을 데 없어야 출시할 수 있다</li>
+        </ul>
+      </div>
+      <div class="pillar">
+        <h3>진짜 합격선</h3>
+        <ul class="plain">
+          <li>내 판단을 안정적으로 재현하는가 (90% 일치)</li>
+          <li>사용자가 놓쳤을 관점을 짚어주는가</li>
+          <li>“당신이라면 했을 판단”을 맡길 수 있는가</li>
+        </ul>
+      </div>
+    </div>
+    <h3>“AI 슬롭” 아니라는 증거가 이 루프예요</h3>
+    <p><span class="num">60개</span> 평가셋으로 채점하고, 캘리브레이션하고, <span class="num">90%</span> 일치를 증명하는 것. 그냥 뱉은 게 아니라 검증을 통과한 판단이라는, 감이 아니라 데이터로 나오는 품질 보증서예요. 출시 전 이 점검은 스킬샵 팀이 같이 돌려드립니다.</p>
+  </section>
+
+  <section class="section">
+    <p class="kicker">다섯</p>
+    <h2>그래서, 남는 게 뭐냐면</h2>
+    <p>당신이 하는 건 결국 — 예시를 모으고, 보며 판단을 소리 내어 말하고, AI와 점수를 맞춰가는 것. 시간으로 치면 대략 <strong class="num">4~8시간</strong>의 ‘안목 큐레이션’입니다. 그 시간이 <strong>수십만 원에 팔리는 제품</strong>이 되고, 한 번 만들면 잠잘 때도 평생 팔려요. 매출의 주인은 온전히 당신이고요.</p>
+    <div class="pillars">
+      <div class="pillar">
+        <h3>당신이 하는 것</h3>
+        <p class="num" style="color:var(--accent);font-weight:600">안목 큐레이션 · 4~8시간</p>
+        <ul class="plain">
+          <li>사례 60개 분류</li>
+          <li>말로 판단 (녹화)</li>
+          <li>AI와 점수 맞추기</li>
+        </ul>
+      </div>
+      <div class="pillar muted">
+        <h3>스킬샵이 하는 것 — 나머지 전부</h3>
+        <ul class="plain">
+          <li>결제 · 정산</li>
+          <li>노출 / 마케팅</li>
+          <li>고객 응대(CS)</li>
+          <li>출시 전 품질 점검</li>
+        </ul>
+      </div>
+    </div>
+    <p>당신은 제일 잘하는 것, <strong>‘무엇이 좋은가’를 가려내는 눈</strong> 하나만 가져오시면 됩니다.</p>
+  </section>
+
+  <section class="section-tight">
+    <h2>내일 당장 할 일</h2>
+    <ol class="plain">
+      <li><strong>김밥 썰기</strong> — 내 일을 “작업 단계 5조각”으로 잘라 적기</li>
+      <li><strong>60개 모으기</strong> — 잘함 20 / 보통 20 / 별로 20, 세 바구니로 분류</li>
+      <li><strong>말로 평가(녹화)</strong> — 절반(25~30개)을 보며 소리 내어 판단. 여기까진 혼자서도 충분</li>
+      <li><strong>1차 스킬 추출</strong> — 내 기준을 규칙으로 정리. 팀이 돕습니다</li>
+      <li><strong>맞춰보기</strong> — 남은 25개로 AI와 점수 비교, 어긋난 데 보강, 반복. 팀과 함께</li>
+      <li><strong>90% 졸업</strong> — 출시. 출시 전 품질 점검은 팀과 함께</li>
+    </ol>
+    <p>막상 적어놓고 보니 별거 아니죠? 없던 걸 만드는 게 아니라 <strong>있던 걸 꺼내는 일</strong>이에요. 그러니 할 수 있어요. 정말로.</p>
+  </section>
+
+  <section class="cta-block" id="join">
+    <p class="kicker">1기 크리에이터 모집 중</p>
+    <h2>“관심은 있는데 잘 모르겠다”가 “아, 이거 나도 하겠는데?”로 바뀌셨길 바라요.</h2>
+    <p>1기는 기획부터 스킬 개발, 상세 페이지, 마케팅까지 처음부터 끝까지 함께 만듭니다. 줌으로 가볍게 <span class="num">1~2시간</span> 이야기 나누면, 나머지는 같이 만들어가요. 당신은 안목만 가져오세요.</p>
+    <a class="cta" href="https://skills.ag/creators">지금 시작하기 — skills.ag/creators →</a>
+    <small class="fine">신청 후 팀에서 연락드려요 · 코딩 필요 없음 · 1기 소수 한정</small>
+  </section>
+
+  <footer>
+    <p>— 스킬샵 팀 드림 · <a href="https://skills.ag/creators">skills.ag/creators</a></p>
+  </footer>
+</main>
+</body>
+</html>
