@@ -1,0 +1,4 @@
+파일: hahmlet-korean-700-normal.woff2
+라이선스: SIL OFL 1.1
+출처: https://fonts.google.com/specimen/Hahmlet (@fontsource)
+수집일: 2026-06-14

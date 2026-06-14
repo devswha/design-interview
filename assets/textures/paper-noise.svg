@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
+  <!-- 종이결/노이즈 텍스처 — 직접 생성(스톡 아님). background-image로 타일, 낮은 opacity로 결만 얹는다. -->
+  <filter id="paper">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.05"/></feComponentTransfer>
+  </filter>
+  <rect width="220" height="220" filter="url(#paper)"/>
+</svg>
