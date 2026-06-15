@@ -15,7 +15,15 @@
 | brand | {자산 유무, 색/서체} | {0.00} |
 | structure | {첫 화면 우선순위} | {0.00} |
 | conversion | {단일 전환 행동 + CTA 방향} | {0.00} |
-| reference | {URL + 좋았던 이유} | {0.00} |
+| reference | {URL/DESIGN.md + 빌릴 레이어·버릴 레이어·복제 금지 조건} | {0.00} |
+
+## 레퍼런스 브리프
+
+> `core/reference-sources.md` 기준. 레퍼런스는 복제할 화면이 아니라 시각 언어와 토큰 커밋의 근거다.
+
+| 레퍼런스 | 빌릴 레이어 | 버릴 레이어 | 토큰 영향 | 복제 금지 조건 |
+|---|---|---|---|---|
+| {URL 또는 DESIGN.md 파일} | {예: palette role / typography hierarchy / density / image behavior} | {예: 브랜드별 카피·이미지·pixel layout} | {시각 언어·토큰 커밋 중 바뀌는 항목} | {검수 가능한 금지 문장} |
 
 ## 시각 언어
 

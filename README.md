@@ -68,12 +68,20 @@ npm run benchmark
 # all fixtures match baseline — miss(탐지 후퇴)/fp(오탐 후퇴) 발생 시 exit 1
 ```
 
+레퍼런스/`DESIGN.md` 반영 (Phase 1/2):
+
+```text
+core/reference-sources.md      # URL, DESIGN.md, 갤러리, 생성 에셋의 사용 정책
+templates/concept-sheet.md     # 레퍼런스 브리프: 빌릴 레이어 / 버릴 레이어 / 토큰 영향 / 복제 금지 조건
+```
+
 ## Layout
 
 | 경로 | 역할 |
 |---|---|
 | `SKILL.md` | 스킬 본문 — Phase 0–5 오케스트레이션 |
 | `core/interview.md` | 6차원 인터뷰 프레임워크 + 명료도 점수 모델 (+ 제안서 장르 보정) |
+| `core/reference-sources.md` | URL·DESIGN.md·갤러리 레퍼런스 사용 정책 — 구조만 빌리고 복제 금지 |
 | `core/design-tells.md` | AI 디자인 텔 금지 목록 (빌드 규율 + 납품 감사 체크리스트) |
 | `core/design-principles.md` | 시니어 디자인 원칙 24종 — 텔의 양성 대응물 (토큰 규율 + 제안서 장르 + 기계 검사 레인) |
 | `templates/concept-sheet.md` | Phase 2 컨셉 시트 양식 |
@@ -90,6 +98,7 @@ npm run benchmark
 - **클레임 보존**: 디자인이 바뀌어도 소스의 숫자·기능·가격·인과는 불변 ([patina](https://github.com/devswha/patina)의 MPS 원칙).
 - **Inert preview**: 검수 화면은 스크립트 실행 불가이며 원격 stylesheet 링크를 보존하지 않는다. patina browser preview의 보안 모델을 따른다.
 - **Asset-first**: font-only·0-asset 상태에서는 컨셉을 잠그지 않는다. 최소 1개 이상의 sidecar 있는 logo/image/texture가 필요하다.
+- **Reference-safe**: `DESIGN.md`와 레퍼런스 갤러리는 시각 언어 구조를 빌리는 입력이다. 브랜드별 토큰·원문·이미지·pixel layout은 복제하지 않는다.
 - **탐지 우회 아님**: 허용된 AI 보조 제작에서 사람 손맛을 입히는 도구다.
 
 ## Test

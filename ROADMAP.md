@@ -91,7 +91,7 @@ Phase 0의 URL 경로를 코드로.
 
 ## M7 — 레퍼런스 인텔리전스 (후순위, 별도 run)
 
-`docs/reference-gallery-feature-upgrade-plan.md`. 실험상 레퍼런스는 출력 품질의 병목이 아니므로 M8 이후로 재배치. **M7.1**(문서·프롬프트: `core/reference-sources.md` + interview reference 점수화 + 컨셉시트 레퍼런스 브리프)만 별도 run으로 유지, **M7.2/M7.3**(reference-intake CLI)은 디스코프. 주의: 레퍼런스 플랜 5절(motion-role/budget/fallback)은 **M8이 이미 흡수**했으므로 M7.1에서 재추가 금지(병행 컨벤션 표류 차단).
+`docs/reference-gallery-feature-upgrade-plan.md`. 실험상 레퍼런스는 출력 품질의 병목이 아니므로 M8 이후로 재배치. **M7.1**(문서·프롬프트: `core/reference-sources.md` + interview reference 점수화 + 컨셉시트 레퍼런스 브리프)은 `awesome-design-md` 검토를 구조만 반영해 닫음. **M7.2/M7.3**(reference-intake CLI)은 디스코프 유지. 주의: 레퍼런스 플랜 5절(motion-role/budget/fallback)은 **M8이 이미 흡수**했으므로 M7.1에서 재추가 금지(병행 컨벤션 표류 차단).
 
 ## 운영 원칙
 
