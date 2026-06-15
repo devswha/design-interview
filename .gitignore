@@ -7,3 +7,24 @@ node_modules/
 # (계획·스펙 산출물 .gjc/plans, .gjc/specs는 계속 추적)
 .gjc/state/
 .gjc/ultragoal/
+
+# 다른 에이전트(omo) 런타임 상태 — .gjc와 별개, 추적하지 않는다.
+/.omo/
+
+# 스킬/디버그 세션 스크래치 산출물(루트) — 실행 중 생성, 소스 아님.
+/_*
+/v[0-9]*-*
+/demo*
+/exp-*
+/*-report.txt
+
+# 스킬 세션 산출물 디렉터리.
+/artifacts/
+
+# examples/: 추적 대상은 slop-source.{html,desktop.png,mobile.png}뿐.
+# 생성된 데모(before/after·favicon)와 대용량 원본 PDF는 추적하지 않는다.
+/examples/*.rewritten.*
+/examples/v0-*
+/examples/*.favicon.svg
+/examples/*.pdf
+/examples/pdf-pages/
