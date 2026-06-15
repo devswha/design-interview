@@ -51,18 +51,28 @@ node src/cli.js audit built.html --visual
 # --visual은 puppeteer 필요; 미설치면 정적 텔만 판정
 ```
 
+에셋 준비도 CLI (Phase 1/2):
+
+```bash
+node src/cli.js assets assets --concept-sheet concept-sheet.md
+# prebuild readiness: READY        → 컨셉 승인/빌드 가능
+# prebuild readiness: NOT READY    → 시각 앵커 수집/생성 후 다시 실행
+node src/cli.js crawl https://example.com/hero.png --out assets/images --name hero.png
+# consent-gated 외부 에셋 수집 — 사용자 허락 후 실행, sidecar license는 수동 확인
+```
+
 벤치마크 (텔 수정 시 회귀 게이트):
 
 ```bash
 npm run benchmark
-# 4/4 fixtures match baseline — miss(탐지 후퇴)/fp(오탐 후퇴) 발생 시 exit 1
+# all fixtures match baseline — miss(탐지 후퇴)/fp(오탐 후퇴) 발생 시 exit 1
 ```
 
 ## Layout
 
 | 경로 | 역할 |
 |---|---|
-| `SKILL.md` | 스킬 본문 — 5단계 오케스트레이션 |
+| `SKILL.md` | 스킬 본문 — Phase 0–5 오케스트레이션 |
 | `core/interview.md` | 6차원 인터뷰 프레임워크 + 명료도 점수 모델 (+ 제안서 장르 보정) |
 | `core/design-tells.md` | AI 디자인 텔 금지 목록 (빌드 규율 + 납품 감사 체크리스트) |
 | `core/design-principles.md` | 시니어 디자인 원칙 24종 — 텔의 양성 대응물 (토큰 규율 + 제안서 장르 + 기계 검사 레인) |
@@ -70,14 +80,16 @@ npm run benchmark
 | `src/intake.js` | 클레임 추출기 + SSRF 가드 URL fetch |
 | `src/preview.js` | inert 프리뷰 빌더 — CSP + 무스크립트 radio 토글 |
 | `src/audit.js` | 정적 design-tell 감사기 — LLM 자기 채점 없이 코드로 판정 |
+| `src/asset-readiness.js` | prebuild asset readiness — font-only/0-asset 빌드 방지 신호 |
 | `src/geometry.js` | 시각 텔(L1/S3) — 렌더된 박스 기하 판정 |
 | `src/screenshot.js` | desktop/mobile 풀페이지 캡처 (puppeteer 선택 의존) |
-| `src/cli.js` | `intake` / `preview` / `audit` / `shot` 진입점 |
+| `src/cli.js` | `intake` / `preview` / `audit` / `shot` / `assets` / `crawl` 진입점 |
 
 ## Principles
 
 - **클레임 보존**: 디자인이 바뀌어도 소스의 숫자·기능·가격·인과는 불변 ([patina](https://github.com/devswha/patina)의 MPS 원칙).
-- **Inert preview**: 검수 화면은 스크립트 실행 불가. patina browser preview의 보안 모델을 따른다.
+- **Inert preview**: 검수 화면은 스크립트 실행 불가이며 원격 stylesheet 링크를 보존하지 않는다. patina browser preview의 보안 모델을 따른다.
+- **Asset-first**: font-only·0-asset 상태에서는 컨셉을 잠그지 않는다. 최소 1개 이상의 sidecar 있는 logo/image/texture가 필요하다.
 - **탐지 우회 아님**: 허용된 AI 보조 제작에서 사람 손맛을 입히는 도구다.
 
 ## Test

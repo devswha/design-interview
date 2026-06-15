@@ -38,6 +38,28 @@ test('built head styles are carried into the preview', () => {
   assert.match(out, /h1\{color:#222\}/);
 });
 
+test('remote stylesheet links are stripped from preview head', () => {
+  const html = `<!doctype html><html><head>
+    <link rel="stylesheet" href="https://cdn.example/theme.css">
+    <link href="//cdn.example/print.css" rel="stylesheet">
+    <style>h1{color:#222}</style>
+    </head><body><h1>x</h1></body></html>`;
+  const out = buildPreviewHtml({ builtHtml: html });
+  assert.ok(!out.includes('cdn.example'), 'remote stylesheet hrefs must not survive');
+  assert.match(out, /h1\{color:#222\}/, 'safe inline style remains');
+});
+
+test('stylesheet link parser ignores data-* attribute suffixes', () => {
+  const html = `<!doctype html><html><head>
+    <link data-rel="stylesheet" href="favicon.ico">
+    <link data-href="https://cdn.example/a.css" rel="stylesheet" href="local.css">
+    </head><body><h1>x</h1></body></html>`;
+  const out = buildPreviewHtml({ builtHtml: html });
+  assert.ok(!out.includes('favicon.ico'), 'data-rel is not rel');
+  assert.match(out, /href="local\.css"/, 'real local href is preserved');
+  assert.match(out, /data-href="https:\/\/cdn\.example\/a\.css"/, 'data-href does not make a local href remote');
+});
+
 test('stripActiveContent handles unclosed script tags', () => {
   assert.ok(!/<script/i.test(stripActiveContent('<p>a</p><script>while(1){}')));
 });

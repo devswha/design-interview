@@ -6,10 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 design-interview is an agent skill plus a deterministic verification CLI. It takes AI-generated "slop" source content and, through a user interview, produces landing/detail/proposal pages free of AI design tells. The product has two layers that must not be confused:
 
-- **SKILL.md** — the LLM orchestration prompt (5 phases: intake → interview → concept lock → build → preview loop → audit/delivery). Interviewing and page building happen here, driven by `core/interview.md` (6-dimension clarity scoring, threshold 0.80), `core/design-tells.md` (forbidden-pattern list), and `core/design-principles.md` (24 positive senior-designer principles — token discipline, the proposal genre rules, and the conflict-resolution log that bounds each principle).
-- **src/** — deterministic CLI lanes (`node src/cli.js intake|preview|audit|shot`). No LLM self-grading: numbers come from code. The skill calls these lanes at phase boundaries.
+- **SKILL.md** — the LLM orchestration prompt (Phase 0–5: intake → interview → concept lock → build → preview loop → audit/delivery). Interviewing and page building happen here, driven by `core/interview.md` (6-dimension clarity scoring, threshold 0.80), `core/design-tells.md` (forbidden-pattern list), and `core/design-principles.md` (24 positive senior-designer principles — token discipline, the proposal genre rules, and the conflict-resolution log that bounds each principle).
+- **src/** — deterministic CLI lanes (`node src/cli.js intake|preview|audit|shot|assets|crawl`). No LLM self-grading: numbers come from code. The skill calls these lanes at phase boundaries.
 
-Two hard gates in the skill: no HTML is generated before the concept sheet (`templates/concept-sheet.md`) is approved, and delivery is blocked while `audit` exits 1. The audit is a **two-channel guardrail**: **blocking (exit 1)** covers the quality floor (DE3 static + DE3 visual contrast) + hard-fingerprint machine tells (C1/T1/T2/T4) + visual floor (TY5-A) + LLM hard tells (S1/S2/M1–M4); **advisory** (exit unaffected) covers suppression heuristics (TY4/CO1/DE1/S5 static; L1/L2/S3/TY1/TY2 visual) — findings logged but delivery not blocked. The **benchmark gate** (`npm run benchmark`) and the **CLI exit gate** are separate: benchmark compares full detection accuracy including advisory items; CLI exit fires only on blocking items.
+Three hard gates in the skill: no HTML is generated before the concept sheet (`templates/concept-sheet.md`) is approved, concept approval is blocked while `node src/cli.js assets assets --concept-sheet <sheet>` reports `prebuild readiness: NOT READY`, and delivery is blocked while `audit` exits 1. Asset readiness is intentionally report-level, not exit-level: the `assets` CLI still exits 0 for empty/font-only directories, but the skill must treat NOT READY as Phase 1/2 work remaining. The audit is a **two-channel guardrail**: **blocking (exit 1)** covers the quality floor (DE3 static + DE3 visual contrast) + hard-fingerprint machine tells (C1/T1/T2/T4) + visual floor (TY5-A) + LLM hard tells (S1/S2/M1–M4); **advisory** (exit unaffected) covers suppression heuristics (TY4/CO1/DE1/S5 static; L1/L2/S3/TY1/TY2 visual) — findings logged but delivery not blocked. The **benchmark gate** (`npm run benchmark`) and the **CLI exit gate** are separate: benchmark compares full detection accuracy including advisory items; CLI exit fires only on blocking items.
 
 ## Commands
 
@@ -31,6 +31,8 @@ node src/cli.js intake <file-or-url> [--json]    # freeze claims (price/quantity
 node src/cli.js audit <page.html> [--visual]     # design-tell audit; exit 1 = not deliverable
 node src/cli.js preview <built.html> [--against <slop.html>] [--out <file>]
 node src/cli.js shot <page.html>                 # desktop/mobile full-page PNG (requires puppeteer)
+node src/cli.js assets <dir> [--concept-sheet <path>] [--json]  # advisory + prebuild readiness; exit 0 does not mean READY
+node src/cli.js crawl <url> [--out <dir>] [--name <file>] [--json]  # consent-gated external asset collection
 ```
 
 ## Architecture
@@ -62,9 +64,10 @@ puppeteer is optional (ROADMAP principle: everything except the visual lane must
 ### Security models (do not weaken)
 
 - **Intake SSRF guard** (`src/intake.js`): two stages — pre-validation (scheme/host/DNS) plus a connection-time `lookup` hook on the http/https request, defeating DNS rebinding between check and connect. Blocks private/loopback/link-local/metadata ranges (including IPv4-mapped IPv6 forms), revalidates every redirect hop, caps at 5MB/30s. Anything `scheme://`-shaped goes through the URL guard, never the file-read path.
-- **Inert preview** (`src/preview.js`): scripts/inline handlers/`javascript:` URLs stripped, CSP `script-src 'none'`, view toggle is a no-script radio hack, chrome selectors are `dsiv-`-prefixed with `!important` so the audited page's CSS cannot override review chrome.
+- **Inert preview** (`src/preview.js`): scripts/inline handlers/`javascript:` URLs and remote stylesheet links are stripped, CSP `script-src 'none'`, view toggle is a no-script radio hack, chrome selectors are `dsiv-`-prefixed with `!important` so the audited page's CSS cannot override review chrome.
 - **Claim preservation**: source copy is *meant* to be rewritten in the concept-sheet voice, but rewriting is bounded — meaning, polarity, and causality must survive. Only the claims (numbers/prices/percentages/durations/features) extracted at intake are strictly immutable (patina MPS principle); Phase 5 diffs them against the built page.
 - **Self-hosted assets and license sidecar** (`core/asset-library.md`): fonts, images, textures, and palettes used in a build live under `assets/`; each carries a `.license.txt` sidecar. Pixel-copying from a brief or stock source without a license sidecar is prohibited. Remote CDN runtime dependencies are discouraged — self-hosting preserves the single-file, zero-runtime-dependency output invariant.
+- **Asset-first readiness** (`src/asset-readiness.js`): Phase 2 requires at least one sidecar-backed visual anchor (`logo`, `image`, or `texture`). Font-only and 0-asset states are valid reportable inputs but not build-ready. Do not convert this to an exit-1 gate; the orchestration gate is the `prebuild readiness` field.
 
 ## Conventions
 

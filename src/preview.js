@@ -76,11 +76,26 @@ ${collectHeadStyles(built)}${hasOriginal ? collectHeadStyles(original) : ''}
 </head><body>${radios}${bar}${panes}</body></html>`;
 }
 
+function getAttr(tag, name) {
+  const re = new RegExp(`(?:^|\\s)${name}\\s*=\\s*("[^"]*"|'[^']*'|[^\\s>]+)`, 'i');
+  const raw = re.exec(tag)?.[1] ?? '';
+  return raw.replace(/^['"]|['"]$/g, '');
+}
+
+function isStylesheetLink(tag) {
+  return getAttr(tag, 'rel').toLowerCase().split(/\s+/).includes('stylesheet');
+}
+
+function isRemoteHref(href) {
+  return /^https?:\/\//i.test(href) || href.startsWith('//');
+}
+
 // 산출물 <head>의 <style>/<link rel=stylesheet>를 프리뷰로 가져온다.
 // (산출물은 단일 파일 원칙이라 보통 <style> 하나다.)
 function collectHeadStyles(html) {
   const head = /<head\b[^>]*>([\s\S]*?)<\/head\s*>/i.exec(html)?.[1] ?? '';
   const styles = head.match(/<style\b[\s\S]*?<\/style\s*>/gi) ?? [];
-  const links = head.match(/<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi) ?? [];
+  const links = (head.match(/<link\b[^>]*>/gi) ?? [])
+    .filter((link) => isStylesheetLink(link) && !isRemoteHref(getAttr(link, 'href')));
   return [...styles, ...links].join('\n');
 }

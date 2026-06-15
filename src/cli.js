@@ -18,7 +18,7 @@ function usage() {
       '  preview <built.html> [--against <slop.html>] [--out <file>]',
       '  audit   <page.html> [--visual]  # 결정론적 design-tell 감사 (exit 1 on fail)',
       '  shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)',
-      '  assets  <dir> [--concept-sheet <path>] [--json]  # 에셋 advisory 검사 (always exit 0; 입력오류만 exit 2)',
+      '  assets  <dir> [--concept-sheet <path>] [--json]  # 에셋 advisory + prebuild readiness (입력오류만 exit 2)',
       '  crawl   <url> [--out <dir>] [--name <file>] [--json]  # consent-gated 외부 에셋 수집 (SSRF 가드; 사용자 허락 후)',
     ].join('\n'),
   );
@@ -46,6 +46,7 @@ if (!['intake', 'preview', 'audit', 'shot', 'assets', 'crawl'].includes(cmd) || 
 if (cmd === 'intake') {
   const json = rest.includes('--json');
   const target = rest.filter((a) => a !== '--json')[0];
+  if (!target) usage();
   const { extractClaims, buildClaimTable, fetchSource, looksLikeUrl } = await import('./intake.js');
   let source;
   // scheme:// 형태는 전부 URL 가드로 — ftp:// 등이 파일 경로로 새면 안 된다.
@@ -66,6 +67,7 @@ if (cmd === 'intake') {
 if (cmd === 'audit') {
   const visual = rest.includes('--visual');
   const files = rest.filter((a) => a !== '--visual');
+  if (!files[0]) usage();
   const file = resolve(files[0]);
   let result = auditHtml(await readInput(file));
   if (visual) {

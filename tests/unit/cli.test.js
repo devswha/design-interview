@@ -55,6 +55,22 @@ test('intake ftp:// and file:// rejected by URL guard, not file path', async () 
   }
 });
 
+test('intake --json without target: usage, exit 2, no internal TypeError', async () => {
+  const r = await invoke('intake', '--json');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /usage: design-interview/);
+  assert.ok(!r.stderr.includes('paths[0]'), 'no low-level path TypeError');
+  assert.ok(!r.stderr.includes('node:internal'), 'no stack trace');
+});
+
+test('audit --visual without target: usage, exit 2, no internal TypeError', async () => {
+  const r = await invoke('audit', '--visual');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /usage: design-interview/);
+  assert.ok(!r.stderr.includes('paths[0]'), 'no low-level path TypeError');
+  assert.ok(!r.stderr.includes('node:internal'), 'no stack trace');
+});
+
 test('preview on missing --against file: clean error, exit 2', async () => {
   const r = await invoke('preview', 'examples/slop-source.html', '--against', 'nope.html');
   assert.equal(r.code, 2);

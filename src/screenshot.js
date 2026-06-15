@@ -32,6 +32,7 @@ export async function loadPuppeteer(feature = 'visual lane (M3)') {
 // 로컬 HTML 파일을 viewport별 풀페이지 PNG로 캡처한다.
 // 반환: [{ viewport, path }]
 export async function captureFile(htmlPath, { outBase, viewports = ['desktop', 'mobile'] } = {}) {
+  if (!htmlPath) throw new Error('htmlPath is required');
   const puppeteer = await loadPuppeteer();
   const url = pathToFileURL(resolve(htmlPath)).href;
   const base = outBase ?? resolve(htmlPath).replace(/\.html?$/i, '');

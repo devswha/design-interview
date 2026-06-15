@@ -30,7 +30,7 @@ refs/
 |---|---|
 | **Phase 0** (Intake) | 소스와 함께 제공된 폰트·이미지·SVG·팔레트 파일을 `assets/` 하위에 저장. 라이선스 sidecar 즉시 작성. |
 | **Phase 1** (Interview) | 레퍼런스 URL을 `node src/cli.js intake <url>` SSRF 게이트 통과 후 `shot`으로 스크린샷 캡처 → `refs/screenshots/` 저장. 파일명을 컨셉 시트 reference 행에 기록. |
-| **Phase 2** (Concept Lock) | 컨셉 시트 에셋 계획(Sourcing Plan) 행에 실제 사용할 파일 + 소싱 경로(path/generate/samples/crawl)를 확정 기록. `assets/`·`refs/`에 없는 파일은 Phase 0/1로 되돌아가 수집한다. |
+| **Phase 2** (Concept Lock) | 컨셉 시트 에셋 계획(Sourcing Plan) 행에 실제 사용할 파일 + 소싱 경로(path/generate/samples/crawl)를 확정 기록. `node src/cli.js assets assets --concept-sheet <concept-sheet>` 리포트가 `prebuild readiness: READY`여야 승인 요청 가능. `assets/`·`refs/`에 없는 파일은 Phase 0/1로 되돌아가 수집한다. |
 | **Phase 3** (Build) | `:root` 토큰 선언 시 `@font-face`(상대경로)·CSS 변수·인라인 SVG를 실제 파일에서 조립. 원격 URL 참조 금지(CDN 비권장). |
 
 ---
@@ -107,7 +107,7 @@ Phase 3 토큰 먼저(`:root` 선언) 시:
 
 인라인 SVG 다이어그램은 `assets/icons/<name>.svg` 내용을 그대로 HTML에 삽입한다(외부 참조 아님).
 
-신규 런타임 의존 0 — 폰트·이미지·SVG가 로컬에 없으면 빌드를 시작하지 않는다.
+신규 런타임 의존 0 — 폰트와 최소 1개 이상의 시각 앵커(logo/image/texture)가 로컬에 없으면 빌드를 시작하지 않는다.
 
 ---
 
@@ -140,7 +140,7 @@ Phase 1 인터뷰 sourcing plan 응답 및 Phase 2 에셋 계획에서 per-asset
 | **(3) samples** | 번들 샘플 `assets/samples/` 즉시 사용 | `source: bundle-sample` |
 | **(4) crawl** | consent-gated 크롤 (실재-only) | `source: crawled:https://…` |
 
-**직접 입력 / 없음** 폴백: 에셋이 0개여도 진행하되, per-asset 경로 선택은 반드시 기록한다.
+**직접 입력 / 없음** 폴백: 에셋을 생략하는 허가가 아니라 소싱 경로를 고르는 트리거다. 보유 에셋이 없으면 generate/samples/crawl 중 하나를 선택해 실제 파일과 sidecar를 먼저 만든다. font-only와 0-asset은 `prebuild readiness: NOT READY`.
 
 ---
 
@@ -167,15 +167,17 @@ Phase 1 인터뷰 sourcing plan 응답 및 Phase 2 에셋 계획에서 per-asset
 node src/cli.js assets <dir> [--concept-sheet <path>] [--json]
 ```
 
-advisory 검사 3종 출력:
+advisory 검사 + readiness 출력:
 
 - **종류별 개수**: logo · image · texture · font · other (total N)
+- **prebuild readiness**: sidecar 있는 logo/image/texture가 1개 이상이고 concept-sheet 에셋 계획이 비어있지 않은지 표시. NOT READY면 Phase 2 승인·Phase 3 빌드 금지.
 - **sidecar 누락** 목록: `.license.txt` 없는 파일
 - **가짜-실재 의심** 목록: sidecar 근거 기반 의심 표시만 (advisory; 최종 판정은 LLM 레인)
 
 **exit 계약 (고정):**
 - **always exit 0** — suspect/missing 개수와 완전 독립. 입력 오류(dir 미지정·없음·파일아님)만 exit 2.
 - best-effort 검사 — 누락·의심은 권고일 뿐.
+- exit 0이어도 `prebuild readiness: NOT READY`면 스킬 오케스트레이션상 빌드 금지다. exit 코드는 기계 차단 게이트가 아니라 리포트 생성 성공 여부만 뜻한다.
 - **S2 가짜-실재 최종 판정 권위는 LLM 레인 단일**; 기계는 sidecar 근거 의심 표시만(이중채점 금지).
 - **CI 차단 게이트로 쓰지 말 것** — blocking이 필요하면 `node src/cli.js audit` 레인 사용.
 

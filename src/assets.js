@@ -5,6 +5,7 @@
 
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, basename, extname } from 'node:path';
+import { assessAssetReadiness } from './asset-readiness.js';
 
 // 알려진 브랜드명 목록 (Signal 1 logo-as-customer 의심에 사용)
 const BRAND_NAMES = [
@@ -71,6 +72,32 @@ function isLogoLike(noExt) {
   );
 }
 
+function hasToken(value, token) {
+  const needle = token.toLowerCase();
+  if (/^[a-z0-9-]+$/.test(needle)) {
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i').test(value);
+  }
+  return value.includes(needle);
+}
+
+function splitMarkdownTableRow(line) {
+  const cells = [];
+  let cell = '';
+  let escaped = false;
+  for (const char of line) {
+    if (char === '|' && !escaped) {
+      cells.push(cell.trim());
+      cell = '';
+    } else {
+      cell += char;
+    }
+    escaped = char === '\\' && !escaped;
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
 // ─── Sidecar 파싱 ──────────────────────────────────────────────────────────
 
 /**
@@ -114,7 +141,7 @@ export function detectFabrication(relPath, sidecar) {
   // Signal 1: 브랜드 로고형 파일명 + 명목적 근거 없음
   if (isLogoLike(noExt)) {
     const hasNominativeBasis = NOMINATIVE_TOKENS.some((t) =>
-      sidecarValues.includes(t),
+      hasToken(sidecarValues, t),
     );
     if (!hasNominativeBasis) {
       return { reason: 'logo-as-customer 의심: 상표 마크, sidecar 명목적 참조 근거 없음' };
@@ -247,6 +274,7 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
   if (conceptSheetPath) {
     conceptSheet = await checkConceptSheet(conceptSheetPath, skipped);
   }
+  const readiness = assessAssetReadiness({ files, conceptSheet });
 
   return {
     dir,
@@ -256,10 +284,13 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
     suspectFabrication,
     skipped,
     conceptSheet,
+    readiness,
     summary: {
       total: counts.total,
       missingSidecar: missingSidecar.length,
       suspect: suspectFabrication.length,
+      prebuildReady: readiness.ready,
+      usableVisualAnchors: readiness.usableVisualAnchors,
     },
   };
 }
@@ -294,7 +325,7 @@ async function checkConceptSheet(conceptSheetPath, skipped) {
   //    라벨 셀 바로 다음 셀이 내용 — placeholder({…})·빈 셀이면 empty.
   for (const line of text.split('\n')) {
     if (!line.includes('|') || !sectionRe.test(line)) continue;
-    const cells = line.split('|').map((c) => c.trim());
+    const cells = splitMarkdownTableRow(line);
     const labelIdx = cells.findIndex((c) => sectionRe.test(c));
     if (labelIdx < 0) continue;
     return { present: true, empty: isPlaceholderCell(cells[labelIdx + 1]) };
@@ -325,13 +356,19 @@ async function checkConceptSheet(conceptSheetPath, skipped) {
  * always exit 0 / advisory only / CI 차단 게이트 금지.
  */
 export function formatAssetReport(report) {
-  const { dir, counts, missingSidecar, suspectFabrication, conceptSheet } = report;
+  const { dir, counts, missingSidecar, suspectFabrication, conceptSheet, readiness } = report;
   const lines = [];
 
   lines.push(`assets: ${dir}`);
   lines.push(
     `종류별 개수: logo ${counts.logo} · image ${counts.image} · texture ${counts.texture} · font ${counts.font} · other ${counts.other} (total ${counts.total})`,
   );
+  if (readiness) {
+    lines.push(
+      `prebuild readiness: ${readiness.ready ? 'READY' : 'NOT READY'} · usable visual anchors ${readiness.usableVisualAnchors}`,
+    );
+    for (const reason of readiness.reasons) lines.push(`  - ${reason}`);
+  }
 
   lines.push(`sidecar 누락 (${missingSidecar.length}):`);
   for (const p of missingSidecar) lines.push(`  - ${p}`);

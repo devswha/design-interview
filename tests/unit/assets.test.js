@@ -135,6 +135,12 @@ test('detectFabrication: Signal 1 음성 — trademark 명시', () => {
   assert.equal(r, null, 'trademark 명시 → 음성');
 });
 
+test('detectFabrication: Signal 1 양성 — mit가 단어 일부이면 근거 아님', () => {
+  const r = detectFabrication('icons/openai.svg', { source: 'submitted by team' });
+  assert.ok(r !== null, 'submitted 안의 mit는 명목적 근거가 아님');
+  assert.match(r.reason, /logo-as-customer/);
+});
+
 // Signal 2: screenshot/dashboard/screen + AI 소스
 test('detectFabrication: Signal 2 양성 — AI 생성 dashboard', () => {
   const r = detectFabrication('images/dashboard.png', { source: 'AI생성' });
@@ -255,6 +261,27 @@ test('auditAssets: empty — 에셋 0개, exit-safe', async () => {
   assert.equal(report.counts.total, 0);
   assert.equal(report.missingSidecar.length, 0);
   assert.equal(report.suspectFabrication.length, 0);
+  assert.equal(report.readiness.ready, false, '0-에셋은 prebuild ready 아님');
+  assert.equal(report.readiness.usableVisualAnchors, 0);
+  assert.match(report.readiness.reasons.join('\n'), /시각 앵커/);
+});
+
+test('auditAssets: font-only — 시각 앵커 없으면 prebuild ready 아님', async () => {
+  const { mkdtemp, mkdir, writeFile: wf, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const dir = await mkdtemp(join(tmpdir(), 'di-font-only-'));
+  try {
+    await mkdir(join(dir, 'fonts'), { recursive: true });
+    await wf(join(dir, 'fonts/body.woff2'), 'font-bytes');
+    await wf(join(dir, 'fonts/body.woff2.license.txt'), 'license: OFL\nsource: self-hosted');
+    const report = await auditAssets(dir);
+    assert.equal(report.counts.font, 1);
+    assert.equal(report.readiness.ready, false);
+    assert.equal(report.readiness.usableVisualAnchors, 0);
+    assert.match(report.readiness.reasons.join('\n'), /시각 앵커/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 // ─── formatAssetReport 스모크 ────────────────────────────────────────────
@@ -265,6 +292,7 @@ test('formatAssetReport: 필수 섹션 헤더 포함', async () => {
   const text = formatAssetReport(report);
 
   assert.match(text, /^assets:/m);
+  assert.match(text, /prebuild readiness:/);
   assert.match(text, /종류별 개수:/);
   assert.match(text, /sidecar 누락/);
   assert.match(text, /가짜-실재 의심/);
@@ -279,6 +307,8 @@ test('formatAssetReport: concept-sheet empty → advisory 문구', async () => {
   const report = await auditAssets(dir, { conceptSheetPath });
   const text = formatAssetReport(report);
   assert.match(text, /에셋 계획 섹션 비어있음/);
+  assert.equal(report.readiness.ready, false);
+  assert.match(report.readiness.reasons.join('\n'), /에셋 계획/);
 });
 
 test('formatAssetReport: conceptSheet null → advisory 없음', async () => {
@@ -355,6 +385,13 @@ test('NF1: concept-sheet 표-행 placeholder → empty:true', async () => {
     conceptSheetPath: join(FIXTURES, 'concept-empty.md'),
   });
   assert.equal(report.conceptSheet.empty, true, '표-행 placeholder는 empty');
+});
+
+test('NF1: 실제 concept-sheet 템플릿의 escaped pipe placeholder → empty:true', async () => {
+  const template = fileURLToPath(new URL('../../templates/concept-sheet.md', import.meta.url));
+  const report = await auditAssets(join(FIXTURES, 'mixed'), { conceptSheetPath: template });
+  assert.equal(report.conceptSheet.empty, true, '템플릿 placeholder는 empty');
+  assert.equal(report.readiness.ready, false, '템플릿 상태로는 prebuild ready 아님');
 });
 
 // CG-001 회귀: 인자 디렉터리 자체를 읽을 수 없으면(권한) exit 2 (best-effort skip 아님)

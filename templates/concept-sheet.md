@@ -35,7 +35,8 @@
 | 시그니처 무브 | {최대 1개 — 최강 차별점에서 도출, 없으면 "없음"} | HI2/LA2 |
 | 모션 역할·예산 | {motion-role: none/orientation/feedback/progress/reveal/delight · motion-budget: 0/micro-only/one-signature — CSS-first 무JS} | MO1/MO4 |
 | 시각 임팩트 | {첫 viewport 지배요소 1개 · 타입스케일 드라마(양끝) · 대비 헤드룸} | 시각 임팩트/HI2 |
-| 에셋 계획 (Sourcing Plan) | {per-asset 1행: asset-type(logo/image/texture/font) · 경로(path\|generate\|samples\|crawl) · source/license 메모. 예: `logo · path · assets/icons/brand.svg · CC0 자작` / `texture · samples · assets/samples/textures/paper-noise.svg · CC0`} | asset-library |
+| 에셋 계획 (Sourcing Plan) | {per-asset 1행: asset-type(logo/image/texture/font) · 경로(path\|generate\|samples\|crawl) · 실제 파일 · source/license 메모. 예: `logo · path · assets/icons/brand.svg · CC0 자작` / `texture · samples · assets/samples/textures/paper-noise.svg · CC0`} | asset-library |
+| 에셋 준비도 | {`node src/cli.js assets assets --concept-sheet <this>` 결과: prebuild readiness READY · usable visual anchors N. NOT READY면 승인 요청 금지} | asset-library |
 <!-- 이 행이 placeholder만으로 비면 `node src/cli.js assets` advisory 경고 발생 -->
 
 ## 섹션 구조 (위→아래)

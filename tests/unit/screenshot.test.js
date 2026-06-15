@@ -13,6 +13,10 @@ test('missing puppeteer raises actionable install guidance', { skip: hasPuppetee
   await assert.rejects(() => captureFile('x.html'), /npm install puppeteer/);
 });
 
+test('captureFile requires an html path before loading puppeteer', async () => {
+  await assert.rejects(() => captureFile(undefined), /htmlPath is required/);
+});
+
 test('unknown viewport name is rejected', { skip: !hasPuppeteer }, async () => {
   await assert.rejects(
     () => captureFile('examples/slop-source.html', { viewports: ['tv'] }),
