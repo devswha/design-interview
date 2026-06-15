@@ -4,25 +4,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile } from 'node:fs/promises';
 import { deriveFilename, saveCrawledAsset, crawlAsset } from '../../src/crawl.js';
-
-const run = promisify(execFile);
-const CLI = fileURLToPath(new URL('../../src/cli.js', import.meta.url));
-
-async function invoke(...argv) {
-  try {
-    const { stdout, stderr } = await run('node', [CLI, ...argv]);
-    return { code: 0, stdout, stderr };
-  } catch (err) {
-    return { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };
-  }
-}
+import { runCli, withTempDir } from '../helpers/index.js';
 
 test('deriveFilename: URL 확장자에서 파일명 추출', () => {
   assert.equal(deriveFilename('https://x.com/logos/openai.svg'), 'openai.svg');
@@ -37,9 +21,17 @@ test('deriveFilename: 확장자 없으면 userError', () => {
   assert.throws(() => deriveFilename('https://x.com/asset'), (e) => e.userError === true);
 });
 
+test('deriveFilename: --name 경로 탈출/확장자 없음 거부 (path traversal 차단)', () => {
+  // 디렉터리 분리자·..는 basename으로 스트립되어 outDir를 벗어날 수 없다.
+  assert.equal(deriveFilename('https://x.com/x.svg', '../../etc/evil.png'), 'evil.png');
+  assert.equal(deriveFilename('https://x.com/x.svg', 'sub/dir/mark.svg'), 'mark.svg');
+  // basename 후 확장자가 없으면 거부(종류 분류 불가).
+  assert.throws(() => deriveFilename('https://x.com/x.svg', '../../tmp/'), (e) => e.userError === true);
+  assert.throws(() => deriveFilename('https://x.com/x.svg', 'no-ext'), (e) => e.userError === true);
+});
+
 test('saveCrawledAsset: 파일 + provenance sidecar 작성', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'di-crawl-'));
-  try {
+  await withTempDir(async (dir) => {
     const buf = Buffer.from('<svg/>');
     const r = await saveCrawledAsset(buf, { url: 'https://x.com/logo.svg', outDir: dir });
     assert.equal(r.bytes, buf.length);
@@ -47,14 +39,11 @@ test('saveCrawledAsset: 파일 + provenance sidecar 작성', async () => {
     const side = await readFile(r.sidecarPath, 'utf8');
     assert.match(side, /source: crawled:https:\/\/x\.com\/logo\.svg/);
     assert.match(side, /REVIEW-REQUIRED/);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+  });
 });
 
 test('crawlAsset: fetch 주입 → 저장; 비URL → userError', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'di-crawl-'));
-  try {
+  await withTempDir(async (dir) => {
     const r = await crawlAsset('https://x.com/mark.svg', {
       outDir: dir,
       fetchImpl: async () => Buffer.from('DATA'),
@@ -64,24 +53,22 @@ test('crawlAsset: fetch 주입 → 저장; 비URL → userError', async () => {
       () => crawlAsset('not-a-url', { outDir: dir, fetchImpl: async () => Buffer.from('x') }),
       (e) => e.userError === true,
     );
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+  });
 });
 
 test('cli crawl: 비URL → exit 2', async () => {
-  const r = await invoke('crawl', 'just-a-string');
+  const r = await runCli('crawl', 'just-a-string');
   assert.equal(r.code, 2);
   assert.ok(!r.stderr.includes('node:internal'), '스택트레이스 없음');
 });
 
 test('cli crawl: 인자 없음 → usage exit 2', async () => {
-  const r = await invoke('crawl');
+  const r = await runCli('crawl');
   assert.equal(r.code, 2);
 });
 
 test('cli crawl: private 주소(SSRF) → exit 1 차단', async () => {
-  const r = await invoke('crawl', 'http://127.0.0.1/logo.png');
+  const r = await runCli('crawl', 'http://127.0.0.1/logo.png');
   assert.equal(r.code, 1, 'SSRF 가드가 private 주소 차단 → exit 1');
   assert.match(r.stderr, /private|blocked|crawl failed/i);
 });

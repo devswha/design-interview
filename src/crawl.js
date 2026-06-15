@@ -12,7 +12,16 @@ import { fetchBinary, looksLikeUrl } from './intake.js';
 
 // URL 또는 --name에서 저장 파일명을 정한다. 확장자 없으면 명시 요구(에셋 종류 판별 위해).
 export function deriveFilename(url, name) {
-  if (name) return name;
+  if (name) {
+    // --name도 basename으로 강제 + 확장자 필수 — 디렉터리 분리자나 ..로 outDir를
+    // 벗어나는 경로 탈출을 막고, 종류 분류에 필요한 확장자를 보장한다.
+    const safe = basename(name);
+    if (safe && extname(safe)) return safe;
+    throw Object.assign(
+      new Error(`invalid --name: ${name} (경로 분리자 없는 파일명 + 확장자 필요)`),
+      { userError: true },
+    );
+  }
   let pathname;
   try {
     pathname = new URL(url).pathname;
