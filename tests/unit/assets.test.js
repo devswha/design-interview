@@ -3,9 +3,6 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import {
   classifyKind,
@@ -14,21 +11,10 @@ import {
   auditAssets,
   formatAssetReport,
 } from '../../src/assets.js';
+import { runCli, fixturePath, repoPath, withTempDir } from '../helpers/index.js';
 
-const run = promisify(execFile);
-const CLI = fileURLToPath(new URL('../../src/cli.js', import.meta.url));
-// fixtures 기준 경로 (fileURLToPath로 경로 처리)
-const FIXTURES = fileURLToPath(new URL('../fixtures/assets', import.meta.url));
-
-/** CLI를 직접 실행해 { code, stdout, stderr } 반환. */
-async function invoke(...argv) {
-  try {
-    const { stdout, stderr } = await run(process.execPath, [CLI, ...argv]);
-    return { code: 0, stdout, stderr };
-  } catch (err) {
-    return { code: err.code, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };
-  }
-}
+// 에셋 픽스처 기준 경로.
+const FIXTURES = fixturePath('assets');
 
 // ─── classifyKind 단위 ──────────────────────────────────────────────────────
 
@@ -267,10 +253,8 @@ test('auditAssets: empty — 에셋 0개, exit-safe', async () => {
 });
 
 test('auditAssets: font-only — 시각 앵커 없으면 prebuild ready 아님', async () => {
-  const { mkdtemp, mkdir, writeFile: wf, rm } = await import('node:fs/promises');
-  const { tmpdir } = await import('node:os');
-  const dir = await mkdtemp(join(tmpdir(), 'di-font-only-'));
-  try {
+  const { mkdir, writeFile: wf } = await import('node:fs/promises');
+  await withTempDir(async (dir) => {
     await mkdir(join(dir, 'fonts'), { recursive: true });
     await wf(join(dir, 'fonts/body.woff2'), 'font-bytes');
     await wf(join(dir, 'fonts/body.woff2.license.txt'), 'license: OFL\nsource: self-hosted');
@@ -279,9 +263,7 @@ test('auditAssets: font-only — 시각 앵커 없으면 prebuild ready 아님',
     assert.equal(report.readiness.ready, false);
     assert.equal(report.readiness.usableVisualAnchors, 0);
     assert.match(report.readiness.reasons.join('\n'), /시각 앵커/);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+  });
 });
 
 // ─── formatAssetReport 스모크 ────────────────────────────────────────────
@@ -321,14 +303,14 @@ test('formatAssetReport: conceptSheet null → advisory 없음', async () => {
 // ─── CLI exit 계약 (AC9, 필수) ────────────────────────────────────────────
 
 test('AC9: suspect dir → suspect/missing 있어도 exit 0', async () => {
-  const r = await invoke('assets', join(FIXTURES, 'suspect'));
+  const r = await runCli('assets', join(FIXTURES, 'suspect'));
   assert.equal(r.code, 0, 'exit 0 — suspect 있어도 advisory only');
   assert.match(r.stdout, /가짜-실재 의심/);
   assert.match(r.stdout, /sidecar 누락/);
 });
 
 test('AC9: mixed dir + --json → exit 0 + 유효한 JSON', async () => {
-  const r = await invoke('assets', join(FIXTURES, 'mixed'), '--json');
+  const r = await runCli('assets', join(FIXTURES, 'mixed'), '--json');
   assert.equal(r.code, 0, 'exit 0');
   let parsed;
   assert.doesNotThrow(() => {
@@ -341,19 +323,19 @@ test('AC9: mixed dir + --json → exit 0 + 유효한 JSON', async () => {
 });
 
 test('AC9: empty dir → exit 0 (에셋 0개)', async () => {
-  const r = await invoke('assets', join(FIXTURES, 'empty'));
+  const r = await runCli('assets', join(FIXTURES, 'empty'));
   assert.equal(r.code, 0, 'exit 0 — 0-에셋 디렉터리');
 });
 
 test('AC9: 존재하지 않는 dir → exit 2', async () => {
-  const r = await invoke('assets', 'does-not-exist-xyz-99999');
+  const r = await runCli('assets', 'does-not-exist-xyz-99999');
   assert.equal(r.code, 2);
   assert.match(r.stderr, /cannot read/);
   assert.ok(!r.stderr.includes('node:internal'), '스택트레이스 없음');
 });
 
 test('AC9: 파일 경로(디렉터리 아님) → exit 2', async () => {
-  const r = await invoke('assets', join(FIXTURES, 'concept-empty.md'));
+  const r = await runCli('assets', join(FIXTURES, 'concept-empty.md'));
   assert.equal(r.code, 2);
   assert.match(r.stderr, /not a directory/);
   assert.ok(!r.stderr.includes('node:internal'), '스택트레이스 없음');
@@ -361,12 +343,7 @@ test('AC9: 파일 경로(디렉터리 아님) → exit 2', async () => {
 
 // AC1c: --concept-sheet 빈 섹션 → advisory 문구 출력
 test('AC1c: --concept-sheet 빈 에셋 섹션 → advisory 경고', async () => {
-  const r = await invoke(
-    'assets',
-    join(FIXTURES, 'mixed'),
-    '--concept-sheet',
-    join(FIXTURES, 'concept-empty.md'),
-  );
+  const r = await runCli('assets', join(FIXTURES, 'mixed'), '--concept-sheet', join(FIXTURES, 'concept-empty.md'));
   assert.equal(r.code, 0, 'exit 0');
   assert.match(r.stdout, /에셋 계획 섹션 비어있음/, 'advisory 문구 포함');
 });
@@ -388,7 +365,7 @@ test('NF1: concept-sheet 표-행 placeholder → empty:true', async () => {
 });
 
 test('NF1: 실제 concept-sheet 템플릿의 escaped pipe placeholder → empty:true', async () => {
-  const template = fileURLToPath(new URL('../../templates/concept-sheet.md', import.meta.url));
+  const template = repoPath('templates/concept-sheet.md');
   const report = await auditAssets(join(FIXTURES, 'mixed'), { conceptSheetPath: template });
   assert.equal(report.conceptSheet.empty, true, '템플릿 placeholder는 empty');
   assert.equal(report.readiness.ready, false, '템플릿 상태로는 prebuild ready 아님');
@@ -397,27 +374,20 @@ test('NF1: 실제 concept-sheet 템플릿의 escaped pipe placeholder → empty:
 // CG-001 회귀: 인자 디렉터리 자체를 읽을 수 없으면(권한) exit 2 (best-effort skip 아님)
 // root는 chmod 000을 무시하므로 uid 0이면 skip.
 test('CG-001: 권한 없는 디렉터리 → exit 2', { skip: process.getuid?.() === 0 }, async () => {
-  const { mkdtemp, chmod, rm } = await import('node:fs/promises');
-  const { tmpdir } = await import('node:os');
-  const dir = await mkdtemp(join(tmpdir(), 'di-noaccess-'));
-  await chmod(dir, 0o000);
-  try {
-    const r = await invoke('assets', dir);
+  const { chmod } = await import('node:fs/promises');
+  await withTempDir(async (dir) => {
+    await chmod(dir, 0o000);
+    const r = await runCli('assets', dir);
     assert.equal(r.code, 2, '권한 없는 dir는 입력오류 exit 2');
     assert.ok(!r.stderr.includes('node:internal'), '스택트레이스 없음');
-  } finally {
-    await chmod(dir, 0o700).catch(() => {});
-    await rm(dir, { recursive: true, force: true }).catch(() => {});
-  }
+  }, 'di-noaccess-');
 });
 
 // sidecar 네이밍 회귀: 기존 라이브러리는 strip-ext(figma.license.txt),
 // 신규는 keep-ext(openai.svg.license.txt) — 검사기가 둘 다 인식해야 실제 assets/가 오탐 안 난다.
 test('sidecar: strip-ext / keep-ext 두 형식 모두 인식', async () => {
-  const { mkdtemp, writeFile: wf, mkdir, rm } = await import('node:fs/promises');
-  const { tmpdir } = await import('node:os');
-  const dir = await mkdtemp(join(tmpdir(), 'di-sidecar-'));
-  try {
+  const { writeFile: wf, mkdir } = await import('node:fs/promises');
+  await withTempDir(async (dir) => {
     await mkdir(join(dir, 'icons'), { recursive: true });
     const nominative = 'license: trademark\nsource: brand kit\nusage: nominative reference';
     // strip-ext (기존 라이브러리 방식)
@@ -429,7 +399,5 @@ test('sidecar: strip-ext / keep-ext 두 형식 모두 인식', async () => {
     const r = await auditAssets(dir);
     assert.equal(r.missingSidecar.length, 0, '두 형식 모두 sidecar로 인식돼야 (누락 0)');
     assert.equal(r.suspectFabrication.length, 0, '명목적 근거 있으면 logo-as-customer 의심 음성');
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+  }, 'di-sidecar-');
 });

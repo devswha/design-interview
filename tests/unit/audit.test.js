@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { auditHtml, formatAuditReport } from '../../src/audit.js';
+import { examplePath, fixturePath, redteamPath } from '../helpers/index.js';
 
 const CLEAN = `<!doctype html><html><head><style>
   body{background:#faf8f4;color:#1f1d1a;font-family:serif}
@@ -14,7 +15,7 @@ const CLEAN = `<!doctype html><html><head><style>
 </body></html>`;
 
 test('slop fixture fails machine checks with evidence', async () => {
-  const html = await readFile(new URL('../../examples/slop-source.html', import.meta.url), 'utf8');
+  const html = await readFile(examplePath('slop-source.html'), 'utf8');
   const r = auditHtml(html);
   assert.equal(r.pass, false);
   assert.ok(r.failed.includes('C1'), 'purple gradient hero');
@@ -339,11 +340,11 @@ test('motion WARN not bypassed by an empty reduced-motion guard block', () => {
 });
 
 test('motion WARN: guarded-motion clean fixture is silent, exp output stays WARN0', async () => {
-  const guarded = await readFile(new URL('../../tests/fixtures/clean/reduced-motion-guarded.html', import.meta.url), 'utf8');
+  const guarded = await readFile(fixturePath('clean/reduced-motion-guarded.html'), 'utf8');
   assert.ok(!hasMotionWarn(auditHtml(guarded)), 'guarded fixture must not warn');
-  const unguarded = await readFile(new URL('../../tests/redteam/motion-unguarded.html', import.meta.url), 'utf8');
+  const unguarded = await readFile(redteamPath('motion-unguarded.html'), 'utf8');
   assert.ok(hasMotionWarn(auditHtml(unguarded)), 'unguarded fixture must warn');
-  const exp = await readFile(new URL('../../exp-skillshop-mo.html', import.meta.url), 'utf8');
+  const exp = await readFile(fixturePath('clean/skillshop-mo.html'), 'utf8');
   const r = auditHtml(exp);
   assert.deepEqual(r.failed, [], 'exp stays slop 0%');
   assert.deepEqual(r.warnings, [], 'exp stays WARN0 — all motion is reduced-motion guarded');

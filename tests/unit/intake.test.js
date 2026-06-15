@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { extractClaims, buildClaimTable, assertSafeUrl, isPrivateAddress, fetchSource, looksLikeUrl } from '../../src/intake.js';
+import { examplePath } from '../helpers/index.js';
 
 const byKind = (claims, kind) => claims.filter((c) => c.kind === kind).map((c) => c.value);
 
@@ -21,7 +22,7 @@ test('english pricing forms extracted', () => {
 });
 
 test('html source: tags stripped, list items become feature claims', async () => {
-  const html = await readFile(new URL('../../examples/slop-source.html', import.meta.url), 'utf8');
+  const html = await readFile(examplePath('slop-source.html'), 'utf8');
   const { claims } = extractClaims(html);
   assert.ok(byKind(claims, 'quantity').some((v) => v.includes('30개')));
   assert.ok(byKind(claims, 'feature').some((v) => v.includes('템플릿')));
