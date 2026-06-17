@@ -18,15 +18,21 @@ import { stripTags } from './text.js';
 
 // ---------------------------------------------------------------- 클레임 추출
 
+const NUMBER_SOURCE = String.raw`\d(?:[\d.,\s]*\d)?`;
 const CLAIM_PATTERNS = [
   // 가격: 9,000원 / ₩9,000 / $8 / $8/user/month / 8달러
-  { kind: 'price', re: /(?:₩\s?[\d,]+|[\d,]+(?:\.\d+)?\s?원|\$\s?[\d,]+(?:\.\d+)?(?:\s?\/\s?[a-z가-힣]+){0,2}|[\d,]+(?:\.\d+)?\s?달러)/giu },
+  { kind: 'price', re: new RegExp(String.raw`(?:₩\s?${NUMBER_SOURCE}|${NUMBER_SOURCE}\s?원|\$\s?${NUMBER_SOURCE}(?:\s?\/\s?[a-z가-힣]+){0,2}|${NUMBER_SOURCE}\s?달러|${NUMBER_SOURCE}\s?€)`, 'giu') },
   // 백분율: 99.9%
-  { kind: 'percent', re: /\d+(?:\.\d+)?\s?%/g },
+  { kind: 'percent', re: new RegExp(String.raw`${NUMBER_SOURCE}\s?%`, 'gu') },
   // 기간/시간: 24시간, 5분, 30일, 7 days, 24h
-  { kind: 'duration', re: /\d+(?:\.\d+)?\s?(?:시간|분(?![야양])|초|일(?=[\s,.!?)]|$)|개월|년|days?|hours?|minutes?|h\b|min\b)/giu },
+  { kind: 'duration', re: new RegExp(String.raw`${NUMBER_SOURCE}\s?(?:시간|분(?![야양])|초|일(?![0-9A-Za-z])|개월|년|days?|hours?|minutes?|months?|weeks?|h\b|mins?\b|wk\b)`, 'giu') },
   // 수량: 30개, 30개의 템플릿, 30 templates, 12종
-  { kind: 'quantity', re: /\d[\d,]*\s?(?:개|종|가지|명|곳|templates?|items?|features?|users?|projects?)/giu },
+  { kind: 'quantity', re: new RegExp(String.raw`${NUMBER_SOURCE}\s?(?:개(?!월)|종|가지|명|곳|templates?|items?|features?|users?|projects?)`, 'giu') },
+];
+
+const CLAIM_RANGE_PATTERNS = [
+  { kind: 'duration', re: new RegExp(String.raw`${NUMBER_SOURCE}\s*[-–—]\s*${NUMBER_SOURCE}\s?(?:시간|분(?![야양])|초|일(?![0-9A-Za-z])|개월|년|days?|hours?|minutes?|months?|weeks?|h\b|mins?\b|wk\b)`, 'giu') },
+  { kind: 'quantity', re: new RegExp(String.raw`${NUMBER_SOURCE}\s*[-–—]\s*${NUMBER_SOURCE}\s?(?:개(?!월)|종|가지|명|곳|templates?|items?|features?|users?|projects?)`, 'giu') },
 ];
 
 // 숫자 폭탄 방어: 실제 클레임에 16자리+ 숫자 연속이나 2000자+ 라인은 없다.
@@ -61,14 +67,15 @@ function looksLikeHtml(source) {
 
 // 기능 클레임: HTML이면 li/h2/h3, 마크다운/플레인이면 불릿 라인.
 function extractFeatureClaims(source) {
+  const scan = boundForScan(source);
   const features = [];
-  if (looksLikeHtml(source)) {
-    for (const [, , inner] of source.matchAll(/<(li|h2|h3)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi)) {
+  if (looksLikeHtml(scan)) {
+    for (const [, , inner] of scan.matchAll(/<(li|h2|h3)\b[^>]*>([\s\S]{0,2000}?)<\/\1\s*>/gi)) {
       const text = stripTags(inner).replace(/\s+/g, ' ').trim();
       if (text.length >= 4) features.push(text.slice(0, MAX_SCAN_LINE));
     }
   } else {
-    for (const line of source.split('\n')) {
+    for (const line of scan.split('\n')) {
       const m = /^\s*(?:[-*•]|\d+\.)\s+(.+)$/.exec(line.slice(0, MAX_SCAN_LINE));
       if (m && m[1].trim().length >= 4) features.push(m[1].trim());
     }
@@ -79,21 +86,34 @@ function extractFeatureClaims(source) {
 // 소스(HTML/마크다운/플레인텍스트)에서 보존 클레임을 추출한다.
 // 반환: { claims: [{ kind, value, context }] } — kind: price|percent|duration|quantity|feature
 export function extractClaims(source) {
-  const text = boundForScan(
-    looksLikeHtml(source) ? stripTags(source).replace(/\s+/g, ' ') : String(source),
-  );
+  const raw = boundForScan(source);
+  const text = looksLikeHtml(raw) ? stripTags(raw).replace(/\s+/g, ' ') : raw;
   const claims = [];
   const seen = new Set();
-  for (const { kind, re } of CLAIM_PATTERNS) {
+  const occupied = [];
+
+  const addClaim = (kind, value, index, length) => {
+    const key = `${kind}:${value}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    occupied.push([index, index + length]);
+    claims.push({ kind, value, context: contextAround(text, index, length) });
+  };
+
+  const overlapsClaim = (index, length) => occupied.some(([start, end]) => index < end && index + length > start);
+
+  for (const { kind, re } of CLAIM_RANGE_PATTERNS) {
     for (const m of text.matchAll(re)) {
-      const value = m[0].trim();
-      const key = `${kind}:${value}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      claims.push({ kind, value, context: contextAround(text, m.index, m[0].length) });
+      addClaim(kind, m[0].trim(), m.index, m[0].length);
     }
   }
-  for (const feature of extractFeatureClaims(String(source).slice(0, MAX_SCAN_BYTES))) {
+  for (const { kind, re } of CLAIM_PATTERNS) {
+    for (const m of text.matchAll(re)) {
+      if (overlapsClaim(m.index, m[0].length)) continue;
+      addClaim(kind, m[0].trim(), m.index, m[0].length);
+    }
+  }
+  for (const feature of extractFeatureClaims(raw)) {
     const key = `feature:${feature}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -151,16 +171,20 @@ function expandV6Groups(addr) {
   return groups.map((g) => parseInt(g, 16));
 }
 
-// IPv4-mapped IPv6(::ffff:0:0/96)이면 내장된 IPv4를 돌려준다.
+// IPv4-mapped/compatible/NAT64 IPv6이면 내장된 IPv4를 돌려준다.
 // dotted(::ffff:172.16.0.1)와 hex(::ffff:ac10:1) 표기 모두 잡는다.
-function mappedV4(addr) {
+function embeddedV4(addr) {
   const g = expandV6Groups(addr);
-  if (!g || !g.slice(0, 5).every((x) => x === 0) || g[5] !== 0xffff) return null;
-  return `${g[6] >> 8}.${g[6] & 255}.${g[7] >> 8}.${g[7] & 255}`;
+  if (!g) return null;
+  const v4 = `${g[6] >> 8}.${g[6] & 255}.${g[7] >> 8}.${g[7] & 255}`;
+  const mapped = g.slice(0, 5).every((x) => x === 0) && g[5] === 0xffff;
+  const compatible = g.slice(0, 6).every((x) => x === 0);
+  const nat64 = g[0] === 0x0064 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0);
+  return mapped || compatible || nat64 ? v4 : null;
 }
 
 // private/loopback/link-local/메타데이터 대역 차단.
-// IPv4-mapped IPv6는 모든 표기를 IPv4 검사로 환원한다.
+// IPv4 내장 IPv6는 모든 표기를 IPv4 검사로 환원한다.
 export function isPrivateAddress(addr) {
   if (isIP(addr) === 4) {
     const [a, b] = addr.split('.').map(Number);
@@ -170,14 +194,37 @@ export function isPrivateAddress(addr) {
       || (a === 169 && b === 254);
   }
   const v6 = addr.toLowerCase();
-  const v4 = mappedV4(v6);
+  const v4 = embeddedV4(v6);
   if (v4) return isPrivateAddress(v4);
+  const groups = expandV6Groups(v6);
+  const linkLocal = groups ? (groups[0] & 0xffc0) === 0xfe80 : false;
   return v6 === '::1' || v6 === '::' || v6.startsWith('fc') || v6.startsWith('fd')
-    || v6.startsWith('fe80');
+    || linkLocal;
+}
+
+function abortError() {
+  const err = new Error('lookup timed out');
+  err.name = 'AbortError';
+  return err;
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw signal.reason ?? abortError();
+}
+
+function withAbort(promise, signal) {
+  if (!signal) return promise;
+  throwIfAborted(signal);
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason ?? abortError()), { once: true });
+    }),
+  ]);
 }
 
 // URL 한 개를 사전 검증한다 — 스킴, 호스트명, DNS 해석 결과까지.
-export async function assertSafeUrl(rawUrl, { lookupImpl = dnsLookup } = {}) {
+export async function assertSafeUrl(rawUrl, { lookupImpl = dnsLookup, signal } = {}) {
   let url;
   try {
     url = new URL(rawUrl);
@@ -195,7 +242,8 @@ export async function assertSafeUrl(rawUrl, { lookupImpl = dnsLookup } = {}) {
     if (isPrivateAddress(host)) throw new Error(`blocked: ${host} is a private address`);
     return url;
   }
-  const resolved = await lookupImpl(host, { all: true });
+  const resolved = await withAbort(lookupImpl(host, { all: true }), signal);
+  if (!resolved || resolved.length === 0) throw new Error(`blocked: ${host} did not resolve`);
   for (const { address } of resolved) {
     if (isPrivateAddress(address)) {
       throw new Error(`blocked: ${host} resolves to private address ${address}`);
@@ -207,18 +255,23 @@ export async function assertSafeUrl(rawUrl, { lookupImpl = dnsLookup } = {}) {
 // 연결 시점 lookup 훅 — 소켓이 실제로 붙을 주소를 다시 검증한다.
 // 사전 검증(assertSafeUrl)과 연결 사이에 DNS 응답이 바뀌어도(리바인딩)
 // private 주소로는 연결되지 않는다.
-function guardedLookup(lookupImpl) {
+function guardedLookup(lookupImpl, signal) {
   return (hostname, options, callback) => {
     const cb = typeof options === 'function' ? options : callback;
     const opts = typeof options === 'function' ? {} : options ?? {};
-    lookupImpl(hostname, { all: true }).then((addrs) => {
+    withAbort(lookupImpl(hostname, { all: true }), signal).then((addrs) => {
+      if (!addrs || addrs.length === 0) {
+        cb(new Error(`no addresses for ${hostname}`));
+        return;
+      }
       const bad = addrs.find((a) => isPrivateAddress(a.address));
       if (bad) {
         cb(new Error(`blocked: ${hostname} resolves to private address ${bad.address}`));
         return;
       }
       if (opts.all) cb(null, addrs);
-      else cb(null, addrs[0].address, addrs[0].family);
+      else if (addrs[0]) cb(null, addrs[0].address, addrs[0].family);
+      else cb(new Error(`no addresses for ${hostname}`));
     }, (err) => cb(err));
   };
 }
@@ -226,7 +279,7 @@ function guardedLookup(lookupImpl) {
 function requestOnce(url, { lookupImpl, signal }) {
   return new Promise((resolvePromise, rejectPromise) => {
     const mod = url.protocol === 'https:' ? httpsRequest : httpRequest;
-    const req = mod(url, { lookup: guardedLookup(lookupImpl), signal }, resolvePromise);
+    const req = mod(url, { lookup: guardedLookup(lookupImpl, signal), signal }, resolvePromise);
     req.on('error', rejectPromise);
     req.end();
   });
@@ -259,8 +312,8 @@ function readCappedBody(res, cap, { encoding = 'utf8' } = {}) {
 // 보안 핵심 경로(사전검증·연결시점 가드·hop 재검증·캡)는 여기 한 곳뿐 —
 // fetchSource/fetchBinary가 인코딩만 달리해 공유한다.
 async function fetchGuarded(rawUrl, { requestImpl = requestOnce, lookupImpl = dnsLookup, encoding = 'utf8' } = {}) {
-  let url = await assertSafeUrl(rawUrl, { lookupImpl });
   const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+  let url = await assertSafeUrl(rawUrl, { lookupImpl, signal });
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const res = await requestImpl(url, { lookupImpl, signal });
     const status = res.statusCode;
@@ -268,7 +321,7 @@ async function fetchGuarded(rawUrl, { requestImpl = requestOnce, lookupImpl = dn
       const location = res.headers?.location;
       res.resume?.();
       if (!location) throw new Error(`redirect without location from ${url.href}`);
-      url = await assertSafeUrl(new URL(location, url).href, { lookupImpl });
+      url = await assertSafeUrl(new URL(location, url).href, { lookupImpl, signal });
       continue;
     }
     if (status < 200 || status >= 300) {
