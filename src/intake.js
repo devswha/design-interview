@@ -18,21 +18,36 @@ import { stripTags } from './text.js';
 
 // ---------------------------------------------------------------- 클레임 추출
 
-const NUMBER_SOURCE = String.raw`\d(?:[\d.,\s]*\d)?`;
+// 숫자 원자: 선두 숫자 + (천단위/소수점) 내부 런. 내부 런에서 공백(\s)을 빼고
+// 길이를 {0,18}로 묶는다 — 줄을 넘나드는 \s + 단위 실패 백트래킹이 2MB 입력에서
+// O(n²) ReDoS(intake 행)를 내던 것을 막고, 앞 숫자를 통째로 삼켜 잘못 동결하던
+// (구분자+숫자 reach-back) 회귀도 함께 닫는다. 실제 클레임 숫자는 18자를 넘지 않는다.
+const NUMBER_SOURCE = String.raw`\d(?:[\d.,]{0,18}\d)?`;
+const RANGE_SEP = String.raw`\s*[-–—~]\s*`; // 하이픈/en·em대시 + 한국어 주력 범위 글리프 '~'
+// 기간 단위. 개\s?월은 stripTags가 인라인 요소 사이에 공백을 넣은 '3 개 월'까지 흡수해
+// 수량 '개' phantom을 막는다. 복수형 trailing-s를 모두 허용(wks/mins/yrs/secs).
+const DUR_UNITS = String.raw`시간|분(?![야양])|초|일(?![0-9A-Za-z정요주반상자치출])|개\s?월|년|days?|hours?|minutes?|months?|weeks?|h\b|mins?\b|wks?\b|mo\b|yrs?\b|secs?\b|ms\b`;
+// 수량 단위. 개(?!\s?월)로 공백이 끼인 '개 월'도 수량에서 배제(개월은 기간).
+const QTY_UNITS = String.raw`개(?!\s?월)|종|가지|명|곳|templates?|items?|features?|users?|projects?`;
+const PRICE_SUFFIX = String.raw`원|달러|€`;
+
 const CLAIM_PATTERNS = [
   // 가격: 9,000원 / ₩9,000 / $8 / $8/user/month / 8달러
   { kind: 'price', re: new RegExp(String.raw`(?:₩\s?${NUMBER_SOURCE}|${NUMBER_SOURCE}\s?원|\$\s?${NUMBER_SOURCE}(?:\s?\/\s?[a-z가-힣]+){0,2}|${NUMBER_SOURCE}\s?달러|${NUMBER_SOURCE}\s?€)`, 'giu') },
   // 백분율: 99.9%
   { kind: 'percent', re: new RegExp(String.raw`${NUMBER_SOURCE}\s?%`, 'gu') },
-  // 기간/시간: 24시간, 5분, 30일, 7 days, 24h
-  { kind: 'duration', re: new RegExp(String.raw`${NUMBER_SOURCE}\s?(?:시간|분(?![야양])|초|일(?![0-9A-Za-z])|개월|년|days?|hours?|minutes?|months?|weeks?|h\b|mins?\b|wk\b)`, 'giu') },
+  // 기간/시간: 24시간, 5분, 30일, 7 days, 24h, 3 months, 4 wks
+  { kind: 'duration', re: new RegExp(String.raw`${NUMBER_SOURCE}\s?(?:${DUR_UNITS})`, 'giu') },
   // 수량: 30개, 30개의 템플릿, 30 templates, 12종
-  { kind: 'quantity', re: new RegExp(String.raw`${NUMBER_SOURCE}\s?(?:개(?!월)|종|가지|명|곳|templates?|items?|features?|users?|projects?)`, 'giu') },
+  { kind: 'quantity', re: new RegExp(String.raw`${NUMBER_SOURCE}\s?(?:${QTY_UNITS})`, 'giu') },
 ];
 
+// 범위 클레임은 단일 패턴보다 먼저 돌려 양 끝점을 한 스팬으로 동결한다(하한 누락 방지).
 const CLAIM_RANGE_PATTERNS = [
-  { kind: 'duration', re: new RegExp(String.raw`${NUMBER_SOURCE}\s*[-–—]\s*${NUMBER_SOURCE}\s?(?:시간|분(?![야양])|초|일(?![0-9A-Za-z])|개월|년|days?|hours?|minutes?|months?|weeks?|h\b|mins?\b|wk\b)`, 'giu') },
-  { kind: 'quantity', re: new RegExp(String.raw`${NUMBER_SOURCE}\s*[-–—]\s*${NUMBER_SOURCE}\s?(?:개(?!월)|종|가지|명|곳|templates?|items?|features?|users?|projects?)`, 'giu') },
+  { kind: 'duration', re: new RegExp(String.raw`${NUMBER_SOURCE}${RANGE_SEP}${NUMBER_SOURCE}\s?(?:${DUR_UNITS})`, 'giu') },
+  { kind: 'quantity', re: new RegExp(String.raw`${NUMBER_SOURCE}${RANGE_SEP}${NUMBER_SOURCE}\s?(?:${QTY_UNITS})`, 'giu') },
+  { kind: 'percent', re: new RegExp(String.raw`${NUMBER_SOURCE}${RANGE_SEP}${NUMBER_SOURCE}\s?%`, 'gu') },
+  { kind: 'price', re: new RegExp(String.raw`(?:\$|₩)\s?${NUMBER_SOURCE}${RANGE_SEP}(?:\$|₩)?\s?${NUMBER_SOURCE}|${NUMBER_SOURCE}${RANGE_SEP}${NUMBER_SOURCE}\s?(?:${PRICE_SUFFIX})`, 'giu') },
 ];
 
 // 숫자 폭탄 방어: 실제 클레임에 16자리+ 숫자 연속이나 2000자+ 라인은 없다.
