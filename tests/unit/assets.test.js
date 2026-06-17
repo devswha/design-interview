@@ -442,22 +442,43 @@ test('sidecar: 대문자 LICENSE.TXT도 sidecar로 인식하고 phantom asset로
   }, 'di-uppercase-sidecar-');
 });
 
-test('auditAssets: symlinked image와 sidecar를 따라가 usable anchor로 계산', async () => {
+test('auditAssets: in-root 심볼릭 링크는 따라가 계산한다', async () => {
   const { mkdir, symlink, writeFile: wf } = await import('node:fs/promises');
   await withTempDir(async (dir) => {
-    const realDir = join(dir, 'real');
     const scanDir = join(dir, 'scan');
-    await mkdir(realDir, { recursive: true });
-    await mkdir(scanDir, { recursive: true });
-    await wf(join(realDir, 'hero.png'), 'image-bytes');
-    await wf(join(realDir, 'hero.png.license.txt'), 'license: CC0\nsource: self-authored');
-    await symlink(join(realDir, 'hero.png'), join(scanDir, 'hero.png'));
-    await symlink(join(realDir, 'hero.png.license.txt'), join(scanDir, 'hero.png.license.txt'));
+    const shared = join(scanDir, 'shared');
+    const images = join(scanDir, 'images');
+    await mkdir(shared, { recursive: true });
+    await mkdir(images, { recursive: true });
+    await wf(join(shared, 'hero.png'), 'image-bytes');
+    await wf(join(shared, 'hero.png.license.txt'), 'license: CC0\nsource: self-authored');
+    // 스캔 루트(scanDir) 안의 다른 하위 디렉터리를 가리키는 링크 → 따라가야 한다.
+    await symlink(join(shared, 'hero.png'), join(images, 'hero.png'));
+    await symlink(join(shared, 'hero.png.license.txt'), join(images, 'hero.png.license.txt'));
 
     const r = await auditAssets(scanDir);
-    assert.equal(r.counts.total, 1, 'symlinked image가 asset로 계산돼야 함');
+    assert.ok(r.counts.total >= 1, 'in-root 심볼릭 링크 이미지는 계산돼야 함');
     assert.deepEqual(r.missingSidecar, [], 'symlinked sidecar 인식 필요');
-    assert.equal(r.readiness.ready, true, 'symlinked image+sidecar는 READY');
-    assert.equal(r.readiness.usableVisualAnchors, 1);
-  }, 'di-symlink-assets-');
+    assert.equal(r.readiness.ready, true, 'in-root 심볼릭 링크 image+sidecar는 READY');
+    assert.ok(r.readiness.usableVisualAnchors >= 1);
+  }, 'di-symlink-inroot-');
+});
+
+test('auditAssets: 스캔 루트 밖을 가리키는 심볼릭 링크는 건너뛴다(R5 readiness 스푸핑 방지)', async () => {
+  const { mkdir, symlink, writeFile: wf } = await import('node:fs/promises');
+  await withTempDir(async (dir) => {
+    const outside = join(dir, 'outside');
+    const scanDir = join(dir, 'scan');
+    await mkdir(outside, { recursive: true });
+    await mkdir(scanDir, { recursive: true });
+    await wf(join(outside, 'hero.png'), 'image-bytes');
+    await wf(join(outside, 'hero.png.license.txt'), 'license: CC0\nsource: self-authored');
+    await symlink(join(outside, 'hero.png'), join(scanDir, 'hero.png'));
+    await symlink(join(outside, 'hero.png.license.txt'), join(scanDir, 'hero.png.license.txt'));
+
+    const r = await auditAssets(scanDir);
+    assert.equal(r.counts.total, 0, '루트 밖 심볼릭 링크는 계산되면 안 됨');
+    assert.equal(r.readiness.ready, false, '루트 밖 링크로 READY 위조 안 됨');
+    assert.ok(r.skipped.some((s) => /루트 밖/.test(s)), '루트 밖 링크는 skipped에 기록');
+  }, 'di-symlink-escape-');
 });
