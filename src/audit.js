@@ -22,8 +22,27 @@ const HYPE_LEXICON = [
   'unleash', 'elevate your', 'transform your', 'innovative solution',
 ];
 
+const HTML_SCAN_LIMIT = 2_000_000;
+const TAG_BODY_LIMIT = 20_000;
+
+function boundedTagInner(source, lower, tag, bodyStart) {
+  const searchEnd = Math.min(source.length, bodyStart + TAG_BODY_LIMIT);
+  const closeTag = `</${tag}`;
+  let pos = bodyStart;
+  while (pos < searchEnd) {
+    const next = lower.indexOf('<', pos);
+    if (next < 0 || next > searchEnd) return null;
+    if (lower.startsWith(closeTag, next)) return source.slice(bodyStart, next);
+    if (lower.startsWith(`<${tag}`, next)) return null;
+    const tagEnd = lower.indexOf('>', next);
+    if (tagEnd < 0 || tagEnd > searchEnd) return null;
+    pos = tagEnd + 1;
+  }
+  return null;
+}
+
 function extractCss(html) {
-  const blocks = [...String(html).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)].map((m) => m[1]);
+  const blocks = [...String(html).matchAll(/<style\b[^>]*>([\s\S]*?)(?:<\/style\s*>|$)/gi)].map((m) => m[1]);
   const attrs = [...String(html).matchAll(/\sstyle\s*=\s*("([^"]*)"|'([^']*)')/gi)].map((m) => m[2] ?? m[3]);
   return [...blocks, ...attrs].join('\n');
 }
@@ -62,8 +81,14 @@ function checkPurpleGradient(css) {
 
 // T1: 리스트 항목 또는 버튼/제목 텍스트가 픽토그램으로 시작하거나 끝남.
 function checkEmojiBullets(html) {
-  const targets = [...String(html).matchAll(/<(li|h[1-6]|button)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi)];
-  for (const [, tag, inner] of targets) {
+  const source = String(html).slice(0, HTML_SCAN_LIMIT);
+  const lower = source.toLowerCase();
+  const opens = source.matchAll(/<(li|button|h([1-6]))\b[^>]*>/gi);
+  for (const m of opens) {
+    const tag = m[1].toLowerCase();
+    const bodyStart = m.index + m[0].length;
+    const inner = boundedTagInner(source, lower, tag, bodyStart);
+    if (inner === null) continue;
     const text = stripTags(inner).trim();
     if (/^\p{Extended_Pictographic}/u.test(text) || /\p{Extended_Pictographic}$/u.test(text)) {
       return { pass: false, evidence: `<${tag}> "${text.slice(0, 40)}"` };
@@ -81,8 +106,14 @@ function checkHypeAdjectives(html) {
 
 // T4: "Simple. Powerful. Seamless." — 제목의 3연속 단문 패턴.
 function checkSymmetricHeadingPairs(html) {
-  const headings = [...String(html).matchAll(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]\s*>/gi)];
-  for (const [, inner] of headings) {
+  const source = String(html).slice(0, HTML_SCAN_LIMIT);
+  const lower = source.toLowerCase();
+  const opens = source.matchAll(/<h([1-6])\b[^>]*>/gi);
+  for (const m of opens) {
+    const tag = `h${m[1]}`;
+    const bodyStart = m.index + m[0].length;
+    const inner = boundedTagInner(source, lower, tag, bodyStart);
+    if (inner === null) continue;
     const text = stripTags(inner).trim();
     const segs = text.split(/[.!]\s*/).filter(Boolean);
     if (segs.length >= 3 && segs.every((s) => s.trim().split(/\s+/).length <= 2)) {
@@ -114,7 +145,7 @@ function checkUniformRadius(css) {
 // style 속성은 해당 태그명을 셀렉터로 취급한다 (code/pre 문맥 판단에 필요).
 function extractCssRules(html) {
   const rules = [];
-  for (const [, css] of String(html).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)) {
+  for (const [, css] of String(html).matchAll(/<style\b[^>]*>([\s\S]*?)(?:<\/style\s*>|$)/gi)) {
     const clean = css
       .replace(/\/\*[\s\S]*?\*\//g, ' ')
       .replace(/@(font-face|page|property|counter-style)[^{}]*\{[^{}]*\}/gi, ' ');
@@ -134,7 +165,7 @@ function extractCssRules(html) {
 // 블록은 내려가지 않는다 — from/to·폰트 정의는 규칙이 아니다.
 function extractRuleContexts(html) {
   const out = [];
-  for (const [, css] of String(html).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)) {
+  for (const [, css] of String(html).matchAll(/<style\b[^>]*>([\s\S]*?)(?:<\/style\s*>|$)/gi)) {
     walkCss(css.replace(/\/\*[\s\S]*?\*\//g, ' '), false, out);
   }
   return out;
@@ -693,7 +724,7 @@ export const MACHINE_CHECKS = [
 ];
 
 // 기계 감사 진입점. score는 통과율(0..1) — patina --score와 반대 방향이
-// 아니라 같은 "낮을수록 slop" 의미를 유지하려고 slopScore도 함께 준다.
+// 아니라 같은 "낮을수록 slop" 의미를 유지한다. slopScore는 정적 텔 수로 정규화해 --visual 유무와 비교 가능하게 둔다.
 export function auditHtml(html) {
   const css = extractCss(html);
   const rules = extractCssRules(html);
@@ -711,7 +742,7 @@ export function auditHtml(html) {
     failed: failed.map((f) => f.id),
     blockingFailed: blockingFailed.map((f) => f.id),
     advisoryFailed: advisoryFailed.map((f) => f.id),
-    slopScore: failed.length / findings.length,
+    slopScore: failed.length / MACHINE_CHECKS.length,
     blockingScore: blockingFailed.length / findings.length,
     pass: blockingFailed.length === 0,
     warnings: collectWarnings(html, rules, vars),
@@ -755,7 +786,7 @@ export function combineAudits(staticResult, visual) {
     failed: failedF.map((f) => f.id),
     blockingFailed: blockingFailed.map((f) => f.id),
     advisoryFailed: advisoryFailed.map((f) => f.id),
-    slopScore: failedF.length / findings.length,
+    slopScore: failedF.length / MACHINE_CHECKS.length,
     blockingScore: blockingFailed.length / findings.length,
     pass: blockingFailed.length === 0,
     warnings: [...(staticResult.warnings ?? []), ...visualWarnings],

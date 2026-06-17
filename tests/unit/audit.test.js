@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { auditHtml, formatAuditReport } from '../../src/audit.js';
+import { auditHtml, combineAudits, formatAuditReport } from '../../src/audit.js';
+import { stripTags } from '../../src/text.js';
 import { examplePath, fixturePath, redteamPath } from '../helpers/index.js';
 
 const CLEAN = `<!doctype html><html><head><style>
@@ -54,6 +55,49 @@ test('T4 ignores normal multi-sentence headings', () => {
   assert.ok(!r.failed.includes('T4'));
 });
 
+test('stripTags strips unterminated script/style to EOF fast', () => {
+  assert.equal(stripTags('<p>visible</p><script>seamless'), ' visible  ');
+  assert.equal(stripTags('<style>.x{color:red}</style><p>visible</p>'), '  visible ');
+  const html = '<script>x'.repeat(200_000);
+  const started = performance.now();
+  assert.equal(stripTags(html).trim(), '');
+  assert.ok(performance.now() - started < 1_000, 'large unclosed script is bounded');
+});
+
+test('audit text scans are bounded on large unclosed interactive tags', () => {
+  const html = '<button>🚀'.repeat(80_000) + '<li>⚡'.repeat(80_000) + '<h1>Simple. Powerful. Seamless.'.repeat(20_000);
+  const started = performance.now();
+  const r = auditHtml(html);
+  assert.ok(performance.now() - started < 1_000, 'large unclosed button/li/h1 scans are bounded');
+  assert.ok(!r.failed.includes('T1'));
+  assert.ok(!r.failed.includes('T4'));
+});
+
+test('unclosed style still feeds C1', async () => {
+  const html = await readFile(redteamPath('unclosed-style-gradient.html'), 'utf8');
+  const r = auditHtml(html);
+  assert.ok(r.blockingFailed.includes('C1'));
+  assert.equal(r.pass, false);
+});
+
+test('unterminated script hype stays out of T2 body text', async () => {
+  const html = await readFile(redteamPath('unclosed-script-hype.html'), 'utf8');
+  const r = auditHtml(html);
+  assert.ok(!r.failed.includes('T2'));
+  assert.equal(r.pass, true);
+});
+
+test('slopScore is stable across static and combined visual shapes', () => {
+  const staticResult = auditHtml(CLEAN);
+  const combined = combineAudits(staticResult, {
+    findings: [
+      { id: 'L1', name: 'visual-layout', severity: 'advisory', pass: true, evidence: null },
+      { id: 'S3', name: 'visual-spacing', severity: 'advisory', pass: true, evidence: null },
+    ],
+    warnings: [],
+  });
+  assert.equal(combined.slopScore, staticResult.slopScore);
+});
 // ---------------------------------------------------------------------------
 // TY4 type-family-discipline
 // ---------------------------------------------------------------------------

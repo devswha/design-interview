@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import { join } from 'node:path';
 import { analyzeVisualTells } from '../../src/geometry.js';
 import { auditHtml, combineAudits } from '../../src/audit.js';
-import { repoPath, findingById, hasWarning } from '../helpers/index.js';
+import { repoPath, findingById, hasWarning, withTempDir } from '../helpers/index.js';
 import { visualTest, noPuppeteerTest } from '../helpers/puppeteer.js';
 
 test('slop-source: S3 caught — everything renders centered', visualTest, async () => {
@@ -15,7 +17,7 @@ test('slop-source: S3 caught — everything renders centered', visualTest, async
 
 test('feature-grid: L1 caught by box geometry, invisible to static audit', visualTest, async () => {
   const path = repoPath('tests/fixtures/slop/feature-grid.html');
-  assert.equal(auditHtml(await (await import('node:fs/promises')).readFile(path, 'utf8')).pass, true,
+  assert.equal(auditHtml(await readFile(path, 'utf8')).pass, true,
     'static lane must NOT catch this fixture');
   const { findings } = await analyzeVisualTells(path)
   const l1 = findingById(findings, 'L1');
@@ -32,7 +34,8 @@ test('combineAudits merges visual findings into score', () => {
   const staticResult = { findings: [{ id: 'C1', name: 'x', pass: true, evidence: null }], failed: [], slopScore: 0, pass: true };
   const merged = combineAudits(staticResult, [{ id: 'L1', name: 'uniform-card-grid', pass: false, evidence: 'e' }]);
   assert.deepEqual(merged.failed, ['L1']);
-  assert.equal(merged.slopScore, 0.5);
+  // #23.3: slopScore는 정적 텔 수(MACHINE_CHECKS.length=9)로 정규화 — findings.length가 아니라.
+  assert.equal(merged.slopScore, 1 / 9);
   assert.equal(merged.pass, false);
 });
 
@@ -48,7 +51,8 @@ test('combineAudits merges duplicate IDs without double-scoring', () => {
   ]);
   assert.deepEqual(merged.failed, ['DE3']);
   assert.equal(merged.findings.length, 1, 'same principle ID must not be counted twice');
-  assert.equal(merged.slopScore, 1);
+  // #23.3: 분모는 고정된 정적 텔 수(9) — 같은 콘텐츠가 --visual 유무와 무관히 같은 slop.
+  assert.equal(merged.slopScore, 1 / 9);
   assert.match(merged.findings[0].evidence, /contrast 1\.8/);
   assert.equal(merged.pass, false);
 });
@@ -201,6 +205,79 @@ test('DE3 contrast: gradient and image backgrounds are explicit skips', visualTe
   assert.match(de3.evidence, /skipped/);
   assert.match(de3.evidence, /gradient:1/);
   assert.match(de3.evidence, /image:1/);
+});
+
+test('visual containment: inline script cannot forge DE3 contrast verdict', visualTest, async () => {
+  await withTempDir(async (dir) => {
+    const htmlPath = join(dir, 'forge-contrast.html');
+    await writeFile(htmlPath, `<!doctype html>
+<html>
+<head>
+  <style>
+    body { margin: 0; background: #fff; color: #eee; font: 18px/1.5 sans-serif; }
+    main { width: 720px; padding: 48px; }
+  </style>
+</head>
+<body>
+  <main><p>This real body copy is intentionally low contrast and must fail DE3 even when page JavaScript tries to lie.</p></main>
+  <script>
+    window.getComputedStyle = new Proxy(window.getComputedStyle, {
+      apply(target, thisArg, args) {
+        const style = Reflect.apply(target, thisArg, args);
+        return new Proxy(style, {
+          get(value, prop) {
+            if (prop === 'color') return 'rgb(0, 0, 0)';
+            if (prop === 'backgroundColor') return 'rgb(255, 255, 255)';
+            return value[prop];
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>`);
+    const { findings } = await analyzeVisualTells(htmlPath);
+    const de3 = findingById(findings, 'DE3');
+    assert.equal(de3.pass, false);
+    assert.match(de3.evidence, /contrast \d+\.\d+:1/);
+  });
+});
+
+test('visual containment: remote subresources make zero network requests', visualTest, async () => {
+  let requests = 0;
+  const server = createServer((req, res) => {
+    requests += 1;
+    res.writeHead(req.url.endsWith('.woff2') ? 200 : 204, {
+      'Content-Type': req.url.endsWith('.woff2') ? 'font/woff2' : 'image/png',
+    });
+    res.end();
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    const { port } = server.address();
+    await withTempDir(async (dir) => {
+      const htmlPath = join(dir, 'remote-subresources.html');
+      await writeFile(htmlPath, `<!doctype html>
+<html>
+<head>
+  <style>
+    @font-face { font-family: "RemoteFont"; src: url("http://127.0.0.1:${port}/font.woff2"); }
+    body { font-family: "RemoteFont", sans-serif; color: #111; background: #fff; }
+  </style>
+</head>
+<body>
+  <main><p>Network containment must block both font and image fetches.</p><img src="http://127.0.0.1:${port}/p.png" alt=""></main>
+</body>
+</html>`);
+      await analyzeVisualTells(htmlPath);
+    });
+    assert.equal(requests, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 // ── TY5-A 한글 어절 중간 줄바꿈 (시각 fail, 양면) ──
 

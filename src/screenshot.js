@@ -43,6 +43,13 @@ export async function captureFile(htmlPath, { outBase, viewports = ['desktop', '
       const vp = VIEWPORTS[name];
       if (!vp) throw new Error(`unknown viewport "${name}" (valid: ${Object.keys(VIEWPORTS).join(', ')})`);
       const page = await browser.newPage();
+      await page.setJavaScriptEnabled(false);
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        const url = req.url();
+        if (url.startsWith('file:') || url.startsWith('data:')) req.continue();
+        else req.abort();
+      });
       await page.setViewport(vp);
       await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
       // 폰트 적용 완료까지 대기 — 전송 완료(networkidle0)와 렌더 적용은 다르다
