@@ -19,7 +19,17 @@ let regressions = 0;
 const rows = [];
 
 for (const [path, expected] of Object.entries(baseline.fixtures)) {
-  const html = await readFile(resolve(root, path), 'utf8');
+  let html;
+  try {
+    html = await readFile(resolve(root, path), 'utf8');
+  } catch (err) {
+    regressions++;
+    const message = err?.code === 'ENOENT'
+      ? 'fixture missing; update baseline.json'
+      : `fixture unreadable (${err?.code ?? err?.message ?? 'unknown error'}); update baseline.json`;
+    rows.push({ path, expected: '-', actual: '-', miss: [], fp: [], ok: false, message });
+    continue;
+  }
   const actual = auditHtml(html).failed; // 전체 failed(blocking∪advisory) — 탐지기 정확도 게이트
   // baseline은 {expectedBlocking, expectedAdvisory}로 분할 표기하되 비교는 합집합(레거시 .failed도 수용).
   const expectedFailed = expected.failed ?? [...(expected.expectedBlocking ?? []), ...(expected.expectedAdvisory ?? [])];
@@ -34,7 +44,7 @@ for (const [path, expected] of Object.entries(baseline.fixtures)) {
 
 console.log('design-interview benchmark — machine audit vs baseline\n');
 for (const r of rows) {
-  console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.path}`);
+  console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.path}${r.message ? ` — ${r.message}` : ''}`);
   console.log(`     expected: [${r.expected}]  actual: [${r.actual}]`);
   if (r.miss.length) console.log(`     miss (탐지 후퇴): ${r.miss.join(', ')}`);
   if (r.fp.length) console.log(`     fp (오탐 후퇴): ${r.fp.join(', ')}`);
