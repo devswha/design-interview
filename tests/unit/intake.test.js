@@ -67,6 +67,13 @@ test('ssrf: private address detection', () => {
   }
 });
 
+test('ssrf: ipv6 link-local /10 and embedded ipv4 ranges reduce to private rules', () => {
+  for (const addr of ['fe90::1', 'febf::1', '::127.0.0.1', '64:ff9b::127.0.0.1']) {
+    assert.equal(isPrivateAddress(addr), true, addr);
+  }
+  assert.equal(isPrivateAddress('fec0::1'), false);
+});
+
 test('ssrf: scheme, localhost, literal-ip, and dns-resolved blocks', async () => {
   await assert.rejects(() => assertSafeUrl('ftp://example.com/x'), /only http\/https/);
   await assert.rejects(() => assertSafeUrl('http://localhost/x'), /private host/);
@@ -77,6 +84,30 @@ test('ssrf: scheme, localhost, literal-ip, and dns-resolved blocks', async () =>
     () => assertSafeUrl('http://rebind.example.com/', { lookupImpl: evilLookup }),
     /resolves to private address 10\.0\.0\.7/,
   );
+});
+
+test('ssrf: empty dns resolution rejects cleanly', async () => {
+  const emptyLookup = async () => [];
+  await assert.rejects(
+    () => assertSafeUrl('http://empty.example.com/', { lookupImpl: emptyLookup }),
+    /blocked: empty\.example\.com did not resolve/,
+  );
+
+  let unhandled = null;
+  const onUnhandled = (err) => {
+    unhandled = err;
+  };
+  process.once('unhandledRejection', onUnhandled);
+  try {
+    await assert.rejects(
+      () => fetchSource('http://example.com/', { lookupImpl: emptyLookup }),
+      /did not resolve|no addresses for example\.com/,
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(unhandled, null);
+  } finally {
+    process.removeListener('unhandledRejection', onUnhandled);
+  }
 });
 
 test('ssrf: redirect hops are re-validated, private target never requested', async () => {
@@ -142,4 +173,34 @@ test('number bomb: 1MB digit line completes fast and bounded', () => {
   const elapsed = Date.now() - started;
   assert.ok(elapsed < 3000, `took ${elapsed}ms`);
   assert.ok(claims.length < 50, 'no claim explosion');
+});
+
+test('claim extraction preserves ranges and expanded duration units', () => {
+  const { claims } = extractClaims('배송은 3–5 days, 환불은 7일내 가능하고 30일째 알림. Try 3 months, 2 weeks, 5 wk, 5 mins.');
+  const durations = byKind(claims, 'duration');
+  assert.ok(durations.includes('3–5 days'));
+  assert.ok(!durations.includes('5 days'));
+  assert.ok(durations.includes('7일'));
+  assert.ok(durations.includes('30일'));
+  assert.ok(durations.includes('3 months'));
+  assert.ok(durations.includes('2 weeks'));
+  assert.ok(durations.includes('5 wk'));
+  assert.ok(durations.includes('5 mins'));
+});
+
+test('claim extraction keeps comma-decimal prefixes and avoids korean month quantity ghosts', () => {
+  const { claims } = extractClaims('1,5 시간 상담, 1.000 € 결제, 3개월 무료 체험.');
+  assert.ok(byKind(claims, 'duration').includes('1,5 시간'));
+  assert.ok(byKind(claims, 'price').includes('1.000 €'));
+  assert.ok(byKind(claims, 'duration').includes('3개월'));
+  assert.ok(!byKind(claims, 'quantity').includes('3개'));
+});
+
+test('feature claim extraction bounds unclosed html scan', () => {
+  const bomb = '<li>x'.repeat(384 * 1024);
+  const started = Date.now();
+  const { claims } = extractClaims(bomb);
+  const elapsed = Date.now() - started;
+  assert.ok(elapsed < 1000, `took ${elapsed}ms`);
+  assert.equal(byKind(claims, 'feature').length, 0);
 });
