@@ -9,9 +9,9 @@
 
 const PREVIEW_CSP = [
   "default-src 'none'",
-  "img-src * data:",
-  "style-src 'unsafe-inline' *",
-  "font-src * data:",
+  "img-src data:",
+  "style-src 'unsafe-inline'",
+  "font-src data:",
   "frame-src 'none'",
   "script-src 'none'",
 ].join('; ');
@@ -23,6 +23,9 @@ export function stripActiveContent(html) {
   return String(html)
     .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
     .replace(/<script\b[^>]*>/gi, '')
+    .replace(/<base\b[^>]*>/gi, '')
+    .replace(/<link\b[^>]*>/gi, (tag) => (isRemoteHref(getAttr(tag, 'href')) ? '' : tag))
+    .replace(/<(img|source)\b[^>]*>/gi, (tag) => sanitizeMediaTag(tag))
     .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
     .replace(/\b(href|src|action|formaction)\s*=\s*(["']?)\s*javascript:[^"'\s>]*\2/gi, '$1=$2#$2');
 }
@@ -36,9 +39,9 @@ const CHROME_CSS = `
 .dsiv-bar{position:sticky!important;top:0!important;z-index:99999!important;display:flex!important;gap:16px!important;align-items:center!important;padding:10px 16px!important;background:#1a1a1a!important;color:#eee!important;font:13px/1.4 system-ui,sans-serif!important}
 .dsiv-bar label{cursor:pointer!important;opacity:.7!important}
 .dsiv-bar input:checked+span{opacity:1!important;font-weight:600!important;text-decoration:underline!important}
-.dsiv-pane{display:none}
-#dsiv-built:checked~.dsiv-built,#dsiv-original:checked~.dsiv-original{display:block}
-#dsiv-both:checked~.dsiv-pane{display:block}
+.dsiv-pane{display:none!important}
+#dsiv-built:checked~.dsiv-built,#dsiv-original:checked~.dsiv-original{display:block!important}
+#dsiv-both:checked~.dsiv-pane{display:block!important}
 #dsiv-both:checked~.dsiv-original{outline:3px dashed #c0392b;outline-offset:-3px}
 .dsiv-tag{position:sticky!important;top:42px!important;z-index:99998!important;display:block!important;padding:4px 16px!important;background:#333!important;color:#bbb!important;font:11px/1 system-ui,sans-serif!important}
 `.replace(/\n/g, '');
@@ -90,11 +93,35 @@ function isRemoteHref(href) {
   return /^https?:\/\//i.test(href) || href.startsWith('//');
 }
 
+function isRemoteUrl(url) {
+  return /^https?:\/\//i.test(url) || url.startsWith('//');
+}
+
+function sanitizeMediaTag(tag) {
+  return tag.replace(/\s(src|srcset)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, (attr, name, raw) => {
+    const quote = raw.startsWith('"') || raw.startsWith("'") ? raw[0] : '';
+    const value = quote ? raw.slice(1, -1) : raw;
+    const sanitized = name.toLowerCase() === 'srcset'
+      ? value.replace(/(^|[\s,])(https?:\/\/|\/\/)[^\s,]+/gi, '$1#')
+      : (isRemoteUrl(value.trim()) ? '#' : value);
+    return ` ${name}=${quote}${sanitized}${quote}`;
+  });
+}
+
+function sanitizeStyleTag(tag) {
+  return tag.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/i, (_, open, css, close) => {
+    const sanitized = css
+      .replace(/@import\b[^;]*;/gi, '')
+      .replace(/url\(\s*(["']?)(?:https?:\/\/|\/\/)[^)]+?\1\s*\)/gi, 'url("#")');
+    return `${open}${sanitized}${close}`;
+  });
+}
+
 // 산출물 <head>의 <style>/<link rel=stylesheet>를 프리뷰로 가져온다.
 // (산출물은 단일 파일 원칙이라 보통 <style> 하나다.)
 function collectHeadStyles(html) {
   const head = /<head\b[^>]*>([\s\S]*?)<\/head\s*>/i.exec(html)?.[1] ?? '';
-  const styles = head.match(/<style\b[\s\S]*?<\/style\s*>/gi) ?? [];
+  const styles = (head.match(/<style\b[\s\S]*?<\/style\s*>/gi) ?? []).map((style) => sanitizeStyleTag(style));
   const links = (head.match(/<link\b[^>]*>/gi) ?? [])
     .filter((link) => isStylesheetLink(link) && !isRemoteHref(getAttr(link, 'href')));
   return [...styles, ...links].join('\n');

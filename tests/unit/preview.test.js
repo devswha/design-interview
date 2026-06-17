@@ -60,6 +60,51 @@ test('stylesheet link parser ignores data-* attribute suffixes', () => {
   assert.match(out, /data-href="https:\/\/cdn\.example\/a\.css"/, 'data-href does not make a local href remote');
 });
 
+test('inline style imports and remote CSS URLs are neutralized', () => {
+  const html = `<!doctype html><html><head>
+    <style>@import url("https://evil.example/steal.css");h1{color:#222;background:url(//evil.example/pixel.png)}</style>
+    </head><body><h1>x</h1></body></html>`;
+  const out = buildPreviewHtml({ builtHtml: html });
+  assert.ok(!out.includes('@import'), 'remote @import rule is removed');
+  assert.ok(!out.includes('evil.example'), 'remote CSS URL is neutralized');
+  assert.match(out, /h1\{color:#222;background:url\("#"\)\}/, 'safe inline declarations remain');
+});
+
+test('body-level base, remote stylesheet link, and remote media URLs are stripped', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<body>ok</body>',
+    originalHtml: '<body><base href="https://evil/"><link rel=stylesheet href="https://evil/steal.css"><img src="https://evil/track.gif"><source srcset="//evil/a.webp 1x, local.webp 2x"></body>',
+    title: 't',
+  });
+  assert.ok(!out.includes('steal.css'));
+  assert.ok(!/<base\b/i.test(out));
+  assert.ok(!out.includes('https://evil/track.gif'));
+  assert.ok(!out.includes('//evil/a.webp'));
+  assert.match(out, /src="#"/, 'remote img src is neutralized');
+  assert.match(out, /local\.webp 2x/, 'local srcset candidate survives');
+});
+
+test('preview CSP blocks remote style, image, and font subresources', () => {
+  const out = buildPreviewHtml({ builtHtml: BUILT });
+  const csp = /Content-Security-Policy" content="([^"]+)"/.exec(out)?.[1] ?? '';
+  assert.match(csp, /default-src 'none'/);
+  assert.match(csp, /script-src 'none'/);
+  assert.match(csp, /style-src 'unsafe-inline'(?:;|$)/);
+  assert.match(csp, /img-src data:(?:;|$)/);
+  assert.match(csp, /font-src data:(?:;|$)/);
+  assert.doesNotMatch(csp, /(?:style-src|img-src|font-src)[^;]*\*/);
+});
+
+test('chrome visibility rules are important against audited CSS', () => {
+  const html = `<!doctype html><html><head>
+    <style>.dsiv-bar{display:none !important}.dsiv-pane{display:block !important}</style>
+    </head><body><h1>x</h1></body></html>`;
+  const out = buildPreviewHtml({ builtHtml: html });
+  assert.match(out, /\.dsiv-pane\{display:none!important\}/);
+  assert.match(out, /#dsiv-built:checked~\.dsiv-built,#dsiv-original:checked~\.dsiv-original\{display:block!important\}/);
+  assert.match(out, /#dsiv-both:checked~\.dsiv-pane\{display:block!important\}/);
+});
+
 test('stripActiveContent handles unclosed script tags', () => {
   assert.ok(!/<script/i.test(stripActiveContent('<p>a</p><script>while(1){}')));
 });
