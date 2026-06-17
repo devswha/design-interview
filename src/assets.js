@@ -3,7 +3,7 @@
 // 반환값은 항상 advisory only. 빌드를 차단하지 않는다(always exit 0).
 // S2 가짜-실재 최종 판정 권위는 LLM 레인 단일; 여기서는 sidecar 근거 의심 표시만.
 
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join, relative, basename, extname } from 'node:path';
 import { assessAssetReadiness } from './asset-readiness.js';
 
@@ -22,7 +22,7 @@ const NOMINATIVE_TOKENS = [
 ];
 
 // AI 생성 소스 표시 토큰 (Signal 2·3 판단)
-const AI_SOURCE_TOKENS = ['ai', '생성', 'generated', 'ai생성', 'ai-generated'];
+const AI_SOURCE_TOKENS = ['생성', 'generated', 'ai생성', 'ai-generated'];
 
 // ─── 종류 분류 ─────────────────────────────────────────────────────────────
 
@@ -64,11 +64,12 @@ export function classifyKind(relPath) {
 
 /** 파일 basename(확장자 제외)이 로고형인지 판단 */
 function isLogoLike(noExt) {
+  const tokens = noExt.split(/[-_.]+/).filter(Boolean);
   // -logo/-mark/-badge/-icon 접미사
-  if (/(-logo|-mark|-badge|-icon)$/.test(noExt)) return true;
-  // 알려진 브랜드명과 정확 일치 또는 브랜드명 + 접미사/접두사
-  return BRAND_NAMES.some(
-    (b) => noExt === b || noExt.startsWith(b + '-') || noExt.endsWith('-' + b),
+  if (['logo', 'mark', 'badge', 'icon'].includes(tokens[tokens.length - 1])) return true;
+  // 알려진 브랜드명이 독립 토큰이거나 기존 hyphen-prefix/suffix 형태면 로고형
+  return BRAND_NAMES.some((b) =>
+    noExt === b || tokens.includes(b) || noExt.startsWith(b + '-') || noExt.endsWith('-' + b),
   );
 }
 
@@ -150,7 +151,7 @@ export function detectFabrication(relPath, sidecar) {
 
   // sidecar.source에 AI 생성 표시 여부
   const sourceValue = (sidecar?.source ?? '').toLowerCase();
-  const hasAiSource = AI_SOURCE_TOKENS.some((t) => sourceValue.includes(t));
+  const hasAiSource = AI_SOURCE_TOKENS.some((t) => hasToken(sourceValue, t));
 
   // Signal 2: screenshot/dashboard/screen + AI source
   if (/\b(screenshot|dashboard|screen)\b/.test(noExt) && hasAiSource) {
@@ -183,8 +184,19 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
   const suspectFabrication = [];
   const skipped = [];
   const counts = { logo: 0, image: 0, texture: 0, font: 0, other: 0, total: 0 };
+  const visitedDirs = new Set();
 
   async function scan(currentDir) {
+    let realDir;
+    try {
+      realDir = await realpath(currentDir);
+    } catch {
+      skipped.push(relative(dir, currentDir) || '.');
+      return;
+    }
+    if (visitedDirs.has(realDir)) return;
+    visitedDirs.add(realDir);
+
     let entries;
     try {
       entries = await readdir(currentDir, { withFileTypes: true });
@@ -194,13 +206,33 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
       return;
     }
 
+    async function entryKind(entry, fullPath) {
+      if (entry.isDirectory()) return 'directory';
+      if (entry.isFile()) return 'file';
+      if (!entry.isSymbolicLink()) return null;
+      try {
+        const targetStat = await stat(fullPath);
+        if (targetStat.isDirectory()) return 'directory';
+        if (targetStat.isFile()) return 'file';
+      } catch {
+        skipped.push(relative(dir, fullPath));
+      }
+      return null;
+    }
+
     // 현재 디렉터리의 sidecar 파일명 집합 (에셋명 → sidecar 있음)
     // sidecar: 'openai.svg.license.txt' → 에셋명 'openai.svg'
-    const sidecarSet = new Set(
-      entries
-        .filter((e) => e.isFile() && e.name.endsWith('.license.txt'))
-        .map((e) => e.name.slice(0, -'.license.txt'.length)),
-    );
+    const sidecarMap = new Map();
+    for (const entry of entries) {
+      const fullPath = join(currentDir, entry.name);
+      const lowerName = entry.name.toLowerCase();
+      if (!lowerName.endsWith('.license.txt')) continue;
+      if (await entryKind(entry, fullPath) !== 'file') continue;
+      sidecarMap.set(
+        lowerName.slice(0, -'.license.txt'.length),
+        entry.name,
+      );
+    }
 
     for (const entry of entries) {
       // .gitkeep 등 메타 파일 건너뜀
@@ -208,15 +240,17 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
 
       const fullPath = join(currentDir, entry.name);
 
-      if (entry.isDirectory()) {
+      const kindOnDisk = await entryKind(entry, fullPath);
+
+      if (kindOnDisk === 'directory') {
         await scan(fullPath);
         continue;
       }
 
-      if (!entry.isFile()) continue;
+      if (kindOnDisk !== 'file') continue;
 
       // sidecar 파일 자체는 에셋이 아님 — 건너뜀
-      if (entry.name.endsWith('.license.txt')) continue;
+      if (entry.name.toLowerCase().endsWith('.license.txt')) continue;
 
       const relPath = relative(dir, fullPath);
       let kind;
@@ -228,11 +262,12 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
       }
 
       // sidecar 파일명: keep-ext(foo.svg.license.txt) 또는 strip-ext(foo.license.txt) 둘 다 인정.
+      const entryKey = entry.name.toLowerCase();
       const base = entry.name.slice(0, entry.name.length - extname(entry.name).length);
-      const sidecarKey = sidecarSet.has(entry.name)
-        ? entry.name
-        : (base !== entry.name && sidecarSet.has(base) ? base : null);
-      const hasSidecar = sidecarKey !== null;
+      const baseKey = base.toLowerCase();
+      const sidecarName = sidecarMap.get(entryKey)
+        ?? (baseKey !== entryKey ? sidecarMap.get(baseKey) : null);
+      const hasSidecar = sidecarName != null;
 
       let sidecar = {};
       let source;
@@ -240,7 +275,7 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
       if (hasSidecar) {
         try {
           const sidecarText = await readFile(
-            join(currentDir, sidecarKey + '.license.txt'),
+            join(currentDir, sidecarName),
             'utf8',
           );
           sidecar = parseSidecar(sidecarText);
