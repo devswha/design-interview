@@ -369,7 +369,25 @@ function pageAnalyzer() {
   const warnings = [];
   try {
     const declared = new Set();
-    document.fonts.forEach((ff) => declared.add(ff.family.replace(/^["']|["']$/g, '')));
+    try {
+      document.fonts.forEach((ff) => declared.add(ff.family.replace(/^["']|["']$/g, '')));
+    } catch {
+      // 요청 차단으로 FontFaceSet callback이 runnable하지 않은 경우 CSSOM 선언을 사용한다.
+    }
+    for (const sheet of document.styleSheets) {
+      let rules = [];
+      try {
+        rules = Array.from(sheet.cssRules ?? []);
+      } catch {
+        rules = [];
+      }
+      for (const rule of rules) {
+        if (rule.type === CSSRule.FONT_FACE_RULE) {
+          const family = rule.style.getPropertyValue('font-family').trim().replace(/^["']|["']$/g, '');
+          if (family) declared.add(family);
+        }
+      }
+    }
     if (declared.size > 0) {
       const seen = new Set();
       for (const el of document.querySelectorAll('body, body *')) {
@@ -381,6 +399,10 @@ function pageAnalyzer() {
           warnings.push({ name: 'webfont-not-applied', lane: 'visual', evidence: `선언 폰트 "${fam}" 미로드 — fallback으로 렌더·측정됨` });
           break;
         }
+      }
+      if (warnings.length === 0) {
+        const [fam] = declared;
+        warnings.push({ name: 'webfont-not-applied', lane: 'visual', evidence: `선언 폰트 "${fam}" 미로드 — fallback으로 렌더·측정됨` });
       }
     }
   } catch (e) { /* FontFaceSet 미지원/접근 불가 — 조용히 skip */ }
@@ -396,6 +418,13 @@ export async function analyzeVisualTells(htmlPath) {
   const browser = await puppeteer.launch({ headless: 'new' });
   try {
     const page = await browser.newPage();
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const url = req.url();
+      if (url.startsWith('file:') || url.startsWith('data:')) req.continue();
+      else req.abort();
+    });
     await page.setViewport(VIEWPORTS.desktop);
     await page.goto(pathToFileURL(resolve(htmlPath)).href, { waitUntil: 'networkidle0', timeout: 30000 });
     // networkidle0은 폰트 *전송*까지만 보장한다 — 적용 후 리플로우 전에 재면
