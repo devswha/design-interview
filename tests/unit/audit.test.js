@@ -64,13 +64,14 @@ test('stripTags strips unterminated script/style to EOF fast', () => {
   assert.ok(performance.now() - started < 1_000, 'large unclosed script is bounded');
 });
 
-test('audit text scans are bounded on large unclosed interactive tags', () => {
-  const html = '<button>🚀'.repeat(80_000) + '<li>⚡'.repeat(80_000) + '<h1>Simple. Powerful. Seamless.'.repeat(20_000);
-  const started = performance.now();
-  const r = auditHtml(html);
-  assert.ok(performance.now() - started < 1_000, 'large unclosed button/li/h1 scans are bounded');
-  assert.ok(!r.failed.includes('T1'));
-  assert.ok(!r.failed.includes('T4'));
+test('unclosed interactive tags still fire their blocking slop tells (no gate bypass)', () => {
+  // boundedTagInner가 미닫힌 <li>/<button>/<h1>에서 null을 돌려 스킵하던 false-negative를
+  // 막는다 — HTML5에서 </li>·</hN>는 선택적이므로 닫지 않은 슬롭이 차단 게이트를 우회했었다.
+  // (대용량 입력 선형성은 text-layer의 stripTags 200k 테스트 + CLI DoS repro로 검증.)
+  const emoji = auditHtml('<ul><li>🚀 빠른 배송<li>⚡ 신선한 재료<li>✨ 정성</ul>');
+  assert.ok(emoji.failed.includes('T1'), 'unclosed <li> emoji bullets must fire T1');
+  const headings = auditHtml('<section><h1>Simple. Powerful. Seamless.<h1>다음 섹션</section>');
+  assert.ok(headings.failed.includes('T4'), 'unclosed <h1> symmetric triple must fire T4');
 });
 
 test('unclosed style still feeds C1', async () => {
@@ -87,16 +88,18 @@ test('unterminated script hype stays out of T2 body text', async () => {
   assert.equal(r.pass, true);
 });
 
-test('slopScore is stable across static and combined visual shapes', () => {
-  const staticResult = auditHtml(CLEAN);
-  const combined = combineAudits(staticResult, {
-    findings: [
-      { id: 'L1', name: 'visual-layout', severity: 'advisory', pass: true, evidence: null },
-      { id: 'S3', name: 'visual-spacing', severity: 'advisory', pass: true, evidence: null },
-    ],
+test('combineAudits slopScore stays within 0..1 even with many visual failures (R7)', () => {
+  // 정적 4건 fail + 시각 6건 fail 을 합쳐도 slopScore는 0..1을 벗어나면 안 된다
+  // (분모를 MACHINE_CHECKS.length로 고정해 100% 초과(167%)가 찍히던 회귀 가드).
+  const staticResult = auditHtml(CLEAN); // 0 fail
+  const visual = {
+    findings: ['L1', 'L2', 'S3', 'TY1', 'TY2', 'TY5'].map((id) => ({ id, name: id, severity: 'advisory', pass: false, evidence: 'e' })),
     warnings: [],
-  });
-  assert.equal(combined.slopScore, staticResult.slopScore);
+  };
+  const combined = combineAudits(staticResult, visual);
+  assert.ok(combined.slopScore >= 0 && combined.slopScore <= 1, `slopScore ${combined.slopScore} must be within 0..1`);
+  // 분자/분모가 같은 findings 집합: 6 fail / 15 findings(9 정적 + 6 시각).
+  assert.equal(combined.slopScore, 6 / 15);
 });
 // ---------------------------------------------------------------------------
 // TY4 type-family-discipline
