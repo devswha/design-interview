@@ -79,19 +79,21 @@ function splitFlatRules(css) {
 // 주어진 태그들의 블록(여는 태그~닫는 태그, 내용 포함)을 제거하고 나머지는 보존한다.
 // 단일 전방 스캔이라 선형 — 미닫힌 <code>/<pre> 등에서 lazy 정규식+역참조가 O(n²)로
 // 행 걸리던 것을 막는다. 닫는 태그가 없으면 그 raw 블록은 EOF까지로 간주해 제거.
+// 결과는 배열+join으로 만든 평탄 문자열이다 — `+=` ConsString을 stripTags에 먹이면
+// stripTags가 flat/cons 다형으로 디옵트돼 대형 입력에서 ~1500x 느려진다(메가모픽).
 function removeRawBlocks(value, tags) {
   const lower = value.toLowerCase();
-  let out = '';
+  const parts = [];
   let cursor = 0;
   while (cursor < value.length) {
     const lt = lower.indexOf('<', cursor);
-    if (lt < 0) { out += value.slice(cursor); break; }
+    if (lt < 0) { parts.push(value.slice(cursor)); break; }
     let tag = null;
     for (const t of tags) {
       if (lower.startsWith(`<${t}`, lt) && /[\s>/]/.test(lower[lt + t.length + 1] ?? '')) { tag = t; break; }
     }
-    if (!tag) { out += value.slice(cursor, lt + 1); cursor = lt + 1; continue; }
-    out += value.slice(cursor, lt) + ' ';
+    if (!tag) { parts.push(value.slice(cursor, lt + 1)); cursor = lt + 1; continue; }
+    parts.push(value.slice(cursor, lt), ' ');
     const openEnd = value.indexOf('>', lt);
     if (openEnd < 0) break;
     const closeAt = lower.indexOf(`</${tag}`, openEnd + 1);
@@ -100,7 +102,7 @@ function removeRawBlocks(value, tags) {
     if (closeEnd < 0) break;
     cursor = closeEnd + 1;
   }
-  return out;
+  return parts.join('');
 }
 
 function extractCss(html) {
@@ -152,7 +154,11 @@ function checkEmojiBullets(html) {
     const inner = boundedTagInner(source, lower, tag, bodyStart);
     if (inner === null) continue;
     const text = stripTags(inner).trim();
-    if (/^\p{Extended_Pictographic}/u.test(text) || /\p{Extended_Pictographic}$/u.test(text)) {
+    // ASCII 빠른 경로: 경계 문자가 ASCII면 픽토그램일 수 없다 → unicode 속성 정규식을
+    // 건너뛴다. \p{Extended_Pictographic} 정규식을 수만 번 돌리면 후속 문자열 연산이
+    // V8에서 ~1500x 느려지는 디옵트 병리가 있어, 대량 요소 페이지에서 audit이 행 걸렸다.
+    if ((text.charCodeAt(0) >= 0x80 && /^\p{Extended_Pictographic}/u.test(text))
+      || (text.charCodeAt(text.length - 1) >= 0x80 && /\p{Extended_Pictographic}$/u.test(text))) {
       return { pass: false, evidence: `<${tag}> "${text.slice(0, 40)}"` };
     }
   }
@@ -241,12 +247,12 @@ function walkCss(css, guarded, out, depth = 0) {
     const open = css.indexOf('{', i);
     if (open < 0) break;
     const prelude = css.slice(i, open).trim();
-    let depth = 1;
+    let braceDepth = 1; // 중괄호 매칭 카운터 — 재귀 깊이 파라미터 depth를 가리면 안 된다(가드 무력화 버그)
     let j = open + 1;
-    while (j < n && depth > 0) {
+    while (j < n && braceDepth > 0) {
       const c = css[j];
-      if (c === '{') depth += 1;
-      else if (c === '}') depth -= 1;
+      if (c === '{') braceDepth += 1;
+      else if (c === '}') braceDepth -= 1;
       j += 1;
     }
     const block = css.slice(open + 1, j - 1);
@@ -754,6 +760,7 @@ function collectWarnings(html, rules, vars) {
   const FONT_HOST = /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net|p\.typekit\.net|use\.fontawesome\.com|fonts\.bunny\.net|fonts\.cdnfonts\.com/i;
   let webfontUrl = null;
   // 'font'는 경로 세그먼트(/font, /fonts.)로만 매칭해 과매칭(임의 'font' 부분문자열)을 줄인다.
+ 
   const hostHit = String(html).match(new RegExp(`https?://[^"')\\s]*(?:(?:${FONT_HOST.source})|/fonts?[/.])[^"')\\s]*`, 'i'));
   if (hostHit) webfontUrl = hostHit[0];
   if (!webfontUrl) {
@@ -764,7 +771,9 @@ function collectWarnings(html, rules, vars) {
     warnings.push({ name: 'webfont-cdn-dependency', lane: 'static', evidence: `원격 CDN 폰트 의존: ${webfontUrl.slice(0, 56)} — 자가호스팅/인라인 권장(오프라인·차단 시 폴백)` });
   }
   // b1 — reduced-motion 미가드 모션 (WARN, MO2/DE3 교차참조).
+ 
   const motion = checkReducedMotionGuard(html);
+ 
   if (motion) {
     warnings.push({ name: 'motion-not-reduced-motion-guarded', lane: 'static', evidence: `${motion.selector} { ${motion.prop}: ${motion.value.slice(0, 32)} } — @media (prefers-reduced-motion: no-preference) 밖 모션 (MO2 가드 권장)` });
   }

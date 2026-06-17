@@ -30,8 +30,10 @@ export function stripActiveContent(html) {
     .replace(/<meta\b[^>]*\bhttp-equiv\s*=\s*(["']?)refresh\1[^>]*>/gi, '')
     .replace(/<link\b[^>]*>/gi, (tag) => (isRemoteHref(getAttr(tag, 'href')) ? '' : tag))
     .replace(/<(img|source)\b[^>]*>/gi, (tag) => sanitizeMediaTag(tag))
-    // 인라인 핸들러: 공백뿐 아니라 슬래시 구분자(<svg/onload=>)도 잡는다.
-    .replace(/[\s/]on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ' ')
+    // 인라인 핸들러는 공백 구분만 제거한다. [\s/]로 넓히면 URL 경로/텍스트의 `/on…=`
+    // (예: href="/online=1")를 잘못 잘라먹어 정상 콘텐츠를 망가뜨린다(런타임은 CSP가
+    // script-src 'none'으로 슬래시 구분 핸들러까지 막으므로 정규식 확장의 이득이 없다).
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ' ')
     .replace(/\b(href|src|action|formaction|data)\s*=\s*(["']?)\s*javascript:[^"'\s>]*\2/gi, '$1=$2#$2');
 }
 
@@ -119,17 +121,29 @@ function sanitizeMediaTag(tag) {
   });
 }
 
+// 원격/javascript: url(...)을 단일 전방 스캔으로 무력화한다 — 정규식 백트래킹이 없어
+// 닫는 ')' 없는 url(https://… 반복(unquoted)에서도 선형이다(이전 정규식은 그 형태에서
+// 여전히 O(n²)였고, 내부 공백이 있는 url은 놓쳤다). 따옴표 유무·내부 공백 모두 처리.
+function neutralizeRemoteUrls(css) {
+  const lower = css.toLowerCase();
+  let out = '';
+  let i = 0;
+  while (i < css.length) {
+    const at = lower.indexOf('url(', i);
+    if (at < 0) { out += css.slice(i); break; }
+    out += css.slice(i, at);
+    const close = css.indexOf(')', at + 4);
+    if (close < 0) { out += css.slice(at); break; } // 미완 url( — 그대로 둠(CSP가 차단)
+    const inner = css.slice(at + 4, close).trim().replace(/^['"]|['"]$/g, '').trim();
+    out += /^(?:https?:)?\/\//i.test(inner) || /^javascript:/i.test(inner) ? 'url("#")' : css.slice(at, close + 1);
+    i = close + 1;
+  }
+  return out;
+}
+
 function sanitizeStyleTag(tag) {
   return tag.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/i, (_, open, css, close) => {
-    const sanitized = css
-      .replace(/@import\b[^;]{0,4096};/gi, '')
-      // 원격 url(...) 무력화. backref(\1) + lazy [^)]+? 조합이 닫는 따옴표 없는
-      // url("https://… 반복에서 O(n²) ReDoS(preview 행)를 냈다 — 구분자로 끝나는
-      // bounded 토큰만 매칭해 선형으로 바꾼다.
-      .replace(/url\(\s*["']?(?:https?:\/\/|\/\/)[^)"'\s]+["']?\s*\)/gi, 'url("#")')
-      // 방어 심화(런타임은 CSP가 차단): 실행 가능 CSS 벡터 제거.
-      .replace(/url\(\s*["']?\s*javascript:[^)]{0,4096}\)/gi, 'url("#")')
-      .replace(/expression\s*\(/gi, 'none(');
+    const sanitized = neutralizeRemoteUrls(css.replace(/@import\b[^;]{0,4096};/gi, ''));
     return `${open}${sanitized}${close}`;
   });
 }

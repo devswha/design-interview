@@ -22,16 +22,28 @@ function rawTextTagAt(lower, lt) {
 export function stripTags(html) {
   const value = String(html);
   const lower = value.toLowerCase();
-  let out = '';
+  // 결과를 배열+join으로 모은다(ConsString `+=` 금지). stripTags가 flat 문자열과 cons
+  // 문자열을 번갈아 받으면 V8가 메가모픽으로 디옵트돼 대형 입력에서 ~1500x 느려진다 —
+  // 평탄 출력을 보장해 호출자(removeRawBlocks 등)와의 다형성을 없앤다.
+  const parts = [];
   let cursor = 0;
 
   while (cursor < value.length) {
     const lt = value.indexOf('<', cursor);
     if (lt < 0) {
-      out += value.slice(cursor);
+      parts.push(value.slice(cursor));
       break;
     }
-    out += value.slice(cursor, lt) + ' ';
+    // '<'가 태그 시작이 아니면(다음 글자가 letter//!? 가 아님, 예: "가격 < $50") 리터럴 텍스트다.
+    // 이걸 태그로 보고 다음 '>'까지 건너뛰면, 뒤따르는 <script>의 '>'를 삼켜 스크립트
+    // 블록 감지가 어긋나고 코드가 텍스트로 새어 T2 오탐을 낸다(브라우저도 이런 '<'는 텍스트로 취급).
+    const nextCh = value[lt + 1] ?? '';
+    if (!/[a-zA-Z/!?]/.test(nextCh)) {
+      parts.push(value.slice(cursor, lt + 1));
+      cursor = lt + 1;
+      continue;
+    }
+    parts.push(value.slice(cursor, lt), ' ');
 
     const rawTag = rawTextTagAt(lower, lt);
     if (rawTag) {
@@ -46,12 +58,12 @@ export function stripTags(html) {
       const gt = value.indexOf('>', lt);
       if (gt < 0) {
         // 더는 닫는 '>'가 없음 → 이 '<'와 그 뒤는 태그가 아니라 텍스트 → 보존.
-        out += value.slice(lt);
+        parts.push(value.slice(lt));
         break;
       }
       cursor = gt + 1;
     }
   }
 
-  return out;
+  return parts.join('');
 }

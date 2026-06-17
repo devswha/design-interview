@@ -56,12 +56,18 @@ async function readInput(path) {
     if (inputStat.isDirectory()) fail(`cannot read ${path}: is a directory`);
     // 일반 파일 외 FIFO/파이프/프로세스 치환(/dev/stdin, /proc/self/fd/N)도 허용한다 —
     // 이전의 `!isFile()` 차단이 stdin 파이프·process substitution을 깨뜨렸다(회귀).
-    // writer 없는 FIFO가 무한정 막지 않도록 읽기에 30s 타임아웃(URL 경로와 대칭)을 건다.
-    const data = await readFile(resolvedPath, { encoding: 'utf8', signal: AbortSignal.timeout(READ_TIMEOUT_MS) });
+    // writer 없는 FIFO는 open()이 libuv 스레드풀에서 묶여 AbortSignal로 깨지지 않는다 →
+    // 별도 하드 타임아웃 race로 프로세스를 깔끔히 종료시켜 무한 행을 막는다(unref로 성공 경로 방해 없음).
+    const data = await Promise.race([
+      readFile(resolvedPath, { encoding: 'utf8', signal: AbortSignal.timeout(READ_TIMEOUT_MS) }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(Object.assign(new Error('read timed out'), { code: 'ERR_READ_TIMEOUT' })), READ_TIMEOUT_MS + 500).unref();
+      }),
+    ]);
     // 처리 단계(audit/intake) 보호용 방어 캡 — 과대 입력을 자른다.
     return data.length > MAX_INPUT_CHARS ? data.slice(0, MAX_INPUT_CHARS) : data;
   } catch (err) {
-    if (err.name === 'AbortError' || err.code === 'ABORT_ERR') fail(`cannot read ${path}: read timed out (${READ_TIMEOUT_MS}ms)`);
+    if (err.name === 'AbortError' || err.code === 'ABORT_ERR' || err.code === 'ERR_READ_TIMEOUT') fail(`cannot read ${path}: read timed out (${READ_TIMEOUT_MS}ms)`);
     if (err.code === 'ENOENT') fail(`cannot read ${path}: no such file`);
     if (err.code === 'EISDIR') fail(`cannot read ${path}: is a directory`);
     fail(`cannot read ${path}: ${err.message}`);
