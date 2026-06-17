@@ -95,14 +95,20 @@ test('preview CSP blocks remote style, image, and font subresources', () => {
   assert.doesNotMatch(csp, /(?:style-src|img-src|font-src)[^;]*\*/);
 });
 
-test('chrome visibility rules are important against audited CSS', () => {
+test('chrome visibility rules outrank audited CSS by #dsiv-root scope + source order', () => {
   const html = `<!doctype html><html><head>
-    <style>.dsiv-bar{display:none !important}.dsiv-pane{display:block !important}</style>
+    <style>.dsiv-bar{display:none !important}body .dsiv-pane{display:block !important}</style>
     </head><body><h1>x</h1></body></html>`;
   const out = buildPreviewHtml({ builtHtml: html });
-  assert.match(out, /\.dsiv-pane\{display:none!important\}/);
-  assert.match(out, /#dsiv-built:checked~\.dsiv-built,#dsiv-original:checked~\.dsiv-original\{display:block!important\}/);
-  assert.match(out, /#dsiv-both:checked~\.dsiv-pane\{display:block!important\}/);
+  // 크롬은 #dsiv-root로 스코프(특이도 ↑) + !important.
+  assert.match(out, /#dsiv-root \.dsiv-pane\{display:none!important\}/);
+  assert.match(out, /#dsiv-root #dsiv-built:checked~\.dsiv-built,#dsiv-root #dsiv-original:checked~\.dsiv-original\{display:block!important\}/);
+  assert.match(out, /#dsiv-root #dsiv-both:checked~\.dsiv-pane\{display:block!important\}/);
+  // 크롬·토글·패널은 #dsiv-root 안에 있어 스코프가 실제로 매칭된다.
+  assert.match(out, /<div id="dsiv-root">/);
+  // CHROME_CSS는 수집된 산출물 스타일보다 뒤에 와야 동률 !important도 크롬이 이긴다.
+  assert.ok(out.indexOf('#dsiv-root .dsiv-bar{position') > out.indexOf('.dsiv-bar{display:none'),
+    'chrome CSS must be emitted after audited styles');
 });
 
 test('stripActiveContent handles unclosed script tags', () => {
