@@ -9,11 +9,20 @@ import { readFile, writeFile, stat, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { buildPreviewHtml } from './preview.js';
 import { auditHtml, formatAuditReport, combineAudits } from './audit.js';
-const USER_FS_ERROR_CODES = new Set(['ENOENT', 'EISDIR', 'EACCES', 'ENOTDIR']);
+// 사용자가 준 경로(--out 등)에서 나오는 fs 입력 오류 → exit 2. 좁은 화이트리스트가
+// ENAMETOOLONG/EPERM/EROFS/ELOOP를 놓쳐 입력오류를 실패(exit 1)로 잘못 분류하던 것을 넓힌다.
+// (crawl.js의 동일 집합과 의도적으로 같은 값을 유지한다.)
+const USER_FS_ERROR_CODES = new Set([
+  'ENOENT', 'EISDIR', 'EACCES', 'ENOTDIR', 'ENAMETOOLONG', 'EPERM', 'EROFS', 'ELOOP',
+]);
 
+const READ_TIMEOUT_MS = 30000;
+const MAX_INPUT_CHARS = 5 * 1024 * 1024;
+
+// 예기치 못한 내부 예외는 입력 오류(exit 2)가 아니라 실패다 → exit 1. 스택트레이스는 내지 않는다.
 function backstop(err) {
   console.error(err?.message ?? String(err));
-  process.exit(2);
+  process.exit(1);
 }
 
 process.on('unhandledRejection', backstop);
@@ -45,9 +54,14 @@ async function readInput(path) {
   try {
     const inputStat = await stat(resolvedPath);
     if (inputStat.isDirectory()) fail(`cannot read ${path}: is a directory`);
-    if (!inputStat.isFile()) fail(`cannot read ${path}: not a regular file`);
-    return await readFile(resolvedPath, 'utf8');
+    // 일반 파일 외 FIFO/파이프/프로세스 치환(/dev/stdin, /proc/self/fd/N)도 허용한다 —
+    // 이전의 `!isFile()` 차단이 stdin 파이프·process substitution을 깨뜨렸다(회귀).
+    // writer 없는 FIFO가 무한정 막지 않도록 읽기에 30s 타임아웃(URL 경로와 대칭)을 건다.
+    const data = await readFile(resolvedPath, { encoding: 'utf8', signal: AbortSignal.timeout(READ_TIMEOUT_MS) });
+    // 처리 단계(audit/intake) 보호용 방어 캡 — 과대 입력을 자른다.
+    return data.length > MAX_INPUT_CHARS ? data.slice(0, MAX_INPUT_CHARS) : data;
   } catch (err) {
+    if (err.name === 'AbortError' || err.code === 'ABORT_ERR') fail(`cannot read ${path}: read timed out (${READ_TIMEOUT_MS}ms)`);
     if (err.code === 'ENOENT') fail(`cannot read ${path}: no such file`);
     if (err.code === 'EISDIR') fail(`cannot read ${path}: is a directory`);
     fail(`cannot read ${path}: ${err.message}`);
@@ -120,7 +134,7 @@ if (cmd === 'assets') {
     if (rest[i] === '--json') continue;
     else if (rest[i] === '--concept-sheet') {
       conceptSheetPath = rest[++i];
-      if (conceptSheetPath === undefined) fail('--concept-sheet requires a path', 2);
+      if (conceptSheetPath === undefined || conceptSheetPath.startsWith('--')) fail('--concept-sheet requires a path', 2);
     }
     else positional.push(rest[i]);
   }
@@ -158,10 +172,10 @@ if (cmd === 'crawl') {
     if (rest[i] === '--json') continue;
     else if (rest[i] === '--out') {
       outDir = rest[++i];
-      if (outDir === undefined) fail('--out requires a path', 2);
+      if (outDir === undefined || outDir.startsWith('--')) fail('--out requires a path', 2);
     } else if (rest[i] === '--name') {
       name = rest[++i];
-      if (name === undefined) fail('--name requires a value', 2);
+      if (name === undefined || name.startsWith('--')) fail('--name requires a value', 2);
     } else positional.push(rest[i]);
   }
   const url = positional[0];
@@ -184,10 +198,10 @@ const args = { _: [] };
 for (let i = 0; i < rest.length; i++) {
   if (rest[i] === '--against') {
     args.against = rest[++i];
-    if (args.against === undefined) fail('--against requires a path', 2);
+    if (args.against === undefined || args.against.startsWith('--')) fail('--against requires a path', 2);
   } else if (rest[i] === '--out') {
     args.out = rest[++i];
-    if (args.out === undefined) fail('--out requires a path', 2);
+    if (args.out === undefined || args.out.startsWith('--')) fail('--out requires a path', 2);
   } else args._.push(rest[i]);
 }
 if (args._.length !== 1) usage();

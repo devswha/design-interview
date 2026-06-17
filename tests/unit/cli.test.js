@@ -64,7 +64,7 @@ test('shot --visual without file: usage, exit 2', async () => {
   assert.ok(!r.stderr.includes('node:internal'));
 });
 
-test('audit on FIFO path: rejects special file without hanging', async (t) => {
+test('audit on a pipe with a writer reads content (stdin/process-substitution path)', async (t) => {
   await withTempDir(async (dir) => {
     const fifo = join(dir, 'input.fifo');
     try {
@@ -74,20 +74,26 @@ test('audit on FIFO path: rejects special file without hanging', async (t) => {
       return;
     }
 
+    // 백그라운드 writer가 FIFO에 HTML을 흘려보낸다 → audit이 일반 파이프처럼 읽어야 한다.
+    // R3 회귀 가드: 이전 `!isFile()` 차단이 stdin·process substitution을 깨뜨렸다.
+    const html = '<html><body><h1>hi</h1><p>clean honest copy here</p></body></html>';
+    const writer = execFileAsync('sh', ['-c', `printf '%s' "$0" > "$1"`, html, fifo]);
+
     let r;
     try {
       const { stdout, stderr } = await execFileAsync(process.execPath, [CLI, 'audit', fifo], {
         cwd: ROOT,
-        timeout: 1000,
+        timeout: 8000,
       });
       r = { code: 0, stdout, stderr };
     } catch (err) {
       r = { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };
     }
+    await writer.catch(() => {});
 
-    assert.equal(r.code, 2);
-    assert.match(r.stderr, /not a regular file/);
-    assert.ok(!r.stderr.includes('node:internal'));
+    assert.ok(!r.stderr.includes('not a regular file'), 'a pipe must not be rejected as a special file');
+    assert.notEqual(r.code, 2, 'reading a pipe-with-writer is not an input error');
+    assert.ok(!r.stderr.includes('node:internal'), 'no stack trace');
   });
 });
 

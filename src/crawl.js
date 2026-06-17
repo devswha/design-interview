@@ -9,7 +9,11 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join, basename, extname } from 'node:path';
 import { fetchBinary, looksLikeUrl } from './intake.js';
-const USER_FS_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'ENOTDIR', 'EISDIR']);
+// 사용자가 준 --out/--name 목적지에서 나오는 fs 입력 오류 → userError(exit 2).
+// cli.js의 동일 집합과 의도적으로 같은 값. ENAMETOOLONG/EPERM/EROFS/ELOOP 포함.
+const USER_FS_ERROR_CODES = new Set([
+  'ENOENT', 'EACCES', 'ENOTDIR', 'EISDIR', 'ENAMETOOLONG', 'EPERM', 'EROFS', 'ELOOP',
+]);
 
 function tagUserFsError(err) {
   if (USER_FS_ERROR_CODES.has(err.code)) Object.assign(err, { userError: true });
