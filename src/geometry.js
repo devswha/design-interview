@@ -400,10 +400,10 @@ function pageAnalyzer() {
           break;
         }
       }
-      if (warnings.length === 0) {
-        const [fam] = declared;
-        warnings.push({ name: 'webfont-not-applied', lane: 'visual', evidence: `선언 폰트 "${fam}" 미로드 — fallback으로 렌더·측정됨` });
-      }
+      // 무조건 fallback 경고는 두지 않는다. 위 루프가 정답을 낸다: 선언 family가
+      // 적용됐는데 document.fonts.check가 false일 때만 경고한다. JS 비활성에서도
+      // check()는 동작하므로 루프의 '침묵'은 '미상'이 아니라 '정상 로드'를 뜻한다
+      // (이전의 warnings.length===0 fallback은 정상 로드 페이지마다 거짓 경고를 냈다).
     }
   } catch (e) { /* FontFaceSet 미지원/접근 불가 — 조용히 skip */ }
 
