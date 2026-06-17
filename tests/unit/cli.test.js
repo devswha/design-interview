@@ -1,9 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { runCli } from '../helpers/index.js';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { join } from 'node:path';
+import { CLI, ROOT, runCli, withTempDir } from '../helpers/index.js';
+
 
 // CLI 에러 규율 회귀 테스트 (G001 리뷰 블로커): 사용자 입력 오류는
 // 스택트레이스 없이 사용자용 메시지 + exit 2.
+
+const execFileAsync = promisify(execFile);
+
 
 test('audit on missing file: clean error, exit 2, no stack trace', async () => {
   const r = await runCli('audit', 'does-not-exist.html');
@@ -31,6 +38,57 @@ test('preview on directory --against: clean EISDIR error, exit 2', async () => {
   assert.equal(r.code, 2);
   assert.match(r.stderr, /cannot read core: is a directory/);
   assert.ok(!r.stderr.includes('node:internal'));
+});
+
+test('preview with directory --out: clean write error, exit 2', async () => {
+  await withTempDir(async (dir) => {
+    const r = await runCli('preview', 'examples/slop-source.html', '--out', dir);
+    assert.equal(r.code, 2);
+    assert.match(r.stderr, /cannot write .*: .*is a directory|cannot write .*: EISDIR/);
+    assert.ok(!r.stderr.includes('node:internal'), 'no stack trace');
+  });
+});
+
+test('preview missing --out value: clean usage error, exit 2', async () => {
+  const r = await runCli('preview', 'examples/slop-source.html', '--out');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /--out requires a path/);
+  assert.ok(!r.stderr.includes('node:internal'));
+});
+
+test('shot --visual without file: usage, exit 2', async () => {
+  const r = await runCli('shot', '--visual');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /usage: design-interview/);
+  assert.ok(!r.stderr.includes('ERR_FILE_NOT_FOUND'));
+  assert.ok(!r.stderr.includes('node:internal'));
+});
+
+test('audit on FIFO path: rejects special file without hanging', async (t) => {
+  await withTempDir(async (dir) => {
+    const fifo = join(dir, 'input.fifo');
+    try {
+      await execFileAsync('mkfifo', [fifo]);
+    } catch {
+      t.skip('mkfifo unavailable');
+      return;
+    }
+
+    let r;
+    try {
+      const { stdout, stderr } = await execFileAsync(process.execPath, [CLI, 'audit', fifo], {
+        cwd: ROOT,
+        timeout: 1000,
+      });
+      r = { code: 0, stdout, stderr };
+    } catch (err) {
+      r = { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };
+    }
+
+    assert.equal(r.code, 2);
+    assert.match(r.stderr, /not a regular file/);
+    assert.ok(!r.stderr.includes('node:internal'));
+  });
 });
 
 test('intake ftp:// and file:// rejected by URL guard, not file path', async () => {

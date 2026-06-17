@@ -9,6 +9,13 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join, basename, extname } from 'node:path';
 import { fetchBinary, looksLikeUrl } from './intake.js';
+const USER_FS_ERROR_CODES = new Set(['ENOENT', 'EACCES', 'ENOTDIR', 'EISDIR']);
+
+function tagUserFsError(err) {
+  if (USER_FS_ERROR_CODES.has(err.code)) Object.assign(err, { userError: true });
+  return err;
+}
+
 
 // URL 또는 --name에서 저장 파일명을 정한다. 확장자 없으면 명시 요구(에셋 종류 판별 위해).
 export function deriveFilename(url, name) {
@@ -39,20 +46,24 @@ export function deriveFilename(url, name) {
 // 수집된 Buffer를 outDir에 저장하고 provenance sidecar를 작성한다(네트워크 없음 — 테스트 가능).
 export async function saveCrawledAsset(buffer, { url, outDir, name } = {}) {
   const filename = deriveFilename(url, name);
-  await mkdir(outDir, { recursive: true });
-  const filePath = join(outDir, filename);
-  await writeFile(filePath, buffer);
-  const sidecarPath = `${filePath}.license.txt`;
-  const sidecar = [
-    `asset: ${filename}`,
-    `source: crawled:${url}`,
-    `license: REVIEW-REQUIRED (수집 출처 라이선스 수동 확인 필요)`,
-    `collected: ${new Date().toISOString().slice(0, 10)}`,
-    `usage: consent-gated 크롤 결과 — 명목적/라이선스 근거 확인 후 사용. 실재 거짓주장(S2) 금지.`,
-    '',
-  ].join('\n');
-  await writeFile(sidecarPath, sidecar, 'utf8');
-  return { filePath, sidecarPath, bytes: buffer.length };
+  try {
+    await mkdir(outDir, { recursive: true });
+    const filePath = join(outDir, filename);
+    await writeFile(filePath, buffer);
+    const sidecarPath = `${filePath}.license.txt`;
+    const sidecar = [
+      `asset: ${filename}`,
+      `source: crawled:${url}`,
+      `license: REVIEW-REQUIRED (수집 출처 라이선스 수동 확인 필요)`,
+      `collected: ${new Date().toISOString().slice(0, 10)}`,
+      `usage: consent-gated 크롤 결과 — 명목적/라이선스 근거 확인 후 사용. 실재 거짓주장(S2) 금지.`,
+      '',
+    ].join('\n');
+    await writeFile(sidecarPath, sidecar, 'utf8');
+    return { filePath, sidecarPath, bytes: buffer.length };
+  } catch (err) {
+    throw tagUserFsError(err);
+  }
 }
 
 // URL → 수집 → 저장. fetchImpl은 테스트 주입용(기본 fetchBinary, SSRF 가드 포함).

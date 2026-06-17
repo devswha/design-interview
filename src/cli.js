@@ -9,6 +9,16 @@ import { readFile, writeFile, stat, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { buildPreviewHtml } from './preview.js';
 import { auditHtml, formatAuditReport, combineAudits } from './audit.js';
+const USER_FS_ERROR_CODES = new Set(['ENOENT', 'EISDIR', 'EACCES', 'ENOTDIR']);
+
+function backstop(err) {
+  console.error(err?.message ?? String(err));
+  process.exit(2);
+}
+
+process.on('unhandledRejection', backstop);
+process.on('uncaughtException', backstop);
+
 
 function usage() {
   console.error(
@@ -31,8 +41,12 @@ function fail(message, code = 2) {
 }
 
 async function readInput(path) {
+  const resolvedPath = resolve(path);
   try {
-    return await readFile(resolve(path), 'utf8');
+    const inputStat = await stat(resolvedPath);
+    if (inputStat.isDirectory()) fail(`cannot read ${path}: is a directory`);
+    if (!inputStat.isFile()) fail(`cannot read ${path}: not a regular file`);
+    return await readFile(resolvedPath, 'utf8');
   } catch (err) {
     if (err.code === 'ENOENT') fail(`cannot read ${path}: no such file`);
     if (err.code === 'EISDIR') fail(`cannot read ${path}: is a directory`);
@@ -87,8 +101,10 @@ if (cmd === 'audit') {
 
 if (cmd === 'shot') {
   const { captureFile } = await import('./screenshot.js');
+  const files = rest.filter((a) => !a.startsWith('-'));
+  if (!files[0]) usage();
   try {
-    const shots = await captureFile(rest[0]);
+    const shots = await captureFile(files[0]);
     for (const s of shots) console.log(`${s.viewport}\t${s.path}`);
     process.exit(0);
   } catch (err) {
@@ -166,17 +182,26 @@ if (cmd === 'crawl') {
 
 const args = { _: [] };
 for (let i = 0; i < rest.length; i++) {
-  if (rest[i] === '--against') args.against = rest[++i];
-  else if (rest[i] === '--out') args.out = rest[++i];
-  else args._.push(rest[i]);
+  if (rest[i] === '--against') {
+    args.against = rest[++i];
+    if (args.against === undefined) fail('--against requires a path', 2);
+  } else if (rest[i] === '--out') {
+    args.out = rest[++i];
+    if (args.out === undefined) fail('--out requires a path', 2);
+  } else args._.push(rest[i]);
 }
 if (args._.length !== 1) usage();
 
 const builtPath = resolve(args._[0]);
 const builtHtml = await readInput(builtPath);
 const originalHtml = args.against ? await readInput(args.against) : null;
-
-const preview = buildPreviewHtml({ builtHtml, originalHtml, title: `preview — ${args._[0]}` });
 const outPath = resolve(args.out ?? builtPath.replace(/\.html?$/i, '') + '.preview.html');
-await writeFile(outPath, preview, 'utf8');
+
+try {
+  const preview = buildPreviewHtml({ builtHtml, originalHtml, title: `preview — ${args._[0]}` });
+  await writeFile(outPath, preview, 'utf8');
+} catch (err) {
+  if (USER_FS_ERROR_CODES.has(err.code)) fail(`cannot write ${outPath}: ${err.message}`, 2);
+  fail(err.message, 2);
+}
 console.log(outPath);
