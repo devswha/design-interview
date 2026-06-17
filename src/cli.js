@@ -5,7 +5,8 @@
 // 에러 규율: 사용자 입력 문제(없는 파일 등)는 스택트레이스 없이 메시지 + exit 2,
 // 감사 fail은 exit 1, 시각 레인 폴백은 puppeteer 미설치(ERR_PUPPETEER_MISSING)만.
 
-import { readFile, writeFile, stat, readdir } from 'node:fs/promises';
+import { readFile, writeFile, stat, readdir, open } from 'node:fs/promises';
+import { constants as FS } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildPreviewHtml } from './preview.js';
 import { auditHtml, formatAuditReport, combineAudits } from './audit.js';
@@ -49,25 +50,47 @@ function fail(message, code = 2) {
   process.exit(code);
 }
 
+// 비-일반 파일(FIFO/파이프/프로세스 치환)을 O_NONBLOCK으로 읽는다. 일반 readFile은
+// FIFO open()이 libuv 스레드풀에서 writer를 기다리며 묶여 AbortSignal·process.exit로도
+// 못 깨는다(무한 행). O_NONBLOCK open은 writer 없이도 즉시 반환하므로 스트림 타임아웃이
+// 실제로 발동·종료할 수 있다. writer 있는 stdin/process substitution은 그대로 읽힌다.
+function readNonRegular(resolvedPath) {
+  return open(resolvedPath, FS.O_RDONLY | FS.O_NONBLOCK).then((fh) => new Promise((resolvePromise, reject) => {
+    const stream = fh.createReadStream({ encoding: 'utf8' });
+    let out = '';
+    let settled = false;
+    const finish = (fn, arg) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      stream.destroy();
+      fh.close().catch(() => {});
+      fn(arg);
+    };
+    const timer = setTimeout(
+      () => finish(reject, Object.assign(new Error('read timed out'), { code: 'ERR_READ_TIMEOUT' })),
+      READ_TIMEOUT_MS,
+    );
+    stream.on('data', (chunk) => { out += chunk; if (out.length >= MAX_INPUT_CHARS) finish(resolvePromise, out.slice(0, MAX_INPUT_CHARS)); });
+    stream.on('end', () => finish(resolvePromise, out));
+    stream.on('error', (err) => finish(reject, err));
+  }));
+}
+
 async function readInput(path) {
   const resolvedPath = resolve(path);
   try {
     const inputStat = await stat(resolvedPath);
     if (inputStat.isDirectory()) fail(`cannot read ${path}: is a directory`);
-    // 일반 파일 외 FIFO/파이프/프로세스 치환(/dev/stdin, /proc/self/fd/N)도 허용한다 —
-    // 이전의 `!isFile()` 차단이 stdin 파이프·process substitution을 깨뜨렸다(회귀).
-    // writer 없는 FIFO는 open()이 libuv 스레드풀에서 묶여 AbortSignal로 깨지지 않는다 →
-    // 별도 하드 타임아웃 race로 프로세스를 깔끔히 종료시켜 무한 행을 막는다(unref로 성공 경로 방해 없음).
-    const data = await Promise.race([
-      readFile(resolvedPath, { encoding: 'utf8', signal: AbortSignal.timeout(READ_TIMEOUT_MS) }),
-      new Promise((_, reject) => {
-        setTimeout(() => reject(Object.assign(new Error('read timed out'), { code: 'ERR_READ_TIMEOUT' })), READ_TIMEOUT_MS + 500).unref();
-      }),
-    ]);
+    // 일반 파일은 그대로 읽고, FIFO/파이프/프로세스 치환(/dev/stdin, /proc/self/fd/N)은
+    // O_NONBLOCK 경로로 읽어 writer 없는 FIFO의 무한 행을 타임아웃으로 끊는다.
+    const data = inputStat.isFile()
+      ? await readFile(resolvedPath, 'utf8')
+      : await readNonRegular(resolvedPath);
     // 처리 단계(audit/intake) 보호용 방어 캡 — 과대 입력을 자른다.
     return data.length > MAX_INPUT_CHARS ? data.slice(0, MAX_INPUT_CHARS) : data;
   } catch (err) {
-    if (err.name === 'AbortError' || err.code === 'ABORT_ERR' || err.code === 'ERR_READ_TIMEOUT') fail(`cannot read ${path}: read timed out (${READ_TIMEOUT_MS}ms)`);
+    if (err.code === 'ERR_READ_TIMEOUT') fail(`cannot read ${path}: read timed out (${READ_TIMEOUT_MS}ms)`);
     if (err.code === 'ENOENT') fail(`cannot read ${path}: no such file`);
     if (err.code === 'EISDIR') fail(`cannot read ${path}: is a directory`);
     fail(`cannot read ${path}: ${err.message}`);

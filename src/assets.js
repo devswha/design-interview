@@ -65,9 +65,10 @@ export function classifyKind(relPath) {
 
 /** 파일 basename(확장자 제외)이 로고형인지 판단 */
 function isLogoLike(noExt) {
-  // 실제 구분자(공백·- _ .)로만 분해 — openai_logo·openai.com·"openai logo"는 잡되,
-  // 모든 비-영숫자로 쪼개 한글 등 본문 속 브랜드명을 고립시켜 오탐하던 것은 막는다.
-  const tokens = noExt.split(/[\s\-_.]+/).filter(Boolean);
+  // 실제 구분자(공백·- _ . ~ 및 에디터가 '-'를 자동치환하는 en/em 대시)로만 분해 —
+  // openai_logo·openai.com·"openai logo"·openai–logo는 잡되, 모든 비-영숫자로 쪼개
+  // 한글 등 본문 속 브랜드명을 고립시켜 오탐하던 것은 막는다.
+  const tokens = noExt.split(/[\s\-_.~–—]+/).filter(Boolean);
   if (tokens.length === 0) return false;
   // -logo/-mark/-badge/-icon 등 로고 마커가 끝 토큰이면 로고형(브랜드 무관).
   if (['logo', 'mark', 'badge', 'icon'].includes(tokens[tokens.length - 1])) return true;
