@@ -1,0 +1,23 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "design-interview",
+  "version": "0.1.0",
+  "description": "Interview-driven page tailoring. Turns AI-slop source into landing/detail/proposal pages with no AI design tells, concept locked with the user before any build. The root SKILL.md is loaded as the /design-interview skill; deterministic verification lanes ship in src/.",
+  "author": {
+    "name": "devswha",
+    "url": "https://github.com/devswha"
+  },
+  "homepage": "https://github.com/devswha/design-interview",
+  "repository": "https://github.com/devswha/design-interview",
+  "license": "MIT",
+  "keywords": [
+    "design",
+    "landing-page",
+    "ai-slop",
+    "design-interview",
+    "ai-tells",
+    "html",
+    "css",
+    "claude-skill"
+  ]
+}

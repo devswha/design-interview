@@ -55,7 +55,7 @@ Phase 0의 URL 경로를 코드로.
 
 ## M5 — 패키징 / 판매
 
-- [ ] `install.sh` — Claude Code / Codex / Cursor / OpenCode 스킬 설치 (patina install.sh 방식)
+- [x] `install.sh` — Claude Code / Codex / Cursor / OpenCode 스킬 설치 (patina install.sh 방식). `.claude-plugin/{plugin,marketplace}.json`로 `/plugin marketplace add` 경로도 지원. SKILL.md에 cwd-독립 엔진 경로 해석(`$DI`) 규칙 추가 — 세션 어디서든 `src/cli.js`를 찾는다. `.cursor/rules/design-interview.md` + LICENSE(MIT) 동봉.
 - [ ] 버전드 스킬 번들 + CHANGELOG
 - [ ] patina 연동: 설치 감지 시 Phase 5 카피 감사를 `patina --score`로 자동 위임
 - [ ] 데모 자산: before/after GIF, slop score 배지

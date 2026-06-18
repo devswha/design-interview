@@ -4,6 +4,37 @@
 
 AI가 혼자 디자인하지 않는다. 컨셉이 사용자 승인으로 잠기기 전에는 한 줄의 HTML도 생성하지 않는다.
 
+## Install
+
+Claude Code — 플러그인 마켓플레이스 (클론 없이, 권장):
+
+```text
+/plugin marketplace add devswha/design-interview
+/plugin install design-interview@design-interview
+```
+
+Claude Code · Codex CLI · Cursor · OpenCode — 설치 스크립트:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/devswha/design-interview/main/install.sh | bash
+```
+
+설치 후 Claude 세션에서 스킬을 호출한다:
+
+```text
+/design-interview --standard ./slop-draft.md
+/design-interview --quick   https://example.com/landing
+```
+
+비시각 레인(intake/audit/preview/assets/crawl)은 **런타임 의존성 0**이라 클론만으로 동작한다.
+시각 레인(`shot`, `audit --visual` — 풀페이지 스크린샷 + 렌더 기하 텔)은 puppeteer가 필요하다:
+
+```bash
+cd ~/.claude/skills/design-interview && npm install   # 없으면 정적 레인으로 자동 폴백
+```
+
+설치 제어 환경변수: `DI_REF=<tag-or-sha>` (체크아웃 핀), `DI_REPO_URL=<url-or-path>` (소스 repo), `INSTALL_{CLAUDE,CODEX,CURSOR,OPCODE}=true|false`.
+
 ## Workflow
 
 ```
@@ -21,7 +52,7 @@ slop 소스
 스킬로 호출:
 
 ```
-/skill:design-interview --standard ./slop-draft.md
+/design-interview --standard ./slop-draft.md
 ```
 
 인테이크 CLI (Phase 0 — 클레임 동결):

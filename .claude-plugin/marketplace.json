@@ -1,0 +1,28 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "design-interview",
+  "description": "design-interview — interview-driven page tailoring that strips AI design tells, with a deterministic verification engine.",
+  "owner": {
+    "name": "devswha",
+    "url": "https://github.com/devswha"
+  },
+  "plugins": [
+    {
+      "name": "design-interview",
+      "source": "./",
+      "version": "0.1.0",
+      "description": "Take AI-slop source and, through a Socratic design interview, build landing/detail/proposal pages that look human-designed. Concept is locked with the user before any HTML is generated; delivery is gated by a deterministic design-tell audit. Runs the root SKILL.md as the /design-interview skill.",
+      "homepage": "https://github.com/devswha/design-interview",
+      "repository": "https://github.com/devswha/design-interview",
+      "license": "MIT",
+      "keywords": [
+        "design",
+        "landing-page",
+        "ai-slop",
+        "design-interview",
+        "ai-tells",
+        "claude-skill"
+      ]
+    }
+  ]
+}
