@@ -10,6 +10,7 @@
     "tests/fixtures/clean/stationery-design.html": { "expectedBlocking": [], "expectedAdvisory": [], "note": "v5 대비군 — 차단 0·advisory 0" },
     "tests/redteam/svg-attr-color-smuggle.html": { "expectedBlocking": [], "expectedAdvisory": [], "note": "CO1 한계 고정 — SVG fill/stroke 색은 예산 밖(수용된 miss). fp 회귀 가드" },
     "tests/redteam/unclosed-style-gradient.html": { "expectedBlocking": ["C1"], "expectedAdvisory": [] },
-    "tests/redteam/unclosed-script-hype.html": { "expectedBlocking": [], "expectedAdvisory": [] }
+    "tests/redteam/unclosed-script-hype.html": { "expectedBlocking": [], "expectedAdvisory": [] },
+    "tests/redteam/unclosed-li-emoji.html": { "expectedBlocking": ["T1"], "expectedAdvisory": [], "note": "닫지 않은 <li>의 emoji bullet도 T1 차단 — boundedTagInner null-skip 게이트 우회 회귀 가드" }
   }
 }

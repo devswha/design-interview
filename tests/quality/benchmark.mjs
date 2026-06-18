@@ -13,7 +13,17 @@ import { fileURLToPath } from 'node:url';
 import { auditHtml } from '../../src/audit.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const baseline = JSON.parse(await readFile(resolve(root, 'tests/quality/baseline.json'), 'utf8'));
+
+// baseline.json 자체가 없거나(부분 체크아웃/삭제) 깨졌을 때(머지 충돌 등) raw 스택트레이스
+// 대신 깔끔한 진단 + exit 1로 닫는다(fail-closed). 픽스처별 누락은 아래 루프가 따로 처리.
+let baseline;
+try {
+  baseline = JSON.parse(await readFile(resolve(root, 'tests/quality/baseline.json'), 'utf8'));
+} catch (err) {
+  const why = err?.code === 'ENOENT' ? 'missing' : `unreadable/corrupt (${err?.message ?? 'parse error'})`;
+  console.error(`benchmark: tests/quality/baseline.json ${why} — restore or regenerate it`);
+  process.exit(1);
+}
 
 let regressions = 0;
 const rows = [];

@@ -24,10 +24,17 @@ export function stripActiveContent(html) {
     .replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
     .replace(/<script\b[^>]*>/gi, '')
     .replace(/<base\b[^>]*>/gi, '')
+    // iframe srcdoc는 인라인 문서를 통째로 실어 CSP 우회 표면을 만든다 → 속성 제거.
+    .replace(/<iframe\b[^>]*>/gi, (tag) => tag.replace(/[\s/]srcdoc\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ''))
+    // meta http-equiv=refresh (자동 이동/지연 실행) 제거.
+    .replace(/<meta\b[^>]*\bhttp-equiv\s*=\s*(["']?)refresh\1[^>]*>/gi, '')
     .replace(/<link\b[^>]*>/gi, (tag) => (isRemoteHref(getAttr(tag, 'href')) ? '' : tag))
     .replace(/<(img|source)\b[^>]*>/gi, (tag) => sanitizeMediaTag(tag))
-    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/\b(href|src|action|formaction)\s*=\s*(["']?)\s*javascript:[^"'\s>]*\2/gi, '$1=$2#$2');
+    // 인라인 핸들러는 공백 구분만 제거한다. [\s/]로 넓히면 URL 경로/텍스트의 `/on…=`
+    // (예: href="/online=1")를 잘못 잘라먹어 정상 콘텐츠를 망가뜨린다(런타임은 CSP가
+    // script-src 'none'으로 슬래시 구분 핸들러까지 막으므로 정규식 확장의 이득이 없다).
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ' ')
+    .replace(/\b(href|src|action|formaction|data)\s*=\s*(["']?)\s*javascript:[^"'\s>]*\2/gi, '$1=$2#$2');
 }
 
 function extractBody(html) {
@@ -35,15 +42,18 @@ function extractBody(html) {
   return m ? m[1] : html;
 }
 
+// 크롬 셀렉터는 위조 불가한 #dsiv-root로 스코프해 특이도를 (1,1,0)+로 올린다 —
+// 산출물/슬롭 CSS의 `.dsiv-bar{display:none!important}`(0,1,0)나 `body .dsiv-bar`(0,1,1)로는
+// 이길 수 없다. CHROME_CSS는 수집 스타일 뒤에 배치해 동률 !important도 순서로 크롬이 이긴다.
 const CHROME_CSS = `
-.dsiv-bar{position:sticky!important;top:0!important;z-index:99999!important;display:flex!important;gap:16px!important;align-items:center!important;padding:10px 16px!important;background:#1a1a1a!important;color:#eee!important;font:13px/1.4 system-ui,sans-serif!important}
-.dsiv-bar label{cursor:pointer!important;opacity:.7!important}
-.dsiv-bar input:checked+span{opacity:1!important;font-weight:600!important;text-decoration:underline!important}
-.dsiv-pane{display:none!important}
-#dsiv-built:checked~.dsiv-built,#dsiv-original:checked~.dsiv-original{display:block!important}
-#dsiv-both:checked~.dsiv-pane{display:block!important}
-#dsiv-both:checked~.dsiv-original{outline:3px dashed #c0392b;outline-offset:-3px}
-.dsiv-tag{position:sticky!important;top:42px!important;z-index:99998!important;display:block!important;padding:4px 16px!important;background:#333!important;color:#bbb!important;font:11px/1 system-ui,sans-serif!important}
+#dsiv-root .dsiv-bar{position:sticky!important;top:0!important;z-index:99999!important;display:flex!important;gap:16px!important;align-items:center!important;padding:10px 16px!important;background:#1a1a1a!important;color:#eee!important;font:13px/1.4 system-ui,sans-serif!important}
+#dsiv-root .dsiv-bar label{cursor:pointer!important;opacity:.7!important}
+#dsiv-root .dsiv-bar input:checked+span{opacity:1!important;font-weight:600!important;text-decoration:underline!important}
+#dsiv-root .dsiv-pane{display:none!important}
+#dsiv-root #dsiv-built:checked~.dsiv-built,#dsiv-root #dsiv-original:checked~.dsiv-original{display:block!important}
+#dsiv-root #dsiv-both:checked~.dsiv-pane{display:block!important}
+#dsiv-root #dsiv-both:checked~.dsiv-original{outline:3px dashed #c0392b!important;outline-offset:-3px!important}
+#dsiv-root .dsiv-tag{position:sticky!important;top:42px!important;z-index:99998!important;display:block!important;padding:4px 16px!important;background:#333!important;color:#bbb!important;font:11px/1 system-ui,sans-serif!important}
 `.replace(/\n/g, '');
 
 // 빌드 산출물(필수)과 원본 slop(선택)을 받아 검수용 단일 HTML을 만든다.
@@ -72,11 +82,14 @@ export function buildPreviewHtml({ builtHtml, originalHtml = null, title = 'desi
       : '',
   ].join('');
 
+  // 산출물 스타일을 먼저, CHROME_CSS를 그 뒤에 둔다(순서로도 크롬 우선). 크롬·토글·패널은
+  // #dsiv-root로 감싸 크롬 셀렉터의 #dsiv-root 스코프가 실제로 매칭되게 한다.
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">
-<title>${title}</title><style>${CHROME_CSS}</style>
+<title>${title}</title>
 ${collectHeadStyles(built)}${hasOriginal ? collectHeadStyles(original) : ''}
-</head><body>${radios}${bar}${panes}</body></html>`;
+<style>${CHROME_CSS}</style>
+</head><body><div id="dsiv-root">${radios}${bar}${panes}</div></body></html>`;
 }
 
 function getAttr(tag, name) {
@@ -108,11 +121,29 @@ function sanitizeMediaTag(tag) {
   });
 }
 
+// 원격/javascript: url(...)을 단일 전방 스캔으로 무력화한다 — 정규식 백트래킹이 없어
+// 닫는 ')' 없는 url(https://… 반복(unquoted)에서도 선형이다(이전 정규식은 그 형태에서
+// 여전히 O(n²)였고, 내부 공백이 있는 url은 놓쳤다). 따옴표 유무·내부 공백 모두 처리.
+function neutralizeRemoteUrls(css) {
+  const lower = css.toLowerCase();
+  let out = '';
+  let i = 0;
+  while (i < css.length) {
+    const at = lower.indexOf('url(', i);
+    if (at < 0) { out += css.slice(i); break; }
+    out += css.slice(i, at);
+    const close = css.indexOf(')', at + 4);
+    if (close < 0) { out += css.slice(at); break; } // 미완 url( — 그대로 둠(CSP가 차단)
+    const inner = css.slice(at + 4, close).trim().replace(/^['"]|['"]$/g, '').trim();
+    out += /^(?:https?:)?\/\//i.test(inner) || /^javascript:/i.test(inner) ? 'url("#")' : css.slice(at, close + 1);
+    i = close + 1;
+  }
+  return out;
+}
+
 function sanitizeStyleTag(tag) {
   return tag.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/i, (_, open, css, close) => {
-    const sanitized = css
-      .replace(/@import\b[^;]*;/gi, '')
-      .replace(/url\(\s*(["']?)(?:https?:\/\/|\/\/)[^)]+?\1\s*\)/gi, 'url("#")');
+    const sanitized = neutralizeRemoteUrls(css.replace(/@import\b[^;]{0,4096};/gi, ''));
     return `${open}${sanitized}${close}`;
   });
 }

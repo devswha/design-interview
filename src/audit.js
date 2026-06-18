@@ -25,20 +25,84 @@ const HYPE_LEXICON = [
 const HTML_SCAN_LIMIT = 2_000_000;
 const TAG_BODY_LIMIT = 20_000;
 
+// 태그 본문을 돌려준다. 닫는 태그가 없거나 같은 태그가 다시 열려도(HTML5 auto-close:
+// 미닫힌 <li>/<h1>) null이 아니라 그 경계까지의 본문을 캡처한다 — 미닫힌 태그가
+// 차단 텔 T1/T4를 false-negative로 통과시키던(게이트 우회) 구멍을 막는다.
+// 본문은 TAG_BODY_LIMIT로 묶여 길이에 선형.
 function boundedTagInner(source, lower, tag, bodyStart) {
   const searchEnd = Math.min(source.length, bodyStart + TAG_BODY_LIMIT);
   const closeTag = `</${tag}`;
   let pos = bodyStart;
   while (pos < searchEnd) {
     const next = lower.indexOf('<', pos);
-    if (next < 0 || next > searchEnd) return null;
+    if (next < 0 || next >= searchEnd) return source.slice(bodyStart, searchEnd);
     if (lower.startsWith(closeTag, next)) return source.slice(bodyStart, next);
-    if (lower.startsWith(`<${tag}`, next)) return null;
+    if (lower.startsWith(`<${tag}`, next)) return source.slice(bodyStart, next);
     const tagEnd = lower.indexOf('>', next);
-    if (tagEnd < 0 || tagEnd > searchEnd) return null;
+    if (tagEnd < 0 || tagEnd >= searchEnd) return source.slice(bodyStart, next);
     pos = tagEnd + 1;
   }
-  return null;
+  return source.slice(bodyStart, searchEnd);
+}
+
+// flat CSS 규칙(sel{body}, 중첩 @media는 안으로 평탄화) 추출 — 단일 전방 스캔이라
+// 입력 길이에 선형. 기존 /([^{}@]+)\{([^{}]*)\}/g 정규식은 중괄호 없는 본문에서
+// 모든 시작 위치를 백트래킹해 O(n²)였다(400KB <style>에서 audit 행).
+function splitFlatRules(css) {
+  const rules = [];
+  const n = css.length;
+  let i = 0;
+  let selStart = 0;
+  while (i < n) {
+    const c = css[i];
+    if (c === '{') {
+      const sel = css.slice(selStart, i).trim();
+      let k = i + 1;
+      while (k < n && css[k] !== '{' && css[k] !== '}') k += 1;
+      if (k < n && css[k] === '}' && sel && !sel.includes('@')) {
+        rules.push({ selector: sel, body: css.slice(i + 1, k) });
+        i = k + 1;
+      } else {
+        i += 1; // 중첩 컨테이너({)나 미완 — 셀렉터로 쓰지 않고 안으로 진입
+      }
+      selStart = i;
+    } else if (c === '}' || c === '@') {
+      i += 1;
+      selStart = i;
+    } else {
+      i += 1;
+    }
+  }
+  return rules;
+}
+
+// 주어진 태그들의 블록(여는 태그~닫는 태그, 내용 포함)을 제거하고 나머지는 보존한다.
+// 단일 전방 스캔이라 선형 — 미닫힌 <code>/<pre> 등에서 lazy 정규식+역참조가 O(n²)로
+// 행 걸리던 것을 막는다. 닫는 태그가 없으면 그 raw 블록은 EOF까지로 간주해 제거.
+// 결과는 배열+join으로 만든 평탄 문자열이다 — `+=` ConsString을 stripTags에 먹이면
+// stripTags가 flat/cons 다형으로 디옵트돼 대형 입력에서 ~1500x 느려진다(메가모픽).
+function removeRawBlocks(value, tags) {
+  const lower = value.toLowerCase();
+  const parts = [];
+  let cursor = 0;
+  while (cursor < value.length) {
+    const lt = lower.indexOf('<', cursor);
+    if (lt < 0) { parts.push(value.slice(cursor)); break; }
+    let tag = null;
+    for (const t of tags) {
+      if (lower.startsWith(`<${t}`, lt) && /[\s>/]/.test(lower[lt + t.length + 1] ?? '')) { tag = t; break; }
+    }
+    if (!tag) { parts.push(value.slice(cursor, lt + 1)); cursor = lt + 1; continue; }
+    parts.push(value.slice(cursor, lt), ' ');
+    const openEnd = value.indexOf('>', lt);
+    if (openEnd < 0) break;
+    const closeAt = lower.indexOf(`</${tag}`, openEnd + 1);
+    if (closeAt < 0) break; // 미닫힘 → EOF까지 raw 블록으로 제거
+    const closeEnd = value.indexOf('>', closeAt);
+    if (closeEnd < 0) break;
+    cursor = closeEnd + 1;
+  }
+  return parts.join('');
 }
 
 function extractCss(html) {
@@ -90,7 +154,11 @@ function checkEmojiBullets(html) {
     const inner = boundedTagInner(source, lower, tag, bodyStart);
     if (inner === null) continue;
     const text = stripTags(inner).trim();
-    if (/^\p{Extended_Pictographic}/u.test(text) || /\p{Extended_Pictographic}$/u.test(text)) {
+    // ASCII 빠른 경로: 경계 문자가 ASCII면 픽토그램일 수 없다 → unicode 속성 정규식을
+    // 건너뛴다. \p{Extended_Pictographic} 정규식을 수만 번 돌리면 후속 문자열 연산이
+    // V8에서 ~1500x 느려지는 디옵트 병리가 있어, 대량 요소 페이지에서 audit이 행 걸렸다.
+    if ((text.charCodeAt(0) >= 0x80 && /^\p{Extended_Pictographic}/u.test(text))
+      || (text.charCodeAt(text.length - 1) >= 0x80 && /\p{Extended_Pictographic}$/u.test(text))) {
       return { pass: false, evidence: `<${tag}> "${text.slice(0, 40)}"` };
     }
   }
@@ -149,8 +217,8 @@ function extractCssRules(html) {
     const clean = css
       .replace(/\/\*[\s\S]*?\*\//g, ' ')
       .replace(/@(font-face|page|property|counter-style)[^{}]*\{[^{}]*\}/gi, ' ');
-    for (const [, sel, body] of clean.matchAll(/([^{}@]+)\{([^{}]*)\}/g)) {
-      rules.push({ selector: sel.trim(), body });
+    for (const { selector, body } of splitFlatRules(clean)) {
+      rules.push({ selector, body });
     }
   }
   for (const m of String(html).matchAll(/<([a-z][a-z0-9-]*)\b[^>]*?\sstyle\s*=\s*("([^"]*)"|'([^']*)')/gi)) {
@@ -171,19 +239,20 @@ function extractRuleContexts(html) {
   return out;
 }
 
-function walkCss(css, guarded, out) {
+function walkCss(css, guarded, out, depth = 0) {
+  if (depth > 40) return; // 깊게 중첩된 @media/@supports로 인한 스택오버플로/CPU 폭주 방지
   const n = css.length;
   let i = 0;
   while (i < n) {
     const open = css.indexOf('{', i);
     if (open < 0) break;
     const prelude = css.slice(i, open).trim();
-    let depth = 1;
+    let braceDepth = 1; // 중괄호 매칭 카운터 — 재귀 깊이 파라미터 depth를 가리면 안 된다(가드 무력화 버그)
     let j = open + 1;
-    while (j < n && depth > 0) {
+    while (j < n && braceDepth > 0) {
       const c = css[j];
-      if (c === '{') depth += 1;
-      else if (c === '}') depth -= 1;
+      if (c === '{') braceDepth += 1;
+      else if (c === '}') braceDepth -= 1;
       j += 1;
     }
     const block = css.slice(open + 1, j - 1);
@@ -193,7 +262,7 @@ function walkCss(css, guarded, out) {
       const at = prelude.slice(1).split(/[\s({]/)[0].toLowerCase();
       if (['keyframes', '-webkit-keyframes', '-moz-keyframes', 'font-face', 'page', 'property', 'counter-style'].includes(at)) continue;
       const childGuarded = guarded || (/^@media\b/i.test(prelude) && /prefers-reduced-motion\s*:\s*no-preference/i.test(prelude));
-      walkCss(block, childGuarded, out);
+      walkCss(block, childGuarded, out, depth + 1);
     } else {
       out.push({ selector: prelude, body: block, guarded });
     }
@@ -639,7 +708,7 @@ function checkQualityFloor(html, rules) {
 // benchmark 모두 warnings를 무시한다. code/pre/kbd/samp 안의 텍스트는 면제.
 function collectWarnings(html, rules, vars) {
   const warnings = [];
-  const text = stripTags(String(html).replace(/<(code|pre|kbd|samp)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' '));
+  const text = stripTags(removeRawBlocks(String(html), ['code', 'pre', 'kbd', 'samp']));
   const snippet = (i) => `"${text.slice(Math.max(0, i - 10), i + 14).replace(/\s+/g, ' ').trim()}"`;
   const quote = text.match(/[\p{L}\p{N}]["']|["'][\p{L}\p{N}]/u);
   if (quote) warnings.push({ name: 'straight-quotes', lane: 'static', evidence: snippet(quote.index) });
@@ -691,6 +760,7 @@ function collectWarnings(html, rules, vars) {
   const FONT_HOST = /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net|p\.typekit\.net|use\.fontawesome\.com|fonts\.bunny\.net|fonts\.cdnfonts\.com/i;
   let webfontUrl = null;
   // 'font'는 경로 세그먼트(/font, /fonts.)로만 매칭해 과매칭(임의 'font' 부분문자열)을 줄인다.
+ 
   const hostHit = String(html).match(new RegExp(`https?://[^"')\\s]*(?:(?:${FONT_HOST.source})|/fonts?[/.])[^"')\\s]*`, 'i'));
   if (hostHit) webfontUrl = hostHit[0];
   if (!webfontUrl) {
@@ -701,7 +771,9 @@ function collectWarnings(html, rules, vars) {
     warnings.push({ name: 'webfont-cdn-dependency', lane: 'static', evidence: `원격 CDN 폰트 의존: ${webfontUrl.slice(0, 56)} — 자가호스팅/인라인 권장(오프라인·차단 시 폴백)` });
   }
   // b1 — reduced-motion 미가드 모션 (WARN, MO2/DE3 교차참조).
+ 
   const motion = checkReducedMotionGuard(html);
+ 
   if (motion) {
     warnings.push({ name: 'motion-not-reduced-motion-guarded', lane: 'static', evidence: `${motion.selector} { ${motion.prop}: ${motion.value.slice(0, 32)} } — @media (prefers-reduced-motion: no-preference) 밖 모션 (MO2 가드 권장)` });
   }
@@ -723,9 +795,13 @@ export const MACHINE_CHECKS = [
   { id: 'DE3', name: 'quality-floor', severity: 'blocking', run: (html, css, rules) => checkQualityFloor(html, rules) },
 ];
 
-// 기계 감사 진입점. score는 통과율(0..1) — patina --score와 반대 방향이
-// 아니라 같은 "낮을수록 slop" 의미를 유지한다. slopScore는 정적 텔 수로 정규화해 --visual 유무와 비교 가능하게 둔다.
-export function auditHtml(html) {
+// 기계 감사 진입점. slopScore는 실행한 전체 검사 대비 실패 비율(0..1) — 분자·분모를
+// 같은 findings 집합으로 잡아 --visual 모드에서도 0..1을 유지한다(이전엔 분모를
+// MACHINE_CHECKS 수로 고정해 시각 실패가 더해지면 100% 초과가 찍혔다).
+export function auditHtml(rawHtml) {
+  // 모든 검사가 보는 입력을 한 번에 캡한다 — 과대/병리적 입력(중첩 @media 등)의
+  // CPU/메모리 폭주를 막는다(검사별 내부 slice와 중복되지만 단일 진입 보호).
+  const html = String(rawHtml).slice(0, HTML_SCAN_LIMIT);
   const css = extractCss(html);
   const rules = extractCssRules(html);
   const vars = rootVarMap(rules);
@@ -742,7 +818,7 @@ export function auditHtml(html) {
     failed: failed.map((f) => f.id),
     blockingFailed: blockingFailed.map((f) => f.id),
     advisoryFailed: advisoryFailed.map((f) => f.id),
-    slopScore: failed.length / MACHINE_CHECKS.length,
+    slopScore: failed.length / findings.length,
     blockingScore: blockingFailed.length / findings.length,
     pass: blockingFailed.length === 0,
     warnings: collectWarnings(html, rules, vars),
@@ -766,7 +842,10 @@ export function combineAudits(staticResult, visual) {
     const existingIndex = indexById.get(v.id);
     if (existingIndex === undefined) {
       indexById.set(v.id, findings.length);
-      findings.push({ severity: 'blocking', ...v });
+      // severity 누락 시 fail-open(advisory)로 둔다. `{ severity:'blocking', ...v }`는
+      // v가 severity를 안 주면 'blocking'으로 굳어, advisory 시각 텔(L1/L2/S3/TY…)을
+      // 차단으로 잘못 승격(pass=false, exit 1)했다 — advisory-never-blocks 위반.
+      findings.push({ ...v, severity: v.severity ?? 'advisory' });
       continue;
     }
 
@@ -786,7 +865,7 @@ export function combineAudits(staticResult, visual) {
     failed: failedF.map((f) => f.id),
     blockingFailed: blockingFailed.map((f) => f.id),
     advisoryFailed: advisoryFailed.map((f) => f.id),
-    slopScore: failedF.length / MACHINE_CHECKS.length,
+    slopScore: failedF.length / findings.length,
     blockingScore: blockingFailed.length / findings.length,
     pass: blockingFailed.length === 0,
     warnings: [...(staticResult.warnings ?? []), ...visualWarnings],

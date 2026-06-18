@@ -4,7 +4,7 @@
 // S2 가짜-실재 최종 판정 권위는 LLM 레인 단일; 여기서는 sidecar 근거 의심 표시만.
 
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
-import { join, relative, basename, extname } from 'node:path';
+import { join, relative, basename, extname, sep } from 'node:path';
 import { assessAssetReadiness } from './asset-readiness.js';
 
 // 알려진 브랜드명 목록 (Signal 1 logo-as-customer 의심에 사용)
@@ -21,8 +21,9 @@ const NOMINATIVE_TOKENS = [
   'nominative', 'trademark', '명목적', '주체', 'cc0', 'mit',
 ];
 
-// AI 생성 소스 표시 토큰 (Signal 2·3 판단)
-const AI_SOURCE_TOKENS = ['생성', 'generated', 'ai생성', 'ai-generated'];
+// AI 생성 소스 표시 토큰 (Signal 2·3 판단). 'ai'는 hasToken의 단어경계로 매칭하므로
+// `source: AI` / `made with AI` / `ai art`는 잡고 `openai`/`brain`은 잡지 않는다.
+const AI_SOURCE_TOKENS = ['ai', '생성', 'generated', 'ai생성', 'ai-generated'];
 
 // ─── 종류 분류 ─────────────────────────────────────────────────────────────
 
@@ -64,13 +65,16 @@ export function classifyKind(relPath) {
 
 /** 파일 basename(확장자 제외)이 로고형인지 판단 */
 function isLogoLike(noExt) {
-  const tokens = noExt.split(/[-_.]+/).filter(Boolean);
-  // -logo/-mark/-badge/-icon 접미사
+  // 실제 구분자(공백·- _ . ~ 및 에디터가 '-'를 자동치환하는 en/em 대시)로만 분해 —
+  // openai_logo·openai.com·"openai logo"·openai–logo는 잡되, 모든 비-영숫자로 쪼개
+  // 한글 등 본문 속 브랜드명을 고립시켜 오탐하던 것은 막는다.
+  const tokens = noExt.split(/[\s\-_.~–—]+/).filter(Boolean);
+  if (tokens.length === 0) return false;
+  // -logo/-mark/-badge/-icon 등 로고 마커가 끝 토큰이면 로고형(브랜드 무관).
   if (['logo', 'mark', 'badge', 'icon'].includes(tokens[tokens.length - 1])) return true;
-  // 알려진 브랜드명이 독립 토큰이거나 기존 hyphen-prefix/suffix 형태면 로고형
-  return BRAND_NAMES.some((b) =>
-    noExt === b || tokens.includes(b) || noExt.startsWith(b + '-') || noExt.endsWith('-' + b),
-  );
+  // 브랜드명이 전체·첫·끝 토큰일 때만 로고형. 내부 토큰(trusted-by-google-and-more,
+  // the-meta-question 등)은 오탐이므로 제외(R11 over-flag 수정).
+  return BRAND_NAMES.some((b) => tokens[0] === b || tokens[tokens.length - 1] === b);
 }
 
 function hasToken(value, token) {
@@ -185,6 +189,14 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
   const skipped = [];
   const counts = { logo: 0, image: 0, texture: 0, font: 0, other: 0, total: 0 };
   const visitedDirs = new Set();
+  // 루트의 실경로. 심볼릭 링크 타깃이 이 밖이면 따라가지 않는다(준비성 스푸핑 방지).
+  let realRoot;
+  try {
+    realRoot = await realpath(dir);
+  } catch {
+    realRoot = dir;
+  }
+  const withinRoot = (p) => p === realRoot || p.startsWith(realRoot + sep);
 
   async function scan(currentDir) {
     let realDir;
@@ -210,7 +222,14 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
       if (entry.isDirectory()) return 'directory';
       if (entry.isFile()) return 'file';
       if (!entry.isSymbolicLink()) return null;
+      // 심볼릭 링크: 타깃 실경로가 루트 밖이면 따라가지 않는다 — 루트 밖 파일이
+      // usable anchor로 잡혀 prebuild readiness를 READY로 위조하는 것을 막는다(R5).
       try {
+        const realTarget = await realpath(fullPath);
+        if (!withinRoot(realTarget)) {
+          skipped.push(relative(dir, fullPath) + ' [심볼릭 링크 타깃이 루트 밖]');
+          return null;
+        }
         const targetStat = await stat(fullPath);
         if (targetStat.isDirectory()) return 'directory';
         if (targetStat.isFile()) return 'file';
@@ -220,18 +239,28 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
       return null;
     }
 
-    // 현재 디렉터리의 sidecar 파일명 집합 (에셋명 → sidecar 있음)
-    // sidecar: 'openai.svg.license.txt' → 에셋명 'openai.svg'
-    const sidecarMap = new Map();
+    // sidecar 인덱스 + 에셋명 대소문자 충돌 카운트.
+    // sidecar: 'openai.svg.license.txt' → 에셋명 'openai.svg'(keep-ext) / 'openai'(strip-ext) 둘 다 인정.
+    // 대소문자 구분 FS에서 Hero.png(sidecar 있음)와 hero.png(없음)이 공존하면 소문자 매칭이
+    // hero.png에 Hero의 sidecar를 잘못 빌려준다 → 모호하면 정확 매치만 인정한다(R8).
+    const sidecarExact = new Map();      // 'Hero.png' → 'Hero.png.license.txt'
+    const sidecarLower = new Map();      // 'hero.png' → sidecar 파일명(충돌 없을 때만 폴백)
+    const sidecarLowerCount = new Map(); // 'hero.png' → 그 소문자 키의 sidecar 수
+    const assetLowerCount = new Map();   // 'hero.png' → 그 소문자 이름의 에셋(비-sidecar) 수
     for (const entry of entries) {
+      if (entry.name === '.gitkeep') continue;
       const fullPath = join(currentDir, entry.name);
-      const lowerName = entry.name.toLowerCase();
-      if (!lowerName.endsWith('.license.txt')) continue;
       if (await entryKind(entry, fullPath) !== 'file') continue;
-      sidecarMap.set(
-        lowerName.slice(0, -'.license.txt'.length),
-        entry.name,
-      );
+      if (entry.name.toLowerCase().endsWith('.license.txt')) {
+        const exactBase = entry.name.slice(0, -'.license.txt'.length);
+        sidecarExact.set(exactBase, entry.name);
+        const lk = exactBase.toLowerCase();
+        sidecarLower.set(lk, entry.name);
+        sidecarLowerCount.set(lk, (sidecarLowerCount.get(lk) ?? 0) + 1);
+      } else {
+        const lk = entry.name.toLowerCase();
+        assetLowerCount.set(lk, (assetLowerCount.get(lk) ?? 0) + 1);
+      }
     }
 
     for (const entry of entries) {
@@ -261,12 +290,22 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
         continue;
       }
 
-      // sidecar 파일명: keep-ext(foo.svg.license.txt) 또는 strip-ext(foo.license.txt) 둘 다 인정.
-      const entryKey = entry.name.toLowerCase();
-      const base = entry.name.slice(0, entry.name.length - extname(entry.name).length);
-      const baseKey = base.toLowerCase();
-      const sidecarName = sidecarMap.get(entryKey)
-        ?? (baseKey !== entryKey ? sidecarMap.get(baseKey) : null);
+      // sidecar 매칭: 정확 케이스 우선(keep-ext foo.svg / strip-ext foo). 정확 매치가 없을 때만
+      // 소문자 폴백(교차 OS 케이스 불일치 보정) — 단 같은 소문자 에셋명이 둘 이상(케이스 형제)
+      // 이거나 같은 소문자 sidecar 키가 둘 이상이면 모호하므로 폴백하지 않는다(R8).
+      const exact1 = entry.name;
+      const exact2 = entry.name.slice(0, entry.name.length - extname(entry.name).length);
+      let sidecarName = sidecarExact.get(exact1)
+        ?? (exact2 !== exact1 ? sidecarExact.get(exact2) : null);
+      if (!sidecarName) {
+        const lk1 = exact1.toLowerCase();
+        const lk2 = exact2.toLowerCase();
+        const ambiguousAsset = (assetLowerCount.get(lk1) ?? 0) > 1;
+        if (!ambiguousAsset) {
+          if (sidecarLowerCount.get(lk1) === 1) sidecarName = sidecarLower.get(lk1);
+          else if (lk2 !== lk1 && sidecarLowerCount.get(lk2) === 1) sidecarName = sidecarLower.get(lk2);
+        }
+      }
       const hasSidecar = sidecarName != null;
 
       let sidecar = {};
@@ -317,7 +356,7 @@ export async function auditAssets(dir, { conceptSheetPath } = {}) {
     files,
     missingSidecar,
     suspectFabrication,
-    skipped,
+    skipped: [...new Set(skipped)], // entryKind가 두 패스에서 호출돼 생기는 중복 제거
     conceptSheet,
     readiness,
     summary: {

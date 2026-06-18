@@ -30,29 +30,42 @@ test('clean restaurant page passes visual checks', visualTest, async () => {
   assert.ok(findings.every((f) => f.pass), JSON.stringify(findings));
 });
 
-test('combineAudits merges visual findings into score', () => {
-  const staticResult = { findings: [{ id: 'C1', name: 'x', pass: true, evidence: null }], failed: [], slopScore: 0, pass: true };
-  const merged = combineAudits(staticResult, [{ id: 'L1', name: 'uniform-card-grid', pass: false, evidence: 'e' }]);
+test('combineAudits merges visual findings into a 0..1 score', () => {
+  const staticResult = { findings: [{ id: 'C1', name: 'x', severity: 'blocking', pass: true, evidence: null }], failed: [], slopScore: 0, pass: true };
+  const merged = combineAudits(staticResult, [{ id: 'L1', name: 'uniform-card-grid', severity: 'advisory', pass: false, evidence: 'e' }]);
   assert.deepEqual(merged.failed, ['L1']);
-  // #23.3: slopScore는 정적 텔 수(MACHINE_CHECKS.length=9)로 정규화 — findings.length가 아니라.
-  assert.equal(merged.slopScore, 1 / 9);
-  assert.equal(merged.pass, false);
+  // slopScore는 분자/분모를 같은 findings 집합으로: 1 fail / 2 findings.
+  assert.equal(merged.slopScore, 1 / 2);
+  // L1은 advisory → 차단하지 않는다(advisory-never-blocks).
+  assert.equal(merged.pass, true);
+});
+
+test('combineAudits fails open: severity-less visual finding is advisory, not blocking', () => {
+  const staticResult = auditHtml('<p>hi</p>');
+  // 객체 형태 + 레거시 배열 모두 severity 누락이면 advisory(차단 아님)로 둔다.
+  const obj = combineAudits(staticResult, { findings: [{ id: 'L1', name: 'x', pass: false }], warnings: [] });
+  const leg = combineAudits(staticResult, [{ id: 'L1', name: 'x', pass: false }]);
+  assert.equal(obj.pass, true, 'object-form severity-less finding must not block');
+  assert.equal(leg.pass, true, 'legacy-array severity-less finding must not block');
+  // 명시적 blocking 시각 텔은 차단한다.
+  const blk = combineAudits(staticResult, { findings: [{ id: 'TY5', name: 'hangul', severity: 'blocking', pass: false }], warnings: [] });
+  assert.equal(blk.pass, false);
 });
 
 test('combineAudits merges duplicate IDs without double-scoring', () => {
   const staticResult = {
-    findings: [{ id: 'DE3', name: 'quality-floor', pass: true, evidence: null }],
+    findings: [{ id: 'DE3', name: 'quality-floor', severity: 'blocking', pass: true, evidence: null }],
     failed: [],
     slopScore: 0,
     pass: true,
   };
   const merged = combineAudits(staticResult, [
-    { id: 'DE3', name: 'quality-floor', pass: false, evidence: 'contrast 1.8:1' },
+    { id: 'DE3', name: 'quality-floor', severity: 'blocking', pass: false, evidence: 'contrast 1.8:1' },
   ]);
   assert.deepEqual(merged.failed, ['DE3']);
   assert.equal(merged.findings.length, 1, 'same principle ID must not be counted twice');
-  // #23.3: 분모는 고정된 정적 텔 수(9) — 같은 콘텐츠가 --visual 유무와 무관히 같은 slop.
-  assert.equal(merged.slopScore, 1 / 9);
+  // 중복 병합 후 분모는 1 — 0..1 유지.
+  assert.equal(merged.slopScore, 1);
   assert.match(merged.findings[0].evidence, /contrast 1\.8/);
   assert.equal(merged.pass, false);
 });
