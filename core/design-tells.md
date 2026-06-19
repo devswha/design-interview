@@ -34,6 +34,7 @@ patina의 패턴 팩에 해당하는 시각 도메인 금지 목록. 빌드(Phas
 - `S4 generic-image` — 소스 불문(AI생성·스톡·실사), 게으른·범용·디폴트·안 어울리는 이미지(슬롭 룩) 금지. sidecar source 명시 + 아트디렉션·통합이면 합법. → 목적 있는 이미지로 대체하거나 타이포그래피로 해결.
 - `S5 border-radius-uniform` — 전 요소 동일 radius (특히 12–16px). → 요소 위계별로 다르게, 또는 0.
 — 단, 컨셉 시트가 radius 위계를 명시하면 균일 radius 합법(advisory 경고만).
+- `S6 ai-diagram-cliche` — 노드(원/박스)를 연결선·화살표로 이은 범용 "아키텍처/플로우/시스템/네트워크" 다이어그램, 칸반·박스 위에 선을 덧그린 도식, 지하철 노선도식 박스-선 그래픽. Claude/AI가 기본값으로 가장 흔히 뽑는 시각 에셋 클리셰 — 동일 두께 선·균일 원형 노드·균일 라벨로 "관계를 그렸다"는 인상만 주고 실제 위계·손맛·수치가 없다. → 진짜 정보 구조가 있을 때만, 위계·의도적 비대칭·실제 수치가 들어간 도식을 직접 만든다. 장식적·범용 노드-선 다이어그램은 표·타이포·실제 스크린샷으로 대체. **sidecar 출처가 자작/CC0여도 룩 자체가 AI 디폴트면 텔이다(에셋 출처는 면죄부가 아니다) — 보유·제공 에셋도 같은 기준으로 본다.**
 
 ## 모션
 
@@ -63,7 +64,7 @@ advisory도 기계가 탐지하되 exit에 영향을 주지 않는다 — benchm
 - **기계 레인 (정적)** (`node src/cli.js audit <built.html>`): C1, T1, T2, T4는 하드 차단; TY4·CO1·DE1·S5는 advisory findings. DE3 정적 품질 바닥선은 하드 차단. TY5-B/C(한글 폴백 스택·가짜 이탤릭)·webfont ①(원격 CDN 폰트 의존) WARN도 이 레인.
 - **기계 레인 (시각)** (`--visual` 플래그, requires puppeteer): TY5-A·DE3 렌더 대비는 하드 차단; L1·L2·S3·TY1·TY2는 advisory findings. webfont ②(선언 @font-face 미로드 → fallback 측정) WARN도 시각 레인. DE3는 정적 암과 시각 암을 같은 ID로 병합해 한 번만 채점한다. WARN(DE3 craft·TY5-B/C·webfont)은 `warnings` 배열로만 흐르고 채점·exit에 영향 없다.
   - L2는 섹션별 판정(단일 컬럼 기하 AND (기하 중앙 OR 텍스트 중앙 다수), 전 섹션이 100% 해당일 때만 발화), S3는 페이지 전체 text-align 비율 — 서로 다른 입력에서 발화한다 (양방향 분리 증명 픽스처: `tests/redteam/`).
-- **LLM 레인**: 의미 판단이 필요한 나머지(L3, L4, C5, S1/S2/S4, T3, T5, **M1~M4 장식 모션**)는 Phase 5에서 체크리스트로 점검한다. S1·S2·M1~M4는 하드 차단. **S2(가짜-실재 — 실재 거짓주장 에셋 날조: 가짜 로고·스크린샷·데이터) 최종 판정 권위는 LLM 레인 단일**; assets 기계 검사는 sidecar 근거 의심 표시만(이중채점 금지). **S4(generic-image)는 LLM 레인 잔류 — 기계 비승격**.
+- **LLM 레인**: 의미 판단이 필요한 나머지(L3, L4, C5, S1/S2/S4/S6, T3, T5, **M1~M4 장식 모션**)는 Phase 5에서 체크리스트로 점검한다. S1·S2·M1~M4는 하드 차단. **S2(가짜-실재 — 실재 거짓주장 에셋 날조: 가짜 로고·스크린샷·데이터) 최종 판정 권위는 LLM 레인 단일**; assets 기계 검사는 sidecar 근거 의심 표시만(이중채점 금지). **S4·S6(generic-image·AI 다이어그램 클리셰)는 LLM 레인 잔류 — 기계 비승격**.
   - M1~M4(장식 모션)·MO 어포던스(hover-only 등)는 LLM 레인 잔류 — 기계 승격은 `design-principles.md` "MO 기계 승격 후보"의 중첩 파서 게이트(M8.2) 통과가 선결. reduced-motion 미가드(b1)는 승격 시 WARN 레인.
   - L3는 기계 승격이 적대 심사에서 기각됨(보수적 기준조차 패딩 6px 넛지 하나로 우회 가능). LLM 레인 잔류, SP3(design-principles)와 단일 계기.
 

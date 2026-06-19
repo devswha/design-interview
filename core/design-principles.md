@@ -295,7 +295,7 @@ transform·opacity 위주(width/height/top/left 등 **layout 트리거 애니메
 - **타입스케일 드라마**: 디스플레이↔본문 비율을 극적으로(예: 본문 17px에 디스플레이 48–56px). 단 **TY1(가시 크기 ≤6, 하드캡 7) 위반 금지** — 드라마는 *새 크기 추가*가 아니라 스케일 양 끝 + 웨이트·잉크 농도(HI1 weight-before-size)로 낸다. 고정 비율 메뉴 금지(cap-not-quota).
 - **자가호스팅 폰트**: 성격 있는 `@font-face`(woff2)로 시스템 산스에서 탈출한다 — 폴백 체인은 TY4를 따르고, 파일은 `assets/fonts/`에 자가호스팅(`core/asset-library.md` 참조). 원격 CDN 폰트 의존은 webfont ① WARN.
 - **실제 이미지·텍스처**: 실사 사진·종이·노이즈·재질 텍스처를 배경 밴드나 인셋으로 쓴다. S4 stock 일러스트·무의미 3D 블롭은 여전히 금지. 이미지는 `assets/` 자가호스팅, 외부 CDN 비권장.
-- **인라인 SVG 다이어그램**: 의미 있는 흐름도·관계도·수치 도식은 인라인 SVG로 삽입한다. 장식용 SVG 낙서·undraw 아이콘 월은 S4에 해당 — 금지.
+- **인라인 SVG 다이어그램**: 의미 있는 흐름도·관계도·수치 도식은 인라인 SVG로 삽입한다. 장식용 SVG 낙서·undraw 아이콘 월은 S4에 해당 — 금지. 단 노드+연결선만으로 '시스템/플로우/네트워크'를 그린 범용 다이어그램(칸반·박스 위 선 덧그림, 지하철 노선도식 박스-선 포함)은 **S6 AI 다이어그램 클리셰** — 실제 위계·손맛·수치가 없으면 표·타이포로 대체한다.
 - **리치 모션**: scroll-driven reveal·SVG path animation(stroke-dashoffset)·sticky 섹션 등 목적 있는 CSS-first 모션을 적극 활용한다. MO1 목적성 필수·`@media (prefers-reduced-motion: no-preference)` 래핑 필수(DE3/MO2 교차참조). 신규 JS 의존 0(MO4).
 - **2색+ 역할 분리 강조**: CO1의 "단일 강조 기본값"은 기본값이다 — 컨셉 시트가 역할을 명시(예: 1차 CTA는 brand-blue, 경고 콜아웃은 amber)하면 다색 강조 합법(advisory 경고만). 역할 없이 추가되는 색은 여전히 금지.
 - **count-up 애니메이션**: 동결 클레임의 최종값만 렌더링하고 중간 프레임 숫자는 `aria-hidden="true"` 처리 — 접근성 트리에 틀린 숫자가 노출되면 Phase 5 클레임 대조 실패.
