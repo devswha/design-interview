@@ -60,6 +60,8 @@ skills:
 
 엔진(`src/cli.js`)은 SKILL.md의 `$DI` 리졸버가 `~/.claude/skills/design-interview`에서 찾으므로 cwd와 무관하게 동작한다. 이미 로컬 클론이 있으면 두 경로(`~/.claude/skills/...`, `~/.gjc/agent/skills/...`)를 클론으로 걸어도 된다. gjc의 "묻지 말고 바로 실행" 기본값은 이 스킬의 **인터뷰-우선 실행 계약**이 덮어쓴다 — 인터뷰 없이 마무리하지 않는다.
 
+> gjc 주의: 빌드 단계에서 쓰기 도구가 막히면 gjc가 'interview' 키워드로 시드한 번들 `deep-interview` 가드일 수 있다 — `gjc state clear --mode deep-interview`로 해제한다(우리 인터뷰와 무관한 cwd 가드).
+
 ## Workflow
 
 ```
