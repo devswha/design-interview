@@ -17,6 +17,7 @@ import {
   isRemoteHref,
   isStylesheetLink,
   sanitizeStyleTag,
+  escapeHtml,
 } from './inert-html.js';
 
 export { INERT_CSP, stripActiveContent };
@@ -73,7 +74,7 @@ export function buildPreviewHtml({ builtHtml, originalHtml = null, title = 'desi
   // #dsiv-root로 감싸 크롬 셀렉터의 #dsiv-root 스코프가 실제로 매칭되게 한다.
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">
-<title>${title}</title>
+<title>${escapeHtml(title)}</title>
 ${collectHeadStyles(built)}${hasOriginal ? collectHeadStyles(original) : ''}
 <style>${CHROME_CSS}</style>
 </head><body><div id="dsiv-root">${radios}${bar}${panes}</div></body></html>`;

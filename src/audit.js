@@ -851,8 +851,14 @@ export function combineAudits(staticResult, visual) {
 
     const existing = findings[existingIndex];
     const evidence = [existing.evidence, v.evidence].filter(Boolean).join('; ');
+    // 공유 ID 병합 시 severity는 blocking 우선으로 승격한다 — 한쪽이라도 명시적 blocking이면
+    // 차단으로 굳혀, advisory static ID에 blocking 시각/결정론 텔이 묻혀 게이트를 우회하는 일을 막는다.
+    // (severity 누락은 advisory로 둬 fail-open 유지 — advisory-never-wrongly-blocks와 양립.)
+    const mergedBlocking = (existing.severity && existing.severity !== 'advisory')
+      || (v.severity && v.severity !== 'advisory');
     findings[existingIndex] = {
       ...existing,
+      severity: mergedBlocking ? 'blocking' : (existing.severity ?? 'advisory'),
       pass: existing.pass && v.pass,
       evidence: evidence || null,
     };
@@ -865,8 +871,8 @@ export function combineAudits(staticResult, visual) {
     failed: failedF.map((f) => f.id),
     blockingFailed: blockingFailed.map((f) => f.id),
     advisoryFailed: advisoryFailed.map((f) => f.id),
-    slopScore: failedF.length / findings.length,
-    blockingScore: blockingFailed.length / findings.length,
+    slopScore: findings.length ? failedF.length / findings.length : 0,
+    blockingScore: findings.length ? blockingFailed.length / findings.length : 0,
     pass: blockingFailed.length === 0,
     warnings: [...(staticResult.warnings ?? []), ...visualWarnings],
   };

@@ -101,6 +101,39 @@ test('combineAudits slopScore stays within 0..1 even with many visual failures (
   // 분자/분모가 같은 findings 집합: 6 fail / 15 findings(9 정적 + 6 시각).
   assert.equal(combined.slopScore, 6 / 15);
 });
+
+test('combineAudits guards an empty findings denominator (no NaN%)', () => {
+  // 정적·시각 모두 비어있어도 점수는 NaN이 아니라 0이어야 한다(formatAuditReport가 NaN% 찍던 가드).
+  const combined = combineAudits({ findings: [], warnings: [] }, { findings: [], warnings: [] });
+  assert.equal(combined.slopScore, 0);
+  assert.equal(combined.blockingScore, 0);
+  assert.equal(combined.pass, true);
+  assert.doesNotMatch(formatAuditReport(combined), /NaN/);
+});
+
+test('combineAudits escalates a shared ID to blocking — advisory static cannot mask a blocking visual arm', () => {
+  // 같은 원칙 ID가 정적(advisory)·시각(blocking) 암으로 갈리면, 병합 결과는 blocking으로 굳어
+  // 게이트(pass=false)를 우회당하지 않아야 한다.
+  const staticResult = { findings: [{ id: 'DE3', name: 'quality-floor', severity: 'advisory', pass: true }], warnings: [] };
+  const visual = { findings: [{ id: 'DE3', name: 'contrast', severity: 'blocking', pass: false, evidence: 'c' }], warnings: [] };
+  const combined = combineAudits(staticResult, visual);
+  const de3 = combined.findings.find((f) => f.id === 'DE3');
+  assert.equal(de3.severity, 'blocking');
+  assert.equal(de3.pass, false);
+  assert.ok(combined.blockingFailed.includes('DE3'));
+  assert.equal(combined.pass, false);
+});
+
+test('combineAudits keeps a severity-less visual arm advisory (fail-open preserved)', () => {
+  // severity 누락 시 advisory로 두는 fail-open은 병합 경로에서도 깨지지 않는다.
+  const staticResult = { findings: [{ id: 'L2', name: 'layout', severity: 'advisory', pass: true }], warnings: [] };
+  const visual = { findings: [{ id: 'L2', name: 'layout', pass: false, evidence: 'e' }], warnings: [] };
+  const combined = combineAudits(staticResult, visual);
+  const l2 = combined.findings.find((f) => f.id === 'L2');
+  assert.equal(l2.severity, 'advisory');
+  assert.equal(l2.pass, false);
+  assert.equal(combined.pass, true);
+});
 // ---------------------------------------------------------------------------
 // TY4 type-family-discipline
 // ---------------------------------------------------------------------------

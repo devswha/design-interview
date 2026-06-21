@@ -13,6 +13,13 @@ export const INERT_CSP = [
   "script-src 'none'",
 ].join('; ');
 
+// HTML 텍스트/속성 컨텍스트 escape — inert 직렬화 시 호출부 제어 문자열용 공유 primitive.
+export function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 export function getAttr(tag, name) {
   const re = new RegExp(`(?:^|\\s)${name}\\s*=\\s*("[^"]*"|'[^']*'|[^\\s>]+)`, 'i');
   const raw = re.exec(tag)?.[1] ?? '';

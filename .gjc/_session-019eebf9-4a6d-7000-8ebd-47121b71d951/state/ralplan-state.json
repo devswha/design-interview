@@ -1,0 +1,26 @@
+{
+  "run_id": "019eebf9-4a6d-7000-8ebd-47121b71d951",
+  "skill": "ralplan",
+  "active": true,
+  "current_phase": "architect",
+  "version": 2,
+  "updated_at": "2026-06-21T21:03:40.628Z",
+  "receipt": {
+    "version": 1,
+    "skill": "ralplan",
+    "owner": "gjc-runtime",
+    "command": "gjc ralplan persist-run-id",
+    "state_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019eebf9-4a6d-7000-8ebd-47121b71d951/skill-active-state.json",
+    "storage_path": "/home/devswha/workspace/design-interview/.gjc/state/sessions/019eebf9-4a6d-7000-8ebd-47121b71d951/ralplan-state.json",
+    "mutated_at": "2026-06-21T21:03:40.629Z",
+    "fresh_until": "2026-06-21T21:33:40.629Z",
+    "status": "fresh",
+    "mutation_id": "ralplan:2026-06-21T21:03:40.629Z",
+    "content_sha256": {
+      "algorithm": "sha256",
+      "value": "75240a60b6d4c208f86a59d7be96fc02748554d2960abd17e024ffd23ce7fdfb",
+      "covered_path": "/home/devswha/workspace/design-interview/.gjc/_session-019eebf9-4a6d-7000-8ebd-47121b71d951/state/ralplan-state.json",
+      "computed_at": "2026-06-21T21:03:40.629Z"
+    }
+  }
+}

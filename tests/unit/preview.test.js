@@ -118,3 +118,10 @@ test('stripActiveContent handles unclosed script tags', () => {
 test('buildPreviewHtml requires builtHtml', () => {
   assert.throws(() => buildPreviewHtml({}), /builtHtml is required/);
 });
+
+test('preview title is HTML-escaped (caller-controlled filename cannot inject markup)', () => {
+  const out = buildPreviewHtml({ builtHtml: BUILT, title: 'x</title><style>body{display:none}</style>' });
+  // 원시 닫는 태그가 그대로 새지 않고 escape되어야 한다.
+  assert.ok(!out.includes('x</title><style>'));
+  assert.match(out, /&lt;\/title&gt;/);
+});
