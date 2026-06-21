@@ -387,6 +387,8 @@ test('ST1: body-token smuggling cannot fake a real body', () => {
   assert.ok(auditHtml('<html><head><script>a()</scripture><body><p>fake</p></body></script></head></html>').blockingFailed.includes('ST1'), 'prefix-close </scripture> cannot expose a smuggled body');
   // 끝태그 속성값 안의 <body>(</script foo="<body>...">)도 따옴표 인지 소비로 본문이 아니다.
   assert.ok(auditHtml('<html><head><script>a()</script foo="<body><p>fake</p></body>"></head></html>').blockingFailed.includes('ST1'), 'end-tag attribute-smuggled body token');
+  // 여는 태그 속성값 안의 </script>·<body>(<script data-x="</script><body>...">)도 본문이 아니다.
+  assert.ok(auditHtml('<html><head><script data-x="</script><body><p>fake</p></body>">real()</script></head></html>').blockingFailed.includes('ST1'), 'opening-tag attribute-smuggled close/body');
 });
 
 // ---------------------------------------------------------------------------

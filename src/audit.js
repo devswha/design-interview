@@ -134,7 +134,11 @@ function findRealBodyStart(src) {
       if (lower.startsWith(`<${t}`, lt) && /[\s/>]/.test(src[lt + 1 + t.length] ?? '>')) { raw = t; break; }
     }
     if (raw) {
-      const close = rawCloseIndex(lower, raw, lt + 1);
+      const openEnd = endOfTag(src, lt);
+      if (openEnd < 0) { i = n; continue; }
+      // 닫음 검색은 여는 raw 태그의 따옴표 경계 '이후'부터 — 여는 태그 속성값 안의
+      // </script>·<body> 가 조기 닫음/가짜 본문으로 새지 않게 한다.
+      const close = rawCloseIndex(lower, raw, openEnd + 1);
       if (close < 0) { i = n; continue; }
       // 닫는 태그도 따옴표 인지로 통째 소비한다 — </script foo="<body>"> 같은 위조 끝태그
       // 속성 안의 <body>/'>' 가 본문으로 새지 않도록 endOfTag로 진짜 '>'까지 건너뛴다.
@@ -238,7 +242,7 @@ function removeRawBlocks(value, tags) {
     }
     if (!tag) { parts.push(value.slice(cursor, lt + 1)); cursor = lt + 1; continue; }
     parts.push(value.slice(cursor, lt), ' ');
-    const openEnd = value.indexOf('>', lt);
+    const openEnd = endOfTag(value, lt); // 여는 태그도 따옴표 인지(속성 안 '>' 무시)
     if (openEnd < 0) break;
     const closeAt = rawCloseIndex(lower, tag, openEnd + 1);
     if (closeAt < 0) break; // 미닫힘 → EOF까지 raw 블록으로 제거
