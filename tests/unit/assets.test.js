@@ -12,9 +12,56 @@ import {
   formatAssetReport,
 } from '../../src/assets.js';
 import { runCli, fixturePath, repoPath, withTempDir } from '../helpers/index.js';
+import { mkdtemp, mkdir, rm, symlink as _probeSymlink, chmod as _probeChmod, readdir as _probeReaddir, writeFile as _probeWrite } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 
 // 에셋 픽스처 기준 경로.
 const FIXTURES = fixturePath('assets');
+
+// ── 플랫폼 capability 프로브 (#36) ───────────────────────────────────────────
+// symlink 생성·chmod 000 강제는 제품 동작이 아니라 fixture 셋업 능력이다. OS/권한에 따라
+// 불가능하므로(Windows 비관리자 EPERM, root는 chmod 000 무시), 능력을 1회 측정해 없으면
+// 해당 테스트를 명확한 사유로 skip한다. Linux 일반 사용자에선 그대로 실행·통과한다.
+async function probeSymlink() {
+  let dir;
+  try {
+    dir = await mkdtemp(join(tmpdir(), 'di-probe-symlink-'));
+    const target = join(dir, 'target.txt');
+    await _probeWrite(target, 'x');
+    await _probeSymlink(target, join(dir, 'link.txt'));
+    return { ok: true, reason: false };
+  } catch (err) {
+    return { ok: false, reason: `symlink 생성 불가(${err.code || err.message}) — 플랫폼/권한 한계로 skip` };
+  } finally {
+    if (dir) await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+async function probeUnreadableDir() {
+  if (process.getuid?.() === 0) return { ok: false, reason: 'root는 chmod 000을 무시하므로 skip' };
+  let dir;
+  let locked;
+  try {
+    dir = await mkdtemp(join(tmpdir(), 'di-probe-chmod-'));
+    locked = join(dir, 'locked');
+    await mkdir(locked);
+    await _probeChmod(locked, 0o000);
+    try {
+      await _probeReaddir(locked);
+      return { ok: false, reason: '이 플랫폼/사용자는 chmod 000으로 읽기를 막지 못해 skip' };
+    } catch {
+      return { ok: true, reason: false };
+    }
+  } catch (err) {
+    return { ok: false, reason: `chmod 프로브 실패(${err.code || err.message})로 skip` };
+  } finally {
+    if (locked) await _probeChmod(locked, 0o700).catch(() => {});
+    if (dir) await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+const SYMLINK_CAP = await probeSymlink();
+const UNREADABLE_DIR_CAP = await probeUnreadableDir();
 
 // ─── classifyKind 단위 ──────────────────────────────────────────────────────
 
@@ -407,8 +454,8 @@ test('NF1: 실제 concept-sheet 템플릿의 escaped pipe placeholder → empty:
 });
 
 // CG-001 회귀: 인자 디렉터리 자체를 읽을 수 없으면(권한) exit 2 (best-effort skip 아님)
-// root는 chmod 000을 무시하므로 uid 0이면 skip.
-test('CG-001: 권한 없는 디렉터리 → exit 2', { skip: process.getuid?.() === 0 }, async () => {
+// 권한 없는 dir 강제 불가(root·일부 플랫폼)면 capability 프로브가 skip 사유를 준다.
+test('CG-001: 권한 없는 디렉터리 → exit 2', { skip: UNREADABLE_DIR_CAP.reason }, async () => {
   const { chmod } = await import('node:fs/promises');
   await withTempDir(async (dir) => {
     await chmod(dir, 0o000);
@@ -451,7 +498,7 @@ test('sidecar: 대문자 LICENSE.TXT도 sidecar로 인식하고 phantom asset로
   }, 'di-uppercase-sidecar-');
 });
 
-test('auditAssets: in-root 심볼릭 링크는 따라가 계산한다', async () => {
+test('auditAssets: in-root 심볼릭 링크는 따라가 계산한다', { skip: SYMLINK_CAP.reason }, async () => {
   const { mkdir, symlink, writeFile: wf } = await import('node:fs/promises');
   await withTempDir(async (dir) => {
     const scanDir = join(dir, 'scan');
@@ -473,7 +520,7 @@ test('auditAssets: in-root 심볼릭 링크는 따라가 계산한다', async ()
   }, 'di-symlink-inroot-');
 });
 
-test('auditAssets: 스캔 루트 밖을 가리키는 심볼릭 링크는 건너뛴다(R5 readiness 스푸핑 방지)', async () => {
+test('auditAssets: 스캔 루트 밖을 가리키는 심볼릭 링크는 건너뛴다(R5 readiness 스푸핑 방지)', { skip: SYMLINK_CAP.reason }, async () => {
   const { mkdir, symlink, writeFile: wf } = await import('node:fs/promises');
   await withTempDir(async (dir) => {
     const outside = join(dir, 'outside');
