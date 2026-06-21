@@ -112,7 +112,7 @@ function splitMarkdownTableRow(line) {
  */
 export function parseSidecar(text) {
   const result = {};
-  for (const line of text.split('\n')) {
+  for (const line of text.split(/\r\n|\r|\n/)) {
     const m = line.match(/^([a-zA-Z가-힣_\-]+)\s*:\s*(.+)$/);
     if (m) {
       result[m[1].toLowerCase().trim()] = m[2].trim();

@@ -91,6 +91,15 @@ test('parseSidecar: 공백 라인/주석 무시', () => {
   assert.equal(r.source, 'github');
 });
 
+test('parseSidecar: CRLF/CR 줄바꿈도 LF와 동일하게 파싱 (#34 Windows)', () => {
+  const crlf = parseSidecar('license: CC0\r\nsource: self-authored\r\n');
+  assert.equal(crlf.license, 'CC0');
+  assert.equal(crlf.source, 'self-authored');
+  const cr = parseSidecar('license: MIT\rsource: github\r');
+  assert.equal(cr.license, 'MIT');
+  assert.equal(cr.source, 'github');
+});
+
 // ─── detectFabrication 단위 ─────────────────────────────────────────────────
 
 // Signal 1: 브랜드 로고형 파일명 + 명목적 근거 없음
