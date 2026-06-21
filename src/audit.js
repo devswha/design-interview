@@ -45,18 +45,63 @@ function boundedTagInner(source, lower, tag, bodyStart) {
   return source.slice(bodyStart, searchEnd);
 }
 
-// 따옴표 인지 속성 존재 검사 — 한 HTML 태그 문자열에서 name 속성이 실제로 있는지 본다.
-// 따옴표로 둘러싼 값은 통째로 비워 값 내부의 속성형 텍스트(title="alt=foo") 스머글링을 막고,
-// 경계 클래스 [\s"'/]로 data-alt·myalt 같은 접두/접미 충돌을 배제한다. IM2(alt)와 DE3(width/height) 공유.
+// 따옴표 인지 속성 토크나이저 — 한 HTML 태그에서 name 속성이 실제로 존재하는지 본다.
+// 속성명만 순회하고 값(따옴표/unquoted)은 건너뛰므로 data-alt·myalt(접두/접미), title="alt=foo"
+// (따옴표 값 내부), src=x/width=800(unquoted 값 내부 슬래시) 같은 스머글링을 모두 배제한다.
+// IM2(alt)와 DE3(width/height) 공유.
 function hasAttr(tag, name) {
-  const bare = String(tag).replace(/"[^"]*"|'[^']*'/g, '""');
-  return new RegExp(`[\\s"'/]${name}(?:\\s*=|[\\s/>]|$)`, 'i').test(bare);
+  const s = String(tag);
+  const want = name.toLowerCase();
+  const nameMatch = /^<\s*[a-zA-Z][^\s/>]*/.exec(s);
+  let i = nameMatch ? nameMatch[0].length : 1;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === '>') break;
+    if (c === '/' || /\s/.test(c)) { i++; continue; }
+    let j = i;
+    while (j < s.length && !/[\s/=>]/.test(s[j])) j++;
+    const attr = s.slice(i, j).toLowerCase();
+    let k = j;
+    while (k < s.length && /\s/.test(s[k])) k++;
+    if (s[k] === '=') {
+      k++;
+      while (k < s.length && /\s/.test(s[k])) k++;
+      if (s[k] === '"' || s[k] === "'") {
+        const q = s[k];
+        k++;
+        while (k < s.length && s[k] !== q) k++;
+        if (k < s.length) k++;
+      } else {
+        while (k < s.length && !/[\s>]/.test(s[k])) k++;
+      }
+    }
+    if (attr === want) return true;
+    i = k > i ? k : i + 1;
+  }
+  return false;
 }
 
 // ── ST1 구조 바닥선 헬퍼 (#35) ───────────────────────────────────────────────
 // 빈/본문 없는/무의미 본문 문서를 차단한다. 본문 탐색은 주석·raw 블록(script/style/
 // template/noscript)·따옴표 속성값 안의 <body> 토큰을 건너뛴다(스머글링 방어).
 const ST1_RAW = ['script', 'style', 'template', 'noscript'];
+// 본문 의미성 판정에서 제거할 비가시 블록 — noscript는 제외한다(no-JS 폴백 콘텐츠는
+// 의미 있는 본문으로 인정해 실제 폴백 페이지를 오탐하지 않는다).
+const ST1_CONTENT_RAW = ['script', 'style', 'template'];
+
+// raw 텍스트 블록의 실제 닫는 태그 인덱스(`</tag` 위치). </tag 뒤에 경계(\s,>,/)가 와야
+// 진짜 닫음으로 인정 — </scripture>·</stylex> 같은 접두 위장 닫음은 거부한다.
+function rawCloseIndex(lower, tag, from) {
+  const needle = `</${tag}`;
+  let at = from;
+  for (;;) {
+    const idx = lower.indexOf(needle, at);
+    if (idx < 0) return -1;
+    const after = lower[idx + needle.length] ?? '>';
+    if (after === '>' || after === '/' || /\s/.test(after)) return idx;
+    at = idx + needle.length;
+  }
+}
 
 // '<'(lt 위치)에서 시작하는 태그의 닫는 '>'를 따옴표 속성값을 존중하며 찾는다.
 function endOfTag(src, lt) {
@@ -89,7 +134,7 @@ function findRealBodyStart(src) {
       if (lower.startsWith(`<${t}`, lt) && /[\s/>]/.test(src[lt + 1 + t.length] ?? '>')) { raw = t; break; }
     }
     if (raw) {
-      const close = lower.indexOf(`</${raw}`, lt + 1);
+      const close = rawCloseIndex(lower, raw, lt + 1);
       i = close < 0 ? n : close + 2 + raw.length;
       continue;
     }
@@ -134,7 +179,7 @@ function checkStructuralFloor(html) {
   let inner = src.slice(bodyStart);
   const close = inner.toLowerCase().indexOf('</body');
   if (close >= 0) inner = inner.slice(0, close);
-  const cleaned = stripComments(removeRawBlocks(inner, ST1_RAW));
+  const cleaned = stripComments(removeRawBlocks(inner, ST1_CONTENT_RAW));
   if (stripTags(cleaned).trim()) return { pass: true };
   if (hasContentBearingMedia(cleaned) || hasLabeledInteractive(cleaned)) return { pass: true };
   return { pass: false, evidence: 'body has no meaningful content (no text/media/interactive)' };
@@ -191,7 +236,7 @@ function removeRawBlocks(value, tags) {
     parts.push(value.slice(cursor, lt), ' ');
     const openEnd = value.indexOf('>', lt);
     if (openEnd < 0) break;
-    const closeAt = lower.indexOf(`</${tag}`, openEnd + 1);
+    const closeAt = rawCloseIndex(lower, tag, openEnd + 1);
     if (closeAt < 0) break; // 미닫힘 → EOF까지 raw 블록으로 제거
     const closeEnd = value.indexOf('>', closeAt);
     if (closeEnd < 0) break;

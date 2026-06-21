@@ -331,6 +331,7 @@ test('IM2: decorative/single/unquoted alt pass; data-alt/myalt/quoted-value smug
   assert.ok(auditHtml(doc('<img src="x" data-alt="c" width="1" height="1">')).advisoryFailed.includes('IM2'), 'data-alt is not alt');
   assert.ok(auditHtml(doc('<img src="x" myalt="c" width="1" height="1">')).advisoryFailed.includes('IM2'), 'myalt is not alt');
   assert.ok(auditHtml(doc('<img src="x" title="alt=caption" width="1" height="1">')).advisoryFailed.includes('IM2'), 'alt inside a quoted value is not a real alt');
+  assert.ok(auditHtml(doc('<img src=x/alt=cap width="1" height="1">')).advisoryFailed.includes('IM2'), 'unquoted-value slash does not smuggle alt');
 });
 
 test('hasAttr-backed DE3 resists width/height attribute smuggling', () => {
@@ -338,6 +339,8 @@ test('hasAttr-backed DE3 resists width/height attribute smuggling', () => {
   assert.ok(smuggled.failed.includes('DE3'), 'data-width / quoted-value must not satisfy width/height');
   const real = auditHtml(doc('<img src="x" width="800" height="600" alt="t">'));
   assert.ok(!real.failed.includes('DE3'), 'real width/height present → DE3 clean');
+  const slash = auditHtml(doc('<img src=x/width=800/height=600>'));
+  assert.ok(slash.failed.includes('DE3'), 'unquoted-value slash does not smuggle width/height');
 });
 
 // ---------------------------------------------------------------------------
@@ -362,7 +365,7 @@ test('ST1: committed empty.html and no-body.html fixtures fail ST1', async () =>
 test('ST1: body with only script/style/comments/empty containers fails', () => {
   assert.ok(auditHtml('<html><body><script>var a=1</script><style>.a{color:red}</style></body></html>').blockingFailed.includes('ST1'), 'script/style-only body');
   assert.ok(auditHtml('<html><body><!-- just a comment --><div></div><section><div></div></section></body></html>').blockingFailed.includes('ST1'), 'comments + empty containers');
-  assert.ok(auditHtml('<html><body><template><p>inert</p></template><noscript>fallback</noscript></body></html>').blockingFailed.includes('ST1'), 'template/noscript do not count as rendered body');
+  assert.ok(auditHtml('<html><body><template><p>inert</p></template></body></html>').blockingFailed.includes('ST1'), 'template content does not count as rendered body');
 });
 
 test('ST1: minimal real documents pass (no false positive)', () => {
@@ -370,6 +373,7 @@ test('ST1: minimal real documents pass (no false positive)', () => {
   assert.ok(!auditHtml('<html><body><main><h1>OK</h1></main></body></html>').failed.includes('ST1'), 'heading passes');
   assert.ok(!auditHtml('<html><body><img src="hero.png" alt="" width="100" height="80"></body></html>').failed.includes('ST1'), 'content-bearing img passes');
   assert.ok(!auditHtml('<html><body><input value="검색"></body></html>').failed.includes('ST1'), 'labeled interactive passes');
+  assert.ok(!auditHtml('<html><body><noscript><p>Enable JavaScript to continue.</p></noscript></body></html>').failed.includes('ST1'), 'noscript fallback content counts as meaningful (no-JS pages render it)');
 });
 
 test('ST1: body-token smuggling cannot fake a real body', () => {
@@ -379,6 +383,8 @@ test('ST1: body-token smuggling cannot fake a real body', () => {
   assert.ok(auditHtml('<html><script>var s="<body>fake</body>"</script></html>').blockingFailed.includes('ST1'), 'script-string body token');
   // 속성값 안의 <body> 토큰은 본문이 아니다.
   assert.ok(auditHtml('<html><head></head><div data-tpl="<body>x</body>"></div></html>').blockingFailed.includes('ST1'), 'attribute-value body token');
+  // </scripture> 는 진짜 </script> 닫음이 아니다 — 위장 닫음 뒤 가짜 body는 본문이 아니다.
+  assert.ok(auditHtml('<html><head><script>a()</scripture><body><p>fake</p></body></script></head></html>').blockingFailed.includes('ST1'), 'prefix-close </scripture> cannot expose a smuggled body');
 });
 
 // ---------------------------------------------------------------------------
