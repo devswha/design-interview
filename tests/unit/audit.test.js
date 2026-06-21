@@ -385,6 +385,8 @@ test('ST1: body-token smuggling cannot fake a real body', () => {
   assert.ok(auditHtml('<html><head></head><div data-tpl="<body>x</body>"></div></html>').blockingFailed.includes('ST1'), 'attribute-value body token');
   // </scripture> 는 진짜 </script> 닫음이 아니다 — 위장 닫음 뒤 가짜 body는 본문이 아니다.
   assert.ok(auditHtml('<html><head><script>a()</scripture><body><p>fake</p></body></script></head></html>').blockingFailed.includes('ST1'), 'prefix-close </scripture> cannot expose a smuggled body');
+  // 끝태그 속성값 안의 <body>(</script foo="<body>...">)도 따옴표 인지 소비로 본문이 아니다.
+  assert.ok(auditHtml('<html><head><script>a()</script foo="<body><p>fake</p></body>"></head></html>').blockingFailed.includes('ST1'), 'end-tag attribute-smuggled body token');
 });
 
 // ---------------------------------------------------------------------------

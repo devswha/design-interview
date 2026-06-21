@@ -135,7 +135,11 @@ function findRealBodyStart(src) {
     }
     if (raw) {
       const close = rawCloseIndex(lower, raw, lt + 1);
-      i = close < 0 ? n : close + 2 + raw.length;
+      if (close < 0) { i = n; continue; }
+      // 닫는 태그도 따옴표 인지로 통째 소비한다 — </script foo="<body>"> 같은 위조 끝태그
+      // 속성 안의 <body>/'>' 가 본문으로 새지 않도록 endOfTag로 진짜 '>'까지 건너뛴다.
+      const closeEnd = endOfTag(src, close);
+      i = closeEnd < 0 ? n : closeEnd + 1;
       continue;
     }
     if (lower.startsWith('<body', lt) && /[\s/>]/.test(src[lt + 5] ?? '>')) {
@@ -238,7 +242,7 @@ function removeRawBlocks(value, tags) {
     if (openEnd < 0) break;
     const closeAt = rawCloseIndex(lower, tag, openEnd + 1);
     if (closeAt < 0) break; // 미닫힘 → EOF까지 raw 블록으로 제거
-    const closeEnd = value.indexOf('>', closeAt);
+    const closeEnd = endOfTag(value, closeAt); // 따옴표 인지 끝태그 소비(끝태그 속성 안 '>' 무시)
     if (closeEnd < 0) break;
     cursor = closeEnd + 1;
   }
