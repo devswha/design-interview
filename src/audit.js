@@ -89,8 +89,9 @@ const ST1_RAW = ['script', 'style', 'template', 'noscript'];
 // 의미 있는 본문으로 인정해 실제 폴백 페이지를 오탐하지 않는다).
 const ST1_CONTENT_RAW = ['script', 'style', 'template'];
 
-// raw 텍스트 블록의 실제 닫는 태그 인덱스(`</tag` 위치). </tag 뒤에 경계(\s,>,/)가 와야
-// 진짜 닫음으로 인정 — </scripture>·</stylex> 같은 접두 위장 닫음은 거부한다.
+// raw 텍스트 블록(script/style)의 실제 닫는 태그 인덱스. </tag 뒤 경계(\s,>,/)가 와야
+// 진짜 닫음 — </scripture>·</stylex> 접두 위장 닫음 거부. script/style은 진짜 raw text라
+// 따옴표/주석과 무관하게 </tag 가 닫는다.
 function rawCloseIndex(lower, tag, from) {
   const needle = `</${tag}`;
   let at = from;
@@ -103,7 +104,7 @@ function rawCloseIndex(lower, tag, from) {
   }
 }
 
-// '<'(lt 위치)에서 시작하는 태그의 닫는 '>'를 따옴표 속성값을 존중하며 찾는다.
+// '<'(lt)에서 시작하는 태그의 닫는 '>'를 따옴표 속성값을 존중하며 찾는다.
 function endOfTag(src, lt) {
   let quote = null;
   for (let i = lt + 1; i < src.length; i++) {
@@ -115,8 +116,79 @@ function endOfTag(src, lt) {
   return -1;
 }
 
-// 실제 <body> 시작 태그의 본문 시작 인덱스를 반환(없으면 -1). 주석·raw 블록을 건너뛰고,
-// 다른 태그는 따옴표 값을 존중해 통째로 소비하므로 속성값 안의 "<body>"는 본문이 아니다.
+// 파싱되는 특수 요소(template/noscript)의 닫는 태그 인덱스. 콘텐츠가 raw text가 아니므로
+// 태그 단위로 따옴표 인지 순회해, 중첩 태그 속성값 안의 </tag> 위장 닫음은 건너뛴다.
+function walkedCloseIndex(src, lower, tag, from) {
+  const closeTok = `</${tag}`;
+  let i = from;
+  while (i < src.length) {
+    const lt = lower.indexOf('<', i);
+    if (lt < 0) return -1;
+    if (lower.startsWith(closeTok, lt) && /[\s/>]/.test(src[lt + closeTok.length] ?? '>')) return lt;
+    if (lower.startsWith('<!--', lt)) { const e = lower.indexOf('-->', lt + 4); i = e < 0 ? src.length : e + 3; continue; }
+    const gt = endOfTag(src, lt);
+    if (gt < 0) return -1;
+    i = gt + 1;
+  }
+  return -1;
+}
+
+// 파싱되는 특수 요소만 태그 순회로 닫음을 찾는다(중첩 속성값 안의 </tag> 위장 닫음 방어).
+// script/style(진짜 raw text)·code/pre/kbd/samp(리터럴 '<' 흔함)는 raw 스캔이 안전하다.
+const WALK_CLOSE_TAGS = { template: true, noscript: true };
+
+// 특수 블록(<tag ...>…</tag>) 전체를 소비하고 끝(닫는 '>' 다음) 인덱스 반환(-1=미닫힘).
+// 여는·닫는 태그 모두 따옴표 인지로 소비한다.
+function rawBlockEnd(src, lower, tag, lt) {
+  const openEnd = endOfTag(src, lt);
+  if (openEnd < 0) return -1;
+  const close = WALK_CLOSE_TAGS[tag]
+    ? walkedCloseIndex(src, lower, tag, openEnd + 1)
+    : rawCloseIndex(lower, tag, openEnd + 1);
+  if (close < 0) return -1;
+  const closeEnd = endOfTag(src, close);
+  return closeEnd < 0 ? -1 : closeEnd + 1;
+}
+
+// 따옴표 인지 <img> 추출 — 정규식 [^>]*는 속성값 안의 '>'(title="2 > 1")에서 잘려 뒤
+// 속성을 놓치므로 endOfTag로 진짜 태그 끝까지 잡는다. IM2·DE3·미디어 판정 공유.
+function imgTags(html) {
+  const s = String(html);
+  const lower = s.toLowerCase();
+  const out = [];
+  let i = 0;
+  while (i < s.length) {
+    const lt = lower.indexOf('<img', i);
+    if (lt < 0) break;
+    if (/[\s/>]/.test(s[lt + 4] ?? '>')) {
+      const end = endOfTag(s, lt);
+      if (end < 0) { out.push(s.slice(lt)); break; }
+      out.push(s.slice(lt, end + 1));
+      i = end + 1;
+    } else { i = lt + 4; }
+  }
+  return out;
+}
+
+// body 콘텐츠 내 실제 </body> 위치(따옴표 인지). data-x="</body"> 속성 안 토큰은 건너뛰고
+// </bodyx> 같은 접두는 경계 검사로 배제한다(오탐 방지).
+function findBodyClose(inner) {
+  const lower = inner.toLowerCase();
+  let i = 0;
+  while (i < inner.length) {
+    const lt = lower.indexOf('<', i);
+    if (lt < 0) return -1;
+    if (lower.startsWith('</body', lt) && /[\s/>]/.test(inner[lt + 6] ?? '>')) return lt;
+    if (lower.startsWith('<!--', lt)) { const e = lower.indexOf('-->', lt + 4); i = e < 0 ? inner.length : e + 3; continue; }
+    const gt = endOfTag(inner, lt);
+    if (gt < 0) return -1;
+    i = gt + 1;
+  }
+  return -1;
+}
+
+// 실제 <body> 시작 태그의 본문 시작 인덱스(없으면 -1). 주석·특수 블록을 따옴표 인지로
+// 건너뛰고, 다른 태그도 통째 소비하므로 속성값 안의 "<body>"는 본문이 아니다.
 function findRealBodyStart(src) {
   const lower = src.toLowerCase();
   const n = src.length;
@@ -134,16 +206,8 @@ function findRealBodyStart(src) {
       if (lower.startsWith(`<${t}`, lt) && /[\s/>]/.test(src[lt + 1 + t.length] ?? '>')) { raw = t; break; }
     }
     if (raw) {
-      const openEnd = endOfTag(src, lt);
-      if (openEnd < 0) { i = n; continue; }
-      // 닫음 검색은 여는 raw 태그의 따옴표 경계 '이후'부터 — 여는 태그 속성값 안의
-      // </script>·<body> 가 조기 닫음/가짜 본문으로 새지 않게 한다.
-      const close = rawCloseIndex(lower, raw, openEnd + 1);
-      if (close < 0) { i = n; continue; }
-      // 닫는 태그도 따옴표 인지로 통째 소비한다 — </script foo="<body>"> 같은 위조 끝태그
-      // 속성 안의 <body>/'>' 가 본문으로 새지 않도록 endOfTag로 진짜 '>'까지 건너뛴다.
-      const closeEnd = endOfTag(src, close);
-      i = closeEnd < 0 ? n : closeEnd + 1;
+      const end = rawBlockEnd(src, lower, raw, lt);
+      i = end < 0 ? n : end;
       continue;
     }
     if (lower.startsWith('<body', lt) && /[\s/>]/.test(src[lt + 5] ?? '>')) {
@@ -162,7 +226,7 @@ function stripComments(s) {
 }
 
 function hasContentBearingMedia(s) {
-  if (/<img\b[^>]*\ssrc\s*=/i.test(s)) return true;
+  if (imgTags(s).some((t) => hasAttr(t, 'src'))) return true;
   if (/<(?:picture|video|audio|iframe|object|embed)\b/i.test(s)) return true;
   for (const t of ['svg', 'canvas']) {
     const m = new RegExp(`<${t}\\b[^>]*>([\\s\\S]*?)<\\/${t}\\s*>`, 'i').exec(s);
@@ -185,7 +249,7 @@ function checkStructuralFloor(html) {
   const bodyStart = findRealBodyStart(src);
   if (bodyStart < 0) return { pass: false, evidence: 'no real <body> element' };
   let inner = src.slice(bodyStart);
-  const close = inner.toLowerCase().indexOf('</body');
+  const close = findBodyClose(inner);
   if (close >= 0) inner = inner.slice(0, close);
   const cleaned = stripComments(removeRawBlocks(inner, ST1_CONTENT_RAW));
   if (stripTags(cleaned).trim()) return { pass: true };
@@ -242,13 +306,11 @@ function removeRawBlocks(value, tags) {
     }
     if (!tag) { parts.push(value.slice(cursor, lt + 1)); cursor = lt + 1; continue; }
     parts.push(value.slice(cursor, lt), ' ');
-    const openEnd = endOfTag(value, lt); // 여는 태그도 따옴표 인지(속성 안 '>' 무시)
-    if (openEnd < 0) break;
-    const closeAt = rawCloseIndex(lower, tag, openEnd + 1);
-    if (closeAt < 0) break; // 미닫힘 → EOF까지 raw 블록으로 제거
-    const closeEnd = endOfTag(value, closeAt); // 따옴표 인지 끝태그 소비(끝태그 속성 안 '>' 무시)
-    if (closeEnd < 0) break;
-    cursor = closeEnd + 1;
+    // 여는·닫는 태그를 따옴표 인지로 통째 소비한다. template/noscript는 중첩 속성 안의
+    // </tag> 위장 닫음을 건너뛰고, script/style·code/pre 등은 raw 스캔(리터럴 '<' 안전).
+    const blockEnd = rawBlockEnd(value, lower, tag, lt);
+    if (blockEnd < 0) break; // 미닫힘 → EOF까지 raw 블록으로 제거
+    cursor = blockEnd;
   }
   return parts.join('');
 }
@@ -844,7 +906,7 @@ function checkQualityFloor(html, rules) {
     return { pass: false, evidence: content.slice(0, 60) };
   }
   // (d) width/height 속성 없는 <img> — 레이아웃 시프트의 고전
-  for (const [tag] of String(html).matchAll(/<img\b[^>]*>/gi)) {
+  for (const tag of imgTags(html)) {
     if (!hasAttr(tag, 'width') || !hasAttr(tag, 'height')) {
       return { pass: false, evidence: `${tag.slice(0, 55)} — missing width/height` };
     }
@@ -855,7 +917,7 @@ function checkQualityFloor(html, rules) {
 // IM2: <img>에 alt 속성이 아예 없다 — 접근성/슬롭 신호(advisory). 장식용 alt=""는 허용(존재로 충분),
 // alt 텍스트 품질은 판단하지 않는다. data-alt·myalt·따옴표 값 내 alt= 스머글링은 hasAttr이 배제한다.
 function checkImageAltAttribute(html) {
-  for (const [tag] of String(html).matchAll(/<img\b[^>]*>/gi)) {
+  for (const tag of imgTags(html)) {
     if (!hasAttr(tag, 'alt')) {
       return { pass: false, evidence: `${tag.slice(0, 55)} — missing alt` };
     }

@@ -389,6 +389,23 @@ test('ST1: body-token smuggling cannot fake a real body', () => {
   assert.ok(auditHtml('<html><head><script>a()</script foo="<body><p>fake</p></body>"></head></html>').blockingFailed.includes('ST1'), 'end-tag attribute-smuggled body token');
   // 여는 태그 속성값 안의 </script>·<body>(<script data-x="</script><body>...">)도 본문이 아니다.
   assert.ok(auditHtml('<html><head><script data-x="</script><body><p>fake</p></body>">real()</script></head></html>').blockingFailed.includes('ST1'), 'opening-tag attribute-smuggled close/body');
+  // </body 가 속성값 안에 있으면 body-close로 오인하지 않는다(빈 body는 여전히 차단).
+  assert.ok(auditHtml('<html><body><div data-x="</body"></div></body></html>').blockingFailed.includes('ST1'), 'quoted </body in attr does not truncate empty body');
+  // template 콘텐츠의 중첩 속성 안 </template> 위장 닫음으로 inert 텍스트가 새지 않는다.
+  assert.ok(auditHtml('<html><body><template><div data-x="</template>fake"></div></template></body></html>').blockingFailed.includes('ST1'), 'template nested-attr close cannot leak inert text');
+});
+
+test('ST1/IM2/DE3: a real <img> with > inside an attribute value is not a false positive', () => {
+  // 정규식 [^>]*는 title="2 > 1"의 '>'에서 잘려 뒤 속성을 놓쳤다 — imgTags는 따옴표 인지로 전체를 잡는다.
+  const r = auditHtml('<html><body><img title="2 > 1" src="hero.png" alt="Hero" width="100" height="80"></body></html>');
+  assert.ok(!r.failed.includes('ST1'), 'content-bearing img → ST1 passes');
+  assert.ok(!r.failed.includes('IM2'), 'real alt present → no IM2');
+  assert.ok(!r.failed.includes('DE3'), 'real width/height present → no DE3');
+});
+
+test('ST1: </bodyx> prefix is not a body close (no false positive on real text)', () => {
+  const r = auditHtml('<html><body></bodyx><p>real content</p></body></html>');
+  assert.ok(!r.failed.includes('ST1'), 'real body text after a </bodyx> prefix still passes');
 });
 
 // ---------------------------------------------------------------------------
