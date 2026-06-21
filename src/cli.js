@@ -40,7 +40,7 @@ function usage() {
       '  shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)',
       '  assets  <dir> [--concept-sheet <path>] [--json]  # 에셋 advisory + prebuild readiness (입력오류만 exit 2)',
       '  crawl   <url> [--out <dir>] [--name <file>] [--json]  # consent-gated 외부 에셋 수집 (SSRF 가드; 사용자 허락 후)',
-      '  board   <options.json> --out <file>  # 인터뷰 옵션 보드(inert HTML) 생성 (입력/스키마/asset 오류 exit 2)',
+      '  board   <options.json> --out <file> [--serve [--port <n>]]  # 옵션 보드(inert HTML); --serve는 file:// 차단 호스트용 localhost 서빙',
     ].join('\n'),
   );
   process.exit(2);
@@ -225,21 +225,42 @@ if (cmd === 'crawl') {
 }
 
 if (cmd === 'board') {
-  const { renderBoardFile, BoardError } = await import('./board.js');
+  const { renderBoardFile, serveBoardFile, BoardError } = await import('./board.js');
   let outPath;
+  let serve = false;
+  let port = 0;
   const positional = [];
   for (let i = 0; i < rest.length; i++) {
     if (rest[i] === '--out') {
       outPath = rest[++i];
       if (outPath === undefined || outPath.startsWith('--')) fail('--out requires a path', 2);
+    } else if (rest[i] === '--serve') {
+      serve = true;
+    } else if (rest[i] === '--port') {
+      const v = rest[++i];
+      if (v === undefined || v.startsWith('--')) fail('--port requires a number', 2);
+      port = Number(v);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) fail('--port must be an integer 1..65535', 2);
     } else positional.push(rest[i]);
   }
   const optionsPath = positional[0];
   if (!optionsPath || positional.length !== 1 || !outPath) usage();
   try {
     const res = await renderBoardFile(optionsPath, outPath);
-    console.log(res.url); // file:// 링크 — 호스트 브라우저로 바로 열 수 있는 보드 링크
-    process.exit(0);
+    if (serve) {
+      // file://를 막는 호스트(Codex 데스크톱 등, #33)용: 같은 board를 localhost로 띄우고 살아있는다.
+      const srv = await serveBoardFile(res.path, { port });
+      console.log(srv.url); // http://127.0.0.1:<port>/ — 보드 표면. Ctrl-C로 종료.
+      const shutdown = () => srv.server.close(() => process.exit(0));
+      process.on('SIGINT', shutdown);
+      process.on('SIGTERM', shutdown);
+      // 서버 수명 동안 top-level await를 여기서 정지한다 — 아래 기본 preview 디스패치로
+      // 빠지지 않게(non-serve board는 exit(0)로 처리). 종료는 SIGINT/SIGTERM 핸들러가 한다.
+      await new Promise(() => {});
+    } else {
+      console.log(res.url); // file:// 링크 — file://를 여는 호스트(GJC/CC)용 보드 링크
+      process.exit(0);
+    }
   } catch (err) {
     // 입력·스키마·없는 asset·sidecar 누락·예산 초과·쓰기 불가 = exit 2; 렌더러 invariant = exit 1.
     if (err instanceof BoardError) fail(err.message, err.kind === 'invariant' ? 1 : 2);

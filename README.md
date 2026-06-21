@@ -99,6 +99,9 @@ node src/cli.js board round2.options.json --out board.html
 #   visual.type ∈ swatches | wire | moodChips | ctaSample | imageFile | plain
 #   imageFile은 pre-sized 실제 파일(+sidecar)만 magic-byte 검증 후 임베드 (생성·리사이즈 금지)
 # 출력은 inert: 무스크립트·원격 리소스 없음, 모든 사용자 텍스트 escape (preview와 CSP 공유)
+# file:// 막는 호스트(Codex 데스크톱 등)는 --serve로 localhost 폴백:
+node src/cli.js board round2.options.json --out board.html --serve --port 8787
+#   → http://127.0.0.1:8787/  (루프백 전용, Ctrl-C로 종료; --port 생략 시 빈 포트 자동)
 ```
 
 프리뷰 CLI (Phase 4):

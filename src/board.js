@@ -9,6 +9,7 @@
 // pre-sized 실제 파일(+sidecar)만 magic-byte 검증 후 data: URI로 임베드한다(생성 금지).
 
 import { readFile, writeFile, rename, unlink, stat } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomBytes } from 'node:crypto';
@@ -361,5 +362,36 @@ async function atomicWrite(outPath, content) {
     await unlink(tmp).catch(() => {});
     throw userError(`board 파일 쓰기 실패(${outPath}): ${err.message}`);
   }
+}
+
+// ─── localhost 서빙(file:// 폴백) ───────────────────────────────────────────
+// Codex 데스크톱 등 일부 호스트 브라우저는 보안 정책으로 file://를 차단한다(#33).
+// 그런 표면을 위해 같은 inert board를 127.0.0.1에만 바인딩해 http로 띄운다.
+// - 루프백 전용(외부 노출 없음). - req.url은 무시하고 고정 outPath만 돌려준다(traversal 불가).
+// - 매 요청마다 파일을 다시 읽어 라운드 overwrite 후 새로고침이 최신 board를 보게 한다.
+// 프로세스가 살아있는 동안만 유효하다(인터뷰 라운드 수명). 의존성 없음(Node 내장 http).
+export function serveBoardFile(filePath, { port = 0, host = '127.0.0.1' } = {}) {
+  const abs = resolve(filePath);
+  const server = createServer(async (req, res) => {
+    try {
+      const body = await readFile(abs); // 고정 경로만 — 사용자 제어 경로 접근 없음
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Security-Policy': INERT_CSP,
+        'Cache-Control': 'no-store',
+      });
+      res.end(body);
+    } catch {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('board not found');
+    }
+  });
+  return new Promise((ok, no) => {
+    server.once('error', no);
+    server.listen(port, host, () => {
+      const boundPort = server.address().port;
+      ok({ server, port: boundPort, url: `http://${host}:${boundPort}/` });
+    });
+  });
 }
 

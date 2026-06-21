@@ -8,6 +8,7 @@ import {
   resolveBoardImages,
   buildBoardHtml,
   renderBoardFile,
+  serveBoardFile,
   CORE_DIMENSIONS,
   VISUAL_TYPES,
   BoardError,
@@ -301,4 +302,41 @@ test('renderBoardFile returns a file:// url for the host (GJC/CC) to open', asyn
   assert.match(res.url, /^file:\/\//);
   assert.ok(res.url.endsWith('board.html'), res.url);
   assert.equal(res.path, out);
+});
+
+test('serveBoardFile serves the inert board over loopback http (file:// fallback, #33)', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'board-serve-'));
+  const out = join(dir, 'board.html');
+  await renderBoardFile(fixturePath('board/options.valid.json'), out);
+  const srv = await serveBoardFile(out, { port: 0 });
+  try {
+    assert.match(srv.url, /^http:\/\/127\.0\.0\.1:\d+\/$/);
+    const res = await fetch(srv.url);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /text\/html/);
+    assert.match(res.headers.get('content-security-policy') ?? '', /script-src 'none'/);
+    const body = await res.text();
+    assert.match(body, /id="dsiv-board-root"/);
+    assert.doesNotMatch(body, /<script/i);
+  } finally {
+    await new Promise((ok) => srv.server.close(ok));
+  }
+});
+
+test('serveBoardFile ignores req path and reflects the latest overwrite (round refresh)', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'board-serve-fresh-'));
+  const out = join(dir, 'board.html');
+  await renderBoardFile(fixturePath('board/options.valid.json'), out);
+  const srv = await serveBoardFile(out, { port: 0 });
+  try {
+    // 경로 traversal 시도는 무시되고 동일 board를 돌려준다(고정 outPath만 서빙).
+    const traversal = await fetch(`${srv.url}../../../../etc/passwd`);
+    assert.equal(traversal.status, 200);
+    assert.match(await traversal.text(), /id="dsiv-board-root"/);
+    // 같은 경로를 overwrite하면 새 요청은 최신 내용을 본다.
+    await writeFile(out, '<!doctype html><html><body>ROUND-2-MARKER</body></html>');
+    assert.match(await (await fetch(srv.url)).text(), /ROUND-2-MARKER/);
+  } finally {
+    await new Promise((ok) => srv.server.close(ok));
+  }
 });
