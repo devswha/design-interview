@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { auditHtml, combineAudits, formatAuditReport } from '../../src/audit.js';
+import { auditHtml, combineAudits, formatAuditReport, MACHINE_CHECKS } from '../../src/audit.js';
 import { stripTags } from '../../src/text.js';
 import { examplePath, fixturePath, redteamPath } from '../helpers/index.js';
 
@@ -14,6 +14,10 @@ const CLEAN = `<!doctype html><html><head><style>
   <ul><li>국밥 9,000원</li><li>수육 한 접시 15,000원</li></ul>
   <button>전화 예약</button>
 </body></html>`;
+
+// 본문 없는 조각을 완전한 문서로 감싸는 헬퍼 — ST1(구조 바닥선)은 body 없는 입력을 차단하므로,
+// 구조가 검사 대상이 아닌 조각 테스트는 의미 있는 body로 감싸 ST1 오발화를 피한다.
+const doc = (body) => `<!doctype html><html><head><title>t</title></head><body><p>본문</p>${body}</body></html>`;
 
 test('slop fixture fails machine checks with evidence', async () => {
   const html = await readFile(examplePath('slop-source.html'), 'utf8');
@@ -98,8 +102,10 @@ test('combineAudits slopScore stays within 0..1 even with many visual failures (
   };
   const combined = combineAudits(staticResult, visual);
   assert.ok(combined.slopScore >= 0 && combined.slopScore <= 1, `slopScore ${combined.slopScore} must be within 0..1`);
-  // 분자/분모가 같은 findings 집합: 6 fail / 15 findings(9 정적 + 6 시각).
-  assert.equal(combined.slopScore, 6 / 15);
+  // 분자/분모는 같은 findings 집합: 6 fail / (정적 MACHINE_CHECKS 수 + 6 시각). 검사 추가에
+  // 깨지지 않도록 분모를 findings.length에서 유도한다(정적 검사 수는 MACHINE_CHECKS로 증가).
+  assert.equal(combined.slopScore, 6 / combined.findings.length);
+  assert.equal(combined.findings.length, MACHINE_CHECKS.length + 6);
 });
 
 test('combineAudits guards an empty findings denominator (no NaN%)', () => {
@@ -304,6 +310,34 @@ test('DE3 requires width/height attributes on img', () => {
   assert.ok(missing.failed.includes('DE3'));
   const sized = auditHtml('<img src="hero.jpg" width="800" height="600" alt="가게 전경">');
   assert.ok(!sized.failed.includes('DE3'));
+});
+
+// ---------------------------------------------------------------------------
+// IM2 image-alt-attribute (advisory) + 공유 hasAttr 스머글링 방어 (#7)
+// ---------------------------------------------------------------------------
+
+test('IM2: <img> missing alt is advisory only, never blocks delivery', () => {
+  const r = auditHtml(doc('<img src="hero.jpg" width="800" height="600">'));
+  assert.ok(r.advisoryFailed.includes('IM2'), 'missing alt → IM2 advisory');
+  assert.ok(!r.blockingFailed.includes('IM2'), 'IM2 is never blocking');
+  assert.ok(!r.failed.includes('DE3'), 'width/height present → DE3 clean (separate from IM2)');
+  assert.equal(r.pass, true, 'advisory IM2 does not flip the delivery gate');
+});
+
+test('IM2: decorative/single/unquoted alt pass; data-alt/myalt/quoted-value smuggling do not', () => {
+  assert.ok(!auditHtml(doc('<img src="x" alt="" width="1" height="1">')).failed.includes('IM2'), 'alt="" decorative passes');
+  assert.ok(!auditHtml(doc("<img src='x' alt='a' width='1' height='1'>")).failed.includes('IM2'), 'single-quoted alt passes');
+  assert.ok(!auditHtml(doc('<img src="x" alt=hero width="1" height="1">')).failed.includes('IM2'), 'unquoted alt passes');
+  assert.ok(auditHtml(doc('<img src="x" data-alt="c" width="1" height="1">')).advisoryFailed.includes('IM2'), 'data-alt is not alt');
+  assert.ok(auditHtml(doc('<img src="x" myalt="c" width="1" height="1">')).advisoryFailed.includes('IM2'), 'myalt is not alt');
+  assert.ok(auditHtml(doc('<img src="x" title="alt=caption" width="1" height="1">')).advisoryFailed.includes('IM2'), 'alt inside a quoted value is not a real alt');
+});
+
+test('hasAttr-backed DE3 resists width/height attribute smuggling', () => {
+  const smuggled = auditHtml(doc('<img src="x" data-width="800" title="width=800 height=600">'));
+  assert.ok(smuggled.failed.includes('DE3'), 'data-width / quoted-value must not satisfy width/height');
+  const real = auditHtml(doc('<img src="x" width="800" height="600" alt="t">'));
+  assert.ok(!real.failed.includes('DE3'), 'real width/height present → DE3 clean');
 });
 
 // ---------------------------------------------------------------------------

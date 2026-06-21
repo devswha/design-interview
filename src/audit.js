@@ -45,6 +45,14 @@ function boundedTagInner(source, lower, tag, bodyStart) {
   return source.slice(bodyStart, searchEnd);
 }
 
+// 따옴표 인지 속성 존재 검사 — 한 HTML 태그 문자열에서 name 속성이 실제로 있는지 본다.
+// 따옴표로 둘러싼 값은 통째로 비워 값 내부의 속성형 텍스트(title="alt=foo") 스머글링을 막고,
+// 경계 클래스 [\s"'/]로 data-alt·myalt 같은 접두/접미 충돌을 배제한다. IM2(alt)와 DE3(width/height) 공유.
+function hasAttr(tag, name) {
+  const bare = String(tag).replace(/"[^"]*"|'[^']*'/g, '""');
+  return new RegExp(`[\\s"'/]${name}(?:\\s*=|[\\s/>]|$)`, 'i').test(bare);
+}
+
 // flat CSS 규칙(sel{body}, 중첩 @media는 안으로 평탄화) 추출 — 단일 전방 스캔이라
 // 입력 길이에 선형. 기존 /([^{}@]+)\{([^{}]*)\}/g 정규식은 중괄호 없는 본문에서
 // 모든 시작 위치를 백트래킹해 O(n²)였다(400KB <style>에서 audit 행).
@@ -697,8 +705,19 @@ function checkQualityFloor(html, rules) {
   }
   // (d) width/height 속성 없는 <img> — 레이아웃 시프트의 고전
   for (const [tag] of String(html).matchAll(/<img\b[^>]*>/gi)) {
-    if (!/\bwidth\s*=/i.test(tag) || !/\bheight\s*=/i.test(tag)) {
+    if (!hasAttr(tag, 'width') || !hasAttr(tag, 'height')) {
       return { pass: false, evidence: `${tag.slice(0, 55)} — missing width/height` };
+    }
+  }
+  return { pass: true };
+}
+
+// IM2: <img>에 alt 속성이 아예 없다 — 접근성/슬롭 신호(advisory). 장식용 alt=""는 허용(존재로 충분),
+// alt 텍스트 품질은 판단하지 않는다. data-alt·myalt·따옴표 값 내 alt= 스머글링은 hasAttr이 배제한다.
+function checkImageAltAttribute(html) {
+  for (const [tag] of String(html).matchAll(/<img\b[^>]*>/gi)) {
+    if (!hasAttr(tag, 'alt')) {
+      return { pass: false, evidence: `${tag.slice(0, 55)} — missing alt` };
     }
   }
   return { pass: true };
@@ -791,6 +810,7 @@ export const MACHINE_CHECKS = [
   { id: 'TY4', name: 'type-family-discipline', severity: 'advisory', run: (html, css, rules, vars) => checkTypeFamilyDiscipline(rules, vars) },
   { id: 'CO1', name: 'color-literal-budget', severity: 'advisory', run: (html, css, rules) => checkColorLiteralBudget(rules) },
   { id: 'DE1', name: 'shadow-physics-budget', severity: 'advisory', run: (html, css, rules, vars) => checkShadowPhysics(rules, vars) },
+  { id: 'IM2', name: 'image-alt-attribute', severity: 'advisory', run: (html) => checkImageAltAttribute(html) },
   // 품질 바닥선 = 차단(blocking).
   { id: 'DE3', name: 'quality-floor', severity: 'blocking', run: (html, css, rules) => checkQualityFloor(html, rules) },
 ];

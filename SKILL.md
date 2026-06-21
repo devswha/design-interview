@@ -158,7 +158,7 @@ node src/cli.js preview <built.html> [--against <slop-source.html>]
 
    **하드 차단 (blocking, exit 1):** 정적 레인의 하드 텔(C1/T1/T2/T4)과 품질 바닥선(DE3 정적 품질 바닥선), 시각 레인의 TY5-A(한글 어절 중간 줄바꿈)·DE3 렌더 대비. 이 항목 fail이 1개라도 있으면 exit 1 → 납품 불가 — Phase 3 수정 후 재실행.
 
-   **소프트 권고 (advisory, exit 무영향):** TY4(패밀리 수)·CO1(색 예산)·DE1(그림자 캡)·S5(radius 균일)는 정적 findings에, L1·L2·S3·TY1·TY2는 시각 findings에 기록하되 exit에 영향을 주지 않는다. 억제 휴리스틱은 컨셉 시트가 의도를 명시하면 초과 합법이므로 차단이 아닌 권고로 리포트한다.
+   **소프트 권고 (advisory, exit 무영향):** TY4(패밀리 수)·CO1(색 예산)·DE1(그림자 캡)·S5(radius 균일)·IM2(img alt 누락 — 장식은 alt="" 허용)는 정적 findings에, L1·L2·S3·TY1·TY2는 시각 findings에 기록하되 exit에 영향을 주지 않는다. 억제 휴리스틱은 컨셉 시트가 의도를 명시하면 초과 합법이므로 차단이 아닌 권고로 리포트한다.
 
    DE3 정적 암과 시각 암은 같은 ID로 병합해 이중 채점하지 않는다. 대비 검사는 단색 배경 위 텍스트만 판정하고 이미지·그라데이션·반투명은 skip 카운트로 보고한다. WARN 라인(직선 따옴표, TY5-B/C 한글 조판, webfont CDN 의존·미적용 등)은 납품을 막지 않지만 가능하면 수정한다. LLM 자기 채점으로 이 단계를 대체하지 않는다. puppeteer 미설치면 시각 레인은 자동 생략되고 정적 검사만 판정된다.
 
