@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "boardId": "fix-sess",
+  "roundId": "r2",
+  "dimension": "reference",
+  "question": "참고로 어떤 방향?",
+  "recommendedNumber": 2,
+  "recommendReason": "소스 톤과 가장 가까움",
+  "options": [
+    {
+      "number": 1,
+      "label": "참고 화면",
+      "rationale": "레이아웃 차용",
+      "visualRole": "reference-anchor",
+      "asset": "thumb.png",
+      "visual": {
+        "type": "imageFile",
+        "path": "thumb.png",
+        "alt": "참고 썸네일"
+      }
+    },
+    {
+      "number": 2,
+      "label": "구조 스케치",
+      "rationale": "우선순위",
+      "visualRole": "structure-hint",
+      "visual": {
+        "type": "wire",
+        "blocks": [
+          {
+            "label": "헤드라인",
+            "weight": 3
+          },
+          {
+            "label": "CTA",
+            "weight": 1
+          }
+        ]
+      }
+    }
+  ]
+}

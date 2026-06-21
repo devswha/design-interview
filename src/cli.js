@@ -40,6 +40,7 @@ function usage() {
       '  shot    <page.html>            # desktop/mobile 풀페이지 캡처 (requires puppeteer)',
       '  assets  <dir> [--concept-sheet <path>] [--json]  # 에셋 advisory + prebuild readiness (입력오류만 exit 2)',
       '  crawl   <url> [--out <dir>] [--name <file>] [--json]  # consent-gated 외부 에셋 수집 (SSRF 가드; 사용자 허락 후)',
+      '  board   <options.json> --out <file>  # 인터뷰 옵션 보드(inert HTML) 생성 (입력/스키마/asset 오류 exit 2)',
     ].join('\n'),
   );
   process.exit(2);
@@ -98,7 +99,7 @@ async function readInput(path) {
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
-if (!['intake', 'preview', 'audit', 'shot', 'assets', 'crawl'].includes(cmd) || rest.length === 0) usage();
+if (!['intake', 'preview', 'audit', 'shot', 'assets', 'crawl', 'board'].includes(cmd) || rest.length === 0) usage();
 
 if (cmd === 'intake') {
   const json = rest.includes('--json');
@@ -221,6 +222,30 @@ if (cmd === 'crawl') {
   }
   console.log(json ? JSON.stringify(result, null, 2) : `${result.filePath}\n${result.sidecarPath}`);
   process.exit(0);
+}
+
+if (cmd === 'board') {
+  const { renderBoardFile, BoardError } = await import('./board.js');
+  let outPath;
+  const positional = [];
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === '--out') {
+      outPath = rest[++i];
+      if (outPath === undefined || outPath.startsWith('--')) fail('--out requires a path', 2);
+    } else positional.push(rest[i]);
+  }
+  const optionsPath = positional[0];
+  if (!optionsPath || positional.length !== 1 || !outPath) usage();
+  try {
+    const res = await renderBoardFile(optionsPath, outPath);
+    console.log(res.url); // file:// 링크 — 호스트 브라우저로 바로 열 수 있는 보드 링크
+    process.exit(0);
+  } catch (err) {
+    // 입력·스키마·없는 asset·sidecar 누락·예산 초과·쓰기 불가 = exit 2; 렌더러 invariant = exit 1.
+    if (err instanceof BoardError) fail(err.message, err.kind === 'invariant' ? 1 : 2);
+    if (USER_FS_ERROR_CODES.has(err.code)) fail(err.message, 2);
+    fail(`board failed: ${err.message}`, 1);
+  }
 }
 
 const args = { _: [] };
