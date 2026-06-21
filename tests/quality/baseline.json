@@ -9,9 +9,11 @@
     "tests/fixtures/clean/flipped-design.html": { "expectedBlocking": [], "expectedAdvisory": ["TY4"], "note": "뒤집기 증거 v6 — 차단 0(더 나은 디자인을 막지 않음), TY4(세리프+산스+모노 3역할)는 의도된 advisory" },
     "tests/fixtures/clean/stationery-design.html": { "expectedBlocking": [], "expectedAdvisory": [], "note": "v5 대비군 — 차단 0·advisory 0" },
     "tests/redteam/svg-attr-color-smuggle.html": { "expectedBlocking": [], "expectedAdvisory": [], "note": "CO1 한계 고정 — SVG fill/stroke 색은 예산 밖(수용된 miss). fp 회귀 가드" },
-    "tests/redteam/unclosed-style-gradient.html": { "expectedBlocking": ["C1"], "expectedAdvisory": [] },
+    "tests/redteam/unclosed-style-gradient.html": { "expectedBlocking": ["ST1", "C1"], "expectedAdvisory": [], "note": "닫지 않은 <style>는 브라우저가 body를 CSS 텍스트로 삼켜 빈 렌더 → ST1 차단(증거 기반 갱신). C1(보라 그라데)도 unclosed style에서 여전히 발화" },
     "tests/redteam/unclosed-script-hype.html": { "expectedBlocking": [], "expectedAdvisory": [] },
     "tests/redteam/unclosed-li-emoji.html": { "expectedBlocking": ["T1"], "expectedAdvisory": [], "note": "닫지 않은 <li>의 emoji bullet도 T1 차단 — boundedTagInner null-skip 게이트 우회 회귀 가드" },
-    "tests/redteam/img-missing-alt.html": { "expectedBlocking": [], "expectedAdvisory": ["IM2"], "note": "alt 없는 <img> → IM2 advisory만(차단 0). width/height 있어 DE3 미발화 — 정적 advisory 분리 가드" }
+    "tests/redteam/img-missing-alt.html": { "expectedBlocking": [], "expectedAdvisory": ["IM2"], "note": "alt 없는 <img> → IM2 advisory만(차단 0). width/height 있어 DE3 미발화 — 정적 advisory 분리 가드" },
+    "tests/redteam/empty.html": { "expectedBlocking": ["ST1"], "expectedAdvisory": [], "note": "0바이트 문서 → ST1 구조 바닥선 차단(#35)" },
+    "tests/redteam/no-body.html": { "expectedBlocking": ["ST1"], "expectedAdvisory": [], "note": "head/title만, 실제 <body> 없음 → ST1 차단(#35)" }
   }
 }

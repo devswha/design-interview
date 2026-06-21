@@ -17,7 +17,7 @@ const CLEAN = `<!doctype html><html><head><style>
 
 // 본문 없는 조각을 완전한 문서로 감싸는 헬퍼 — ST1(구조 바닥선)은 body 없는 입력을 차단하므로,
 // 구조가 검사 대상이 아닌 조각 테스트는 의미 있는 body로 감싸 ST1 오발화를 피한다.
-const doc = (body) => `<!doctype html><html><head><title>t</title></head><body><p>본문</p>${body}</body></html>`;
+const doc = (body) => `<!doctype html><html><head><title>t</title></head><body><p>Body copy.</p>${body}</body></html>`;
 
 test('slop fixture fails machine checks with evidence', async () => {
   const html = await readFile(examplePath('slop-source.html'), 'utf8');
@@ -341,11 +341,52 @@ test('hasAttr-backed DE3 resists width/height attribute smuggling', () => {
 });
 
 // ---------------------------------------------------------------------------
+// ST1 structural-floor (blocking) — 빈/본문 없는/무의미 납품물 차단 (#35)
+// ---------------------------------------------------------------------------
+
+test('ST1: empty string fails blocking and flips the delivery gate', () => {
+  const r = auditHtml('');
+  assert.ok(r.blockingFailed.includes('ST1'), 'empty document → ST1 blocking');
+  assert.equal(r.pass, false);
+  const ws = auditHtml('   \n\t  ');
+  assert.ok(ws.blockingFailed.includes('ST1'), 'whitespace-only → ST1 blocking');
+});
+
+test('ST1: committed empty.html and no-body.html fixtures fail ST1', async () => {
+  const empty = auditHtml(await readFile(redteamPath('empty.html'), 'utf8'));
+  assert.ok(empty.blockingFailed.includes('ST1'), 'empty.html → ST1');
+  const noBody = auditHtml(await readFile(redteamPath('no-body.html'), 'utf8'));
+  assert.ok(noBody.blockingFailed.includes('ST1'), 'no-body.html → ST1');
+});
+
+test('ST1: body with only script/style/comments/empty containers fails', () => {
+  assert.ok(auditHtml('<html><body><script>var a=1</script><style>.a{color:red}</style></body></html>').blockingFailed.includes('ST1'), 'script/style-only body');
+  assert.ok(auditHtml('<html><body><!-- just a comment --><div></div><section><div></div></section></body></html>').blockingFailed.includes('ST1'), 'comments + empty containers');
+  assert.ok(auditHtml('<html><body><template><p>inert</p></template><noscript>fallback</noscript></body></html>').blockingFailed.includes('ST1'), 'template/noscript do not count as rendered body');
+});
+
+test('ST1: minimal real documents pass (no false positive)', () => {
+  assert.ok(!auditHtml('<!doctype html><html><body><p>Hi</p></body></html>').failed.includes('ST1'), 'minimal body text passes');
+  assert.ok(!auditHtml('<html><body><main><h1>OK</h1></main></body></html>').failed.includes('ST1'), 'heading passes');
+  assert.ok(!auditHtml('<html><body><img src="hero.png" alt="" width="100" height="80"></body></html>').failed.includes('ST1'), 'content-bearing img passes');
+  assert.ok(!auditHtml('<html><body><input value="검색"></body></html>').failed.includes('ST1'), 'labeled interactive passes');
+});
+
+test('ST1: body-token smuggling cannot fake a real body', () => {
+  // 주석 안의 본문 텍스트는 콘텐츠가 아니다.
+  assert.ok(auditHtml('<html><head></head><!-- <body>real looking text</body> --></html>').blockingFailed.includes('ST1'), 'comment-smuggled body');
+  // script 문자열 안의 <body>는 본문이 아니다.
+  assert.ok(auditHtml('<html><script>var s="<body>fake</body>"</script></html>').blockingFailed.includes('ST1'), 'script-string body token');
+  // 속성값 안의 <body> 토큰은 본문이 아니다.
+  assert.ok(auditHtml('<html><head></head><div data-tpl="<body>x</body>"></div></html>').blockingFailed.includes('ST1'), 'attribute-value body token');
+});
+
+// ---------------------------------------------------------------------------
 // warnings 채널 — 절대 fail로 승격되지 않는다
 // ---------------------------------------------------------------------------
 
 test('warnings flag straight quotes / -- / ... but never fail the audit', () => {
-  const r = auditHtml('<p>It\'s a "quoted" promise -- trust us ...</p>');
+  const r = auditHtml(doc('<p>It\'s a "quoted" promise -- trust us ...</p>'));
   assert.equal(r.pass, true);
   assert.deepEqual(r.failed, []);
   const names = r.warnings.map((w) => w.name);
@@ -365,7 +406,7 @@ test('warnings exempt code/pre/kbd/samp contexts', () => {
 // ---------------------------------------------------------------------------
 
 test('TY5-B warns when Korean body has a Latin-only font stack', () => {
-  const r = auditHtml('<style>body{font-family:Inter,sans-serif}</style><p>국밥 한 그릇 9,000원</p>');
+  const r = auditHtml(doc('<style>body{font-family:Inter,sans-serif}</style><p>국밥 한 그릇 9,000원</p>'));
   assert.equal(r.pass, true, 'WARN은 납품을 막지 않는다');
   assert.ok(r.warnings.some((w) => w.name === 'hangul-no-korean-font'));
 });
@@ -378,7 +419,7 @@ test('TY5-B silent when the stack already names a Korean font', () => {
 });
 
 test('TY5-C warns on Korean fake italic', () => {
-  const r = auditHtml('<p style="font-style:italic">강조하고 싶은 한글 문장</p>');
+  const r = auditHtml(doc('<p style="font-style:italic">강조하고 싶은 한글 문장</p>'));
   assert.equal(r.pass, true);
   assert.ok(r.warnings.some((w) => w.name === 'hangul-fake-italic'));
 });
@@ -392,7 +433,7 @@ test('TY5-B/C stay silent on non-Korean pages', () => {
 // ---------------------------------------------------------------------------
 
 test('webfont ① warns on a Google Fonts <link> dependency', () => {
-  const r = auditHtml('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter"><p>hello world paragraph</p>');
+  const r = auditHtml(doc('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter"><p>hello world paragraph</p>'));
   assert.equal(r.pass, true, 'WARN은 납품을 막지 않는다');
   assert.ok(r.warnings.some((w) => w.name === 'webfont-cdn-dependency'));
 });
@@ -429,7 +470,7 @@ test('webfont ① catches a vendor CDN font stylesheet by url', () => {
 const hasMotionWarn = (r) => r.warnings.some((w) => w.name === 'motion-not-reduced-motion-guarded');
 
 test('motion WARN fires on unguarded transition and animation, never fails', () => {
-  const r = auditHtml('<style>.x{transition:transform .25s ease}.y{animation:spin 2s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style><p>가나다 본문</p>');
+  const r = auditHtml(doc('<style>.x{transition:transform .25s ease}.y{animation:spin 2s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style><p>가나다 본문</p>'));
   assert.equal(r.pass, true, 'WARN은 납품을 막지 않는다');
   assert.deepEqual(r.failed, []);
   assert.ok(hasMotionWarn(r));
@@ -470,7 +511,7 @@ test('motion WARN: guarded-motion clean fixture is silent, exp output stays WARN
 
 test('audit 2-channel: advisory-only fail passes the delivery gate', () => {
   // CO1(색 예산 초과)은 억제 휴리스틱 = advisory → 차단 안 함
-  const r = auditHtml(`<style>${hexList(13)}</style><p>가나다 본문</p>`);
+  const r = auditHtml(doc(`<style>${hexList(13)}</style><p>가나다 본문</p>`));
   assert.ok(r.advisoryFailed.includes('CO1'), 'CO1은 advisory 채널');
   assert.deepEqual(r.blockingFailed, [], '차단 채널 비어있음');
   assert.equal(r.pass, true, 'advisory만 실패하면 납품 게이트 통과(pass=true)');
@@ -485,10 +526,10 @@ test('audit 2-channel: deterministic fingerprint (C1) blocks delivery', () => {
 });
 
 test('audit 2-channel: TY4 3-family is advisory (good type system not blocked)', () => {
-  const r = auditHtml(`<style>
+  const r = auditHtml(doc(`<style>
     body{font-family:Inter,sans-serif} h1{font-family:Georgia,serif}
     .n{font-family:'Space Mono',monospace} .b{font-family:'Space Mono',monospace}
-  </style><p>가나다 본문</p>`);
+  </style>`));
   assert.ok(r.advisoryFailed.includes('TY4'), 'TY4는 억제 휴리스틱 = advisory');
   assert.equal(r.pass, true, '세리프+산스+모노 같은 의도된 타입 시스템은 차단 안 됨');
 });

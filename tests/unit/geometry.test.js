@@ -41,7 +41,8 @@ test('combineAudits merges visual findings into a 0..1 score', () => {
 });
 
 test('combineAudits fails open: severity-less visual finding is advisory, not blocking', () => {
-  const staticResult = auditHtml('<p>hi</p>');
+  // ST1(구조 바닥선)이 발화하지 않도록 의미 있는 본문을 가진 완전한 문서를 쓴다.
+  const staticResult = auditHtml('<!doctype html><html><body><p>hi</p></body></html>');
   // 객체 형태 + 레거시 배열 모두 severity 누락이면 advisory(차단 아님)로 둔다.
   const obj = combineAudits(staticResult, { findings: [{ id: 'L1', name: 'x', pass: false }], warnings: [] });
   const leg = combineAudits(staticResult, [{ id: 'L1', name: 'x', pass: false }]);

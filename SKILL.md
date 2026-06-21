@@ -156,7 +156,7 @@ node src/cli.js preview <built.html> [--against <slop-source.html>]
 
    감사는 **게이트가 아니라 가드레일**이다 — 두 채널로 분리한다:
 
-   **하드 차단 (blocking, exit 1):** 정적 레인의 하드 텔(C1/T1/T2/T4)과 품질 바닥선(DE3 정적 품질 바닥선), 시각 레인의 TY5-A(한글 어절 중간 줄바꿈)·DE3 렌더 대비. 이 항목 fail이 1개라도 있으면 exit 1 → 납품 불가 — Phase 3 수정 후 재실행.
+   **하드 차단 (blocking, exit 1):** 구조 바닥선(ST1 — 빈/본문 없는/무의미 납품물), 정적 레인의 하드 텔(C1/T1/T2/T4)과 품질 바닥선(DE3 정적 품질 바닥선), 시각 레인의 TY5-A(한글 어절 중간 줄바꿈)·DE3 렌더 대비. 이 항목 fail이 1개라도 있으면 exit 1 → 납품 불가 — Phase 3 수정 후 재실행.
 
    **소프트 권고 (advisory, exit 무영향):** TY4(패밀리 수)·CO1(색 예산)·DE1(그림자 캡)·S5(radius 균일)·IM2(img alt 누락 — 장식은 alt="" 허용)는 정적 findings에, L1·L2·S3·TY1·TY2는 시각 findings에 기록하되 exit에 영향을 주지 않는다. 억제 휴리스틱은 컨셉 시트가 의도를 명시하면 초과 합법이므로 차단이 아닌 권고로 리포트한다.
 

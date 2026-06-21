@@ -53,6 +53,93 @@ function hasAttr(tag, name) {
   return new RegExp(`[\\s"'/]${name}(?:\\s*=|[\\s/>]|$)`, 'i').test(bare);
 }
 
+// ── ST1 구조 바닥선 헬퍼 (#35) ───────────────────────────────────────────────
+// 빈/본문 없는/무의미 본문 문서를 차단한다. 본문 탐색은 주석·raw 블록(script/style/
+// template/noscript)·따옴표 속성값 안의 <body> 토큰을 건너뛴다(스머글링 방어).
+const ST1_RAW = ['script', 'style', 'template', 'noscript'];
+
+// '<'(lt 위치)에서 시작하는 태그의 닫는 '>'를 따옴표 속성값을 존중하며 찾는다.
+function endOfTag(src, lt) {
+  let quote = null;
+  for (let i = lt + 1; i < src.length; i++) {
+    const c = src[i];
+    if (quote) { if (c === quote) quote = null; }
+    else if (c === '"' || c === "'") quote = c;
+    else if (c === '>') return i;
+  }
+  return -1;
+}
+
+// 실제 <body> 시작 태그의 본문 시작 인덱스를 반환(없으면 -1). 주석·raw 블록을 건너뛰고,
+// 다른 태그는 따옴표 값을 존중해 통째로 소비하므로 속성값 안의 "<body>"는 본문이 아니다.
+function findRealBodyStart(src) {
+  const lower = src.toLowerCase();
+  const n = src.length;
+  let i = 0;
+  while (i < n) {
+    const lt = lower.indexOf('<', i);
+    if (lt < 0) return -1;
+    if (lower.startsWith('<!--', lt)) {
+      const end = lower.indexOf('-->', lt + 4);
+      i = end < 0 ? n : end + 3;
+      continue;
+    }
+    let raw = null;
+    for (const t of ST1_RAW) {
+      if (lower.startsWith(`<${t}`, lt) && /[\s/>]/.test(src[lt + 1 + t.length] ?? '>')) { raw = t; break; }
+    }
+    if (raw) {
+      const close = lower.indexOf(`</${raw}`, lt + 1);
+      i = close < 0 ? n : close + 2 + raw.length;
+      continue;
+    }
+    if (lower.startsWith('<body', lt) && /[\s/>]/.test(src[lt + 5] ?? '>')) {
+      const gt = endOfTag(src, lt);
+      return gt < 0 ? -1 : gt + 1;
+    }
+    const gt = endOfTag(src, lt);
+    if (gt < 0) return -1;
+    i = gt + 1;
+  }
+  return -1;
+}
+
+function stripComments(s) {
+  return s.replace(/<!--[\s\S]*?(?:-->|$)/g, ' ');
+}
+
+function hasContentBearingMedia(s) {
+  if (/<img\b[^>]*\ssrc\s*=/i.test(s)) return true;
+  if (/<(?:picture|video|audio|iframe|object|embed)\b/i.test(s)) return true;
+  for (const t of ['svg', 'canvas']) {
+    const m = new RegExp(`<${t}\\b[^>]*>([\\s\\S]*?)<\\/${t}\\s*>`, 'i').exec(s);
+    if (m && stripComments(m[1]).trim()) return true;
+  }
+  return false;
+}
+
+function hasLabeledInteractive(s) {
+  if (/<input\b[^>]*\svalue\s*=\s*("[^"]+"|'[^']+'|[^\s>]+)/i.test(s)) return true;
+  if (/\saria-label\s*=\s*("[^"]+"|'[^']+'|[^\s>]+)/i.test(s)) return true;
+  return false;
+}
+
+// ST1: 납품 구조 바닥선(blocking). 빈 문서·실제 <body> 없음·무의미 본문은 납품 불가.
+// 의미 콘텐츠 = stripTags 비공백 텍스트 OR 콘텐츠 보유 미디어 OR 라벨 있는 인터랙티브.
+function checkStructuralFloor(html) {
+  const src = String(html);
+  if (src.trim() === '') return { pass: false, evidence: 'empty document — 0 meaningful bytes' };
+  const bodyStart = findRealBodyStart(src);
+  if (bodyStart < 0) return { pass: false, evidence: 'no real <body> element' };
+  let inner = src.slice(bodyStart);
+  const close = inner.toLowerCase().indexOf('</body');
+  if (close >= 0) inner = inner.slice(0, close);
+  const cleaned = stripComments(removeRawBlocks(inner, ST1_RAW));
+  if (stripTags(cleaned).trim()) return { pass: true };
+  if (hasContentBearingMedia(cleaned) || hasLabeledInteractive(cleaned)) return { pass: true };
+  return { pass: false, evidence: 'body has no meaningful content (no text/media/interactive)' };
+}
+
 // flat CSS 규칙(sel{body}, 중첩 @media는 안으로 평탄화) 추출 — 단일 전방 스캔이라
 // 입력 길이에 선형. 기존 /([^{}@]+)\{([^{}]*)\}/g 정규식은 중괄호 없는 본문에서
 // 모든 시작 위치를 백트래킹해 O(n²)였다(400KB <style>에서 audit 행).
@@ -800,6 +887,8 @@ function collectWarnings(html, rules, vars) {
 }
 
 export const MACHINE_CHECKS = [
+  // 구조 바닥선 = 차단(blocking) — 빈/본문 없는/무의미 납품물은 게이트를 닫는다(#35). 항상 먼저 본다.
+  { id: 'ST1', name: 'structural-floor', severity: 'blocking', run: (html) => checkStructuralFloor(html) },
   // 결정론적 슬롭 지문 = 차단(blocking). 강등 불가 — exit 1.
   { id: 'C1', name: 'purple-gradient', severity: 'blocking', run: (html, css) => checkPurpleGradient(css) },
   { id: 'T1', name: 'emoji-bullets', severity: 'blocking', run: (html) => checkEmojiBullets(html) },
