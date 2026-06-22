@@ -166,12 +166,13 @@ test('nested media rules are preserved with inner selectors scoped', () => {
   assert.match(out, /@media \(max-width:600px\) \{ \.dsiv-built \.card \{ display:block \} \}/);
 });
 
-test('declaration at-rules remain global and unprefixed', () => {
+test('declaration at-rules stay unprefixed (@font-face global; @keyframes namespaced per pane)', () => {
   const out = buildPreviewHtml({
     builtHtml: '<html><head><style>@font-face{font-family:X;src:url(./f.woff2)}@keyframes spin{from{}to{}}</style></head><body></body></html>',
   });
   assert.match(out, /@font-face\{font-family:X;src:url\(\.\/f\.woff2\)\}/);
-  assert.match(out, /@keyframes spin\{from\{\}to\{\}\}/);
+  // @keyframes is left a declaration at-rule (not selector-prefixed) but name-namespaced per pane (#38 collision fix).
+  assert.match(out, /@keyframes spin__dsiv-built\{from\{\}to\{\}\}/);
   assert.doesNotMatch(out, /\.dsiv-built @font-face/);
   assert.doesNotMatch(out, /\.dsiv-built @keyframes/);
 });
