@@ -130,7 +130,7 @@ function paneAttrs(html, baseClass) {
   for (const tag of [htmlTag, bodyTag]) {
     for (const attr of parseAttrs(tag)) {
       const name = attr.name.toLowerCase();
-      if (name === 'class') classes.push(attr.value);
+      if (name === 'class') classes.push(attr.value.split(/\s+/).filter((t) => t && !/^dsiv-/i.test(t)).join(' '));
       else if ((name === 'lang' || name === 'dir' || name.startsWith('data-')) && !/^on/i.test(name)) attrs.set(name, attr.value);
     }
   }
@@ -190,12 +190,17 @@ function scopeCss(css, paneSel) {
     const prelude = css.slice(i, open).trim();
     const body = css.slice(open + 1, close);
     if (prelude.startsWith('@')) {
-      if (/^@(media|supports|container|layer)\b/i.test(prelude)) {
+      if (/^@(media|supports|container|layer|starting-style)\b/i.test(prelude)) {
+        // 그룹 at-rule: 내부 룰을 패널로 재귀 스코프(루트 prelude가 없어 누출 없음).
         const inner = scopeCss(body, paneSel);
         warnings.push(...inner.warnings);
         rules.push(`${prelude} { ${inner.css} }`);
-      } else {
+      } else if (/^@(font-face|keyframes|-webkit-keyframes|property|page|counter-style|font-feature-values|charset|namespace)\b/i.test(prelude)) {
+        // 선언/리소스 at-rule: 전역 유지(스코프 대상 아님; @keyframes 내부 from/to/% 보존).
         rules.push(`${prelude}{${body}}`);
+      } else {
+        // 알 수 없는/스코프 불가 at-rule(@scope 등 — prelude 루트가 패널 밖을 가리켜 누출 위험) → fail-closed drop.
+        warnings.push(`at-rule dropped: ${prelude.slice(0, 40)}`);
       }
     } else {
       const selectors = splitTopLevelCommas(prelude);
@@ -274,6 +279,9 @@ function splitTopLevelCommas(s) {
 function scopeSelector(sel, paneSel) {
   const parts = selectorParts(sel);
   if (!parts.length) return null;
+  // 함수형 가상클래스(:is/:where/:has/:not) 안의 root 토큰(:root/html/body)은 패널 루트로
+  // 안전 변환 불가 → drop+warn(호출부가 'selector skipped' 기록). 조용한 스타일 손실 방지.
+  if (/:(?:is|where|has|not|matches)\([^)]*(?::root\b|(?<![-\w])(?:html|body)(?![-\w]))/i.test(sel)) return null;
   const first = parts.findIndex((p) => p.kind === 'compound');
   const root = rootReplacement(parts[first].text);
   if (!root) return `${paneSel} ${sel}`;

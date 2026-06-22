@@ -211,3 +211,36 @@ test('chrome CSS follows scoped styles, CSP is unchanged, and built-only has no 
   assert.ok(out.indexOf('#dsiv-root .dsiv-bar{position') > out.indexOf('.dsiv-built p { color:blue }'));
   assert.ok(!out.includes('dsiv-original"><span'));
 });
+
+// Gate-found #38 hardening: unscoped at-rule leak, functional-pseudo root, dsiv-* class spoof.
+const styleBlocksOf = (h) => (h.match(/<style>[\s\S]*?<\/style>/g) || []).join('\n');
+
+test('#38: unknown/unscoped grouping at-rules (@scope) are dropped, not emitted global', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html><head><style>@scope (body){p{color:rgb(0,128,0)}}</style></head><body><p>b</p></body></html>',
+    originalHtml: '<html><head><style>p{color:rgb(255,0,0)}</style></head><body><p>o</p></body></html>',
+  });
+  assert.ok(!/@scope/.test(styleBlocksOf(out)), '@scope must not survive in any <style> (would leak across panes)');
+  assert.match(out, /at-rule dropped/);
+  // grouping at-rules that DO scope safely still work:
+  const media = buildPreviewHtml({ builtHtml: '<html><head><style>@media (min-width:1px){.x{color:red}}</style></head><body><p>x</p></body></html>' });
+  assert.match(styleBlocksOf(media), /@media \(min-width:1px\) \{ \.dsiv-built \.x/);
+  // @starting-style recurses (inner scoped):
+  const ss = buildPreviewHtml({ builtHtml: '<html><head><style>@starting-style{.x{opacity:0}}</style></head><body><p>x</p></body></html>' });
+  assert.match(styleBlocksOf(ss), /@starting-style \{ \.dsiv-built \.x/);
+});
+
+test('#38: root inside :is()/:where()/:not() is dropped+warned, not silently mis-scoped', () => {
+  const out = buildPreviewHtml({ builtHtml: '<html><head><style>:is(body) p{color:red}:where(:root){--c:red}.ok{color:green}</style></head><body><p>x</p></body></html>' });
+  const styles = styleBlocksOf(out);
+  assert.ok(!/:is\(body\)/.test(styles) && !/:where\(:root\)/.test(styles), 'functional-pseudo root forms must not be emitted');
+  assert.match(out, /selector skipped/);
+  assert.match(styles, /\.dsiv-built \.ok/, 'non-root selectors still scope normally');
+});
+
+test('#38: reserved dsiv-* source classes are filtered from the pane root (no toggle spoof)', () => {
+  const out = buildPreviewHtml({ builtHtml: '<html><head></head><body class="dsiv-original dsiv-bar theme">x</body></html>' });
+  const paneClass = /<div class="(dsiv-pane dsiv-built[^"]*)"/.exec(out)?.[1] ?? '';
+  assert.ok(paneClass.includes('theme'), 'real page classes preserved');
+  assert.ok(!/\bdsiv-original\b/.test(paneClass) && !/\bdsiv-bar\b/.test(paneClass), 'reserved dsiv-* tokens stripped');
+});
