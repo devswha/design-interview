@@ -134,3 +134,64 @@ test('unknown command prints usage, exit 2', async () => {
   assert.equal(r.code, 2);
   assert.match(r.stderr, /usage: design-interview/);
 });
+
+// #37: every subcommand fail-fasts (usage/exit 2) on unknown flags + extra positionals,
+// instead of silently using the first positional and ignoring the rest (false confidence).
+test('#37 audit rejects unknown flag (exit 2)', async () => {
+  const r = await runCli('audit', 'examples/slop-source.html', '--bogus');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /usage: design-interview/);
+});
+
+test('#37 audit rejects extra positional (exit 2)', async () => {
+  const r = await runCli('audit', 'examples/slop-source.html', 'examples/slop-source.html');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /usage: design-interview/);
+});
+
+test('#37 intake rejects unknown flag and extra positional (exit 2)', async () => {
+  const a = await runCli('intake', 'examples/slop-source.html', '--bogus');
+  assert.equal(a.code, 2);
+  const b = await runCli('intake', 'a.html', 'b.html');
+  assert.equal(b.code, 2);
+  assert.match(b.stderr, /usage: design-interview/);
+});
+
+test('#37 shot rejects unknown flag and extra positional (exit 2)', async () => {
+  const a = await runCli('shot', 'examples/slop-source.html', '--bogus');
+  assert.equal(a.code, 2);
+  const b = await runCli('shot', 'a.html', 'b.html');
+  assert.equal(b.code, 2);
+});
+
+test('#37 assets rejects unknown flag and extra positional (exit 2)', async () => {
+  const a = await runCli('assets', 'assets', '--bogus');
+  assert.equal(a.code, 2);
+  const b = await runCli('assets', 'assets', 'extra-dir');
+  assert.equal(b.code, 2);
+});
+
+test('#37 crawl rejects unknown flag and extra positional (exit 2)', async () => {
+  const a = await runCli('crawl', 'https://example.com/x.png', '--bogus');
+  assert.equal(a.code, 2);
+  const b = await runCli('crawl', 'https://example.com/x.png', 'https://example.com/y.png');
+  assert.equal(b.code, 2);
+});
+
+test('#37 board rejects unknown flag (exit 2)', async () => {
+  const r = await runCli('board', 'opts.json', '--out', 'b.html', '--bogus');
+  assert.equal(r.code, 2);
+});
+
+test('#37 preview rejects unknown flag (exit 2)', async () => {
+  const r = await runCli('preview', 'examples/slop-source.html', '--bogus');
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /usage: design-interview/);
+});
+
+test('#37 preserves per-flag missing-value messages', async () => {
+  assert.match((await runCli('preview', 'examples/slop-source.html', '--out')).stderr, /--out requires a path/);
+  assert.match((await runCli('preview', 'examples/slop-source.html', '--against')).stderr, /--against requires a path/);
+  assert.match((await runCli('assets', 'assets', '--concept-sheet')).stderr, /--concept-sheet requires a path/);
+  assert.match((await runCli('board', 'opts.json', '--port')).stderr, /--port requires a number/);
+});

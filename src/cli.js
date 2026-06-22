@@ -51,6 +51,32 @@ function fail(message, code = 2) {
   process.exit(code);
 }
 
+// 공유 인자 파서 (#37) — 모든 서브커맨드를 fail-fast로 통일한다. 미지 `--flag`, 플래그 값
+// 누락, 잘못된 위치 인자 개수는 usage()/exit 2. spec.flags: { '--name': { value?, msg? } }
+// (키 존재 = 허용; value:true = 값을 받음; msg = 값 누락 시 메시지). spec.positionals: 정확한 개수.
+// 반환: { _: [위치인자...], '--flag': true|값 }.
+function parseArgs(rest, { flags = {}, positionals = 1 } = {}) {
+  const out = { _: [] };
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i];
+    if (a.startsWith('--')) {
+      const spec = flags[a];
+      if (!spec) usage(); // 미지 플래그 → fail-fast
+      if (spec.value) {
+        const v = rest[++i];
+        if (v === undefined || v.startsWith('--')) fail(spec.msg ?? `${a} requires a value`, 2);
+        out[a] = v;
+      } else {
+        out[a] = true;
+      }
+    } else {
+      out._.push(a);
+    }
+  }
+  if (out._.length !== positionals) usage(); // 잉여/누락 위치 인자 → fail-fast
+  return out;
+}
+
 // 비-일반 파일(FIFO/파이프/프로세스 치환)을 O_NONBLOCK으로 읽는다. 일반 readFile은
 // FIFO open()이 libuv 스레드풀에서 writer를 기다리며 묶여 AbortSignal·process.exit로도
 // 못 깨는다(무한 행). O_NONBLOCK open은 writer 없이도 즉시 반환하므로 스트림 타임아웃이
@@ -102,9 +128,9 @@ const [cmd, ...rest] = process.argv.slice(2);
 if (!['intake', 'preview', 'audit', 'shot', 'assets', 'crawl', 'board'].includes(cmd) || rest.length === 0) usage();
 
 if (cmd === 'intake') {
-  const json = rest.includes('--json');
-  const target = rest.filter((a) => a !== '--json')[0];
-  if (!target) usage();
+  const a = parseArgs(rest, { flags: { '--json': {} }, positionals: 1 });
+  const json = a['--json'] === true;
+  const target = a._[0];
   const { extractClaims, buildClaimTable, fetchSource, looksLikeUrl } = await import('./intake.js');
   let source;
   // scheme:// 형태는 전부 URL 가드로 — ftp:// 등이 파일 경로로 새면 안 된다.
@@ -123,9 +149,9 @@ if (cmd === 'intake') {
 }
 
 if (cmd === 'audit') {
-  const visual = rest.includes('--visual');
-  const files = rest.filter((a) => a !== '--visual');
-  if (!files[0]) usage();
+  const a = parseArgs(rest, { flags: { '--visual': {} }, positionals: 1 });
+  const visual = a['--visual'] === true;
+  const files = a._;
   const file = resolve(files[0]);
   let result = auditHtml(await readInput(file));
   if (visual) {
@@ -145,8 +171,8 @@ if (cmd === 'audit') {
 
 if (cmd === 'shot') {
   const { captureFile } = await import('./screenshot.js');
-  const files = rest.filter((a) => !a.startsWith('-'));
-  if (!files[0]) usage();
+  const a = parseArgs(rest, { flags: {}, positionals: 1 });
+  const files = a._;
   try {
     const shots = await captureFile(files[0]);
     for (const s of shots) console.log(`${s.viewport}\t${s.path}`);
@@ -157,19 +183,13 @@ if (cmd === 'shot') {
 }
 
 if (cmd === 'assets') {
-  const json = rest.includes('--json');
-  const positional = [];
-  let conceptSheetPath;
-  for (let i = 0; i < rest.length; i++) {
-    if (rest[i] === '--json') continue;
-    else if (rest[i] === '--concept-sheet') {
-      conceptSheetPath = rest[++i];
-      if (conceptSheetPath === undefined || conceptSheetPath.startsWith('--')) fail('--concept-sheet requires a path', 2);
-    }
-    else positional.push(rest[i]);
-  }
-  const dir = positional[0];
-  if (!dir) usage();
+  const a = parseArgs(rest, {
+    flags: { '--json': {}, '--concept-sheet': { value: true, msg: '--concept-sheet requires a path' } },
+    positionals: 1,
+  });
+  const json = a['--json'] === true;
+  const conceptSheetPath = a['--concept-sheet'];
+  const dir = a._[0];
   const resolvedDir = resolve(dir);
   let dirStat;
   try {
@@ -194,21 +214,18 @@ if (cmd === 'assets') {
 }
 
 if (cmd === 'crawl') {
-  const json = rest.includes('--json');
-  let outDir = 'assets/images';
-  let name;
-  const positional = [];
-  for (let i = 0; i < rest.length; i++) {
-    if (rest[i] === '--json') continue;
-    else if (rest[i] === '--out') {
-      outDir = rest[++i];
-      if (outDir === undefined || outDir.startsWith('--')) fail('--out requires a path', 2);
-    } else if (rest[i] === '--name') {
-      name = rest[++i];
-      if (name === undefined || name.startsWith('--')) fail('--name requires a value', 2);
-    } else positional.push(rest[i]);
-  }
-  const url = positional[0];
+  const a = parseArgs(rest, {
+    flags: {
+      '--json': {},
+      '--out': { value: true, msg: '--out requires a path' },
+      '--name': { value: true, msg: '--name requires a value' },
+    },
+    positionals: 1,
+  });
+  const json = a['--json'] === true;
+  const outDir = a['--out'] ?? 'assets/images';
+  const name = a['--name'];
+  const url = a._[0];
   if (!url) usage();
   // consent-gated: 실제 수집 여부는 호출 전 사용자 허락을 받는다(SKILL.md). 명령은 실행자다.
   console.error('주의: consent-gated 외부 수집 — 사용자 허락 후에만 실행. license는 sidecar에서 수동 확인.');
@@ -226,25 +243,23 @@ if (cmd === 'crawl') {
 
 if (cmd === 'board') {
   const { renderBoardFile, serveBoardFile, BoardError } = await import('./board.js');
-  let outPath;
-  let serve = false;
+  const a = parseArgs(rest, {
+    flags: {
+      '--out': { value: true, msg: '--out requires a path' },
+      '--serve': {},
+      '--port': { value: true, msg: '--port requires a number' },
+    },
+    positionals: 1,
+  });
+  const optionsPath = a._[0];
+  const outPath = a['--out'];
+  const serve = a['--serve'] === true;
+  if (!outPath) usage(); // board는 --out 필수
   let port = 0;
-  const positional = [];
-  for (let i = 0; i < rest.length; i++) {
-    if (rest[i] === '--out') {
-      outPath = rest[++i];
-      if (outPath === undefined || outPath.startsWith('--')) fail('--out requires a path', 2);
-    } else if (rest[i] === '--serve') {
-      serve = true;
-    } else if (rest[i] === '--port') {
-      const v = rest[++i];
-      if (v === undefined || v.startsWith('--')) fail('--port requires a number', 2);
-      port = Number(v);
-      if (!Number.isInteger(port) || port < 1 || port > 65535) fail('--port must be an integer 1..65535', 2);
-    } else positional.push(rest[i]);
+  if (a['--port'] !== undefined) {
+    port = Number(a['--port']);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) fail('--port must be an integer 1..65535', 2);
   }
-  const optionsPath = positional[0];
-  if (!optionsPath || positional.length !== 1 || !outPath) usage();
   try {
     const res = await renderBoardFile(optionsPath, outPath);
     if (serve) {
@@ -269,22 +284,19 @@ if (cmd === 'board') {
   }
 }
 
-const args = { _: [] };
-for (let i = 0; i < rest.length; i++) {
-  if (rest[i] === '--against') {
-    args.against = rest[++i];
-    if (args.against === undefined || args.against.startsWith('--')) fail('--against requires a path', 2);
-  } else if (rest[i] === '--out') {
-    args.out = rest[++i];
-    if (args.out === undefined || args.out.startsWith('--')) fail('--out requires a path', 2);
-  } else args._.push(rest[i]);
-}
-if (args._.length !== 1) usage();
+// 기본(fall-through) 커맨드 = preview. 위의 서브커맨드가 모두 exit 했으므로 여기 오는 건 preview뿐이다.
+const args = parseArgs(rest, {
+  flags: {
+    '--against': { value: true, msg: '--against requires a path' },
+    '--out': { value: true, msg: '--out requires a path' },
+  },
+  positionals: 1,
+});
 
 const builtPath = resolve(args._[0]);
 const builtHtml = await readInput(builtPath);
-const originalHtml = args.against ? await readInput(args.against) : null;
-const outPath = resolve(args.out ?? builtPath.replace(/\.html?$/i, '') + '.preview.html');
+const originalHtml = args['--against'] ? await readInput(args['--against']) : null;
+const outPath = resolve(args['--out'] ?? builtPath.replace(/\.html?$/i, '') + '.preview.html');
 
 try {
   const preview = buildPreviewHtml({ builtHtml, originalHtml, title: `preview — ${args._[0]}` });
