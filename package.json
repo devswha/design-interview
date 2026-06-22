@@ -17,7 +17,8 @@
     "SKILL.md",
     "core/",
     "templates/",
-    "src/"
+    "src/",
+    "assets/"
   ],
   "engines": {
     "node": ">=22.12.0"
