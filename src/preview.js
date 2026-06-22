@@ -24,15 +24,19 @@ const PREVIEW_CSP = INERT_CSP;
 
 function extractBody(html) {
   const m = /<body\b[^>]*>([\s\S]*?)<\/body\s*>/i.exec(html);
-  return m ? m[1] : html;
+  const body = m ? m[1] : html;
+  // 본문 안의 <style>는 패널에 raw로 들어가면 전역(공유 문서) 적용돼 다른 패널로 누출된다.
+  // 그 CSS는 extractStyleCss(문서 전체)가 이미 수집·패널 스코프하므로 여기선 raw 태그만 제거한다.
+  // 본문 내 <link rel=stylesheet>(로컬 죽은 링크/원격은 stripActiveContent가 처리)도 제거한다.
+  return body
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, '')
+    .replace(/<link\b[^>]*>/gi, (tag) => (/\brel\s*=\s*("?)stylesheet\1/i.test(tag) ? '' : tag));
 }
 
-function extractHead(html) {
-  return /<head\b[^>]*>([\s\S]*?)<\/head\s*>/i.exec(html)?.[1] ?? '';
-}
 
 function extractStyleCss(html) {
-  return (extractHead(html).match(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi) ?? [])
+  // 문서 전체(head+body)의 <style>를 수집한다 — 본문 <style>도 패널로 스코프해야 누출이 없다.
+  return (String(html).match(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi) ?? [])
     .map((tag) => /<style\b[^>]*>([\s\S]*?)<\/style\s*>/i.exec(tag)?.[1] ?? '');
 }
 
@@ -281,7 +285,7 @@ function scopeSelector(sel, paneSel) {
   if (!parts.length) return null;
   // 함수형 가상클래스(:is/:where/:has/:not) 안의 root 토큰(:root/html/body)은 패널 루트로
   // 안전 변환 불가 → drop+warn(호출부가 'selector skipped' 기록). 조용한 스타일 손실 방지.
-  if (/:(?:is|where|has|not|matches)\([^)]*(?::root\b|(?<![-\w])(?:html|body)(?![-\w]))/i.test(sel)) return null;
+  if (/:(?:is|where|has|not|matches)\([^)]*(?::root\b|(?<![\w.#:=\-\[])(?:html|body)(?![\w-]))/i.test(sel)) return null;
   const first = parts.findIndex((p) => p.kind === 'compound');
   const root = rootReplacement(parts[first].text);
   if (!root) return `${paneSel} ${sel}`;

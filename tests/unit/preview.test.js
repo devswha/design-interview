@@ -244,3 +244,21 @@ test('#38: reserved dsiv-* source classes are filtered from the pane root (no to
   assert.ok(paneClass.includes('theme'), 'real page classes preserved');
   assert.ok(!/\bdsiv-original\b/.test(paneClass) && !/\bdsiv-bar\b/.test(paneClass), 'reserved dsiv-* tokens stripped');
 });
+
+// Gate re-review #38 hardening (round 2): body <style> leak + :is(.body) class false-positive.
+test('#38: body <style> tags are scoped into the pane, not injected raw (no cross-pane leak)', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html><body><p>built</p></body></html>',
+    originalHtml: '<html><body><style>p{color:rgb(255,0,0)}</style><p>orig</p></body></html>',
+  });
+  const paneRegion = out.slice(out.indexOf('<div id="dsiv-root"'));
+  assert.ok(!/<style>/.test(paneRegion), 'no raw <style> injected inside panes');
+  assert.match(styleBlocksOf(out), /\.dsiv-original p/, 'original body style scoped to its pane');
+});
+
+test('#38: :is(.body) (class, not element) is scoped, not dropped; :is(body) element still dropped', () => {
+  const cls = buildPreviewHtml({ builtHtml: '<html><head><style>:is(.body) p{color:green}</style></head><body><div class="body"><p>x</p></div></body></html>' });
+  assert.match(styleBlocksOf(cls), /\.dsiv-built :is\(\.body\) p/, '.body class must scope, not drop');
+  const el = buildPreviewHtml({ builtHtml: '<html><head><style>:is(body) p{color:red}</style></head><body><p>x</p></body></html>' });
+  assert.ok(!/:is\(body\)/.test(styleBlocksOf(el)), ':is(body) element form still dropped+warned');
+});
