@@ -262,3 +262,15 @@ test('#38: :is(.body) (class, not element) is scoped, not dropped; :is(body) ele
   const el = buildPreviewHtml({ builtHtml: '<html><head><style>:is(body) p{color:red}</style></head><body><p>x</p></body></html>' });
   assert.ok(!/:is\(body\)/.test(styleBlocksOf(el)), ':is(body) element form still dropped+warned');
 });
+
+test('#38: @keyframes are namespaced per pane so same-named animations do not cross-contaminate', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html><head><style>.card{animation:fadeIn 1s both}@keyframes fadeIn{from{opacity:0}to{opacity:1}}</style></head><body><div class="card">b</div></body></html>',
+    originalHtml: '<html><head><style>@keyframes fadeIn{from{transform:scale(.5)}to{transform:scale(2)}}</style></head><body><p>o</p></body></html>',
+  });
+  assert.match(out, /@keyframes fadeIn__dsiv-built/);
+  assert.match(out, /@keyframes fadeIn__dsiv-original/);
+  assert.match(out, /animation:fadeIn__dsiv-built 1s both/);
+  // no bare global "fadeIn" keyframes that both panes would share
+  assert.ok(!/@keyframes fadeIn\{/.test(out.replace(/fadeIn__\w+/g, 'X')) && !/@keyframes fadeIn /.test(out.replace(/fadeIn__\w+/g, 'X')));
+});

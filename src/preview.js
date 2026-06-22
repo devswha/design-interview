@@ -116,10 +116,30 @@ function buildPaneStyle(html, paneSel, localCss, linkWarnings) {
     warnings.push(...res.warnings);
     if (res.css) scoped.push(res.css);
   }
+  const css = namespaceKeyframes(scoped.join('\n'), paneSel.replace(/[^\w-]/g, ''));
   return {
-    style: scoped.length ? `<style>${scoped.join('\n')}</style>` : '',
+    style: css ? `<style>${css}</style>` : '',
     warnings,
   };
+}
+
+// @keyframes는 전역 이름공간이라 built/original이 같은 이름을 쓰면 나중 정의가 양쪽 패널의
+// animation을 다 덮어 누출된다. 패널별 접미사로 이름을 격리하고 animation/animation-name
+// 참조를 함께 재작성한다.
+function namespaceKeyframes(css, suffix) {
+  const names = new Set();
+  for (const m of css.matchAll(/@(?:-webkit-)?keyframes\s+("[^"]+"|'[^']+'|[\w-]+)/gi)) {
+    names.add(m[1].replace(/^['"]|['"]$/g, ''));
+  }
+  let out = css;
+  for (const name of names) {
+    const ns = `${name}__${suffix}`;
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`(@(?:-webkit-)?keyframes\\s+)(['"]?)${esc}\\2`, 'gi'), `$1$2${ns}$2`);
+    out = out.replace(/(animation(?:-name)?\s*:)([^;}]*)/gi, (_full, prop, val) =>
+      prop + val.replace(new RegExp(`(^|[\\s,])${esc}(?=$|[\\s,])`, 'g'), `$1${ns}`));
+  }
+  return out;
 }
 
 function warningMarkers(warnings) {
