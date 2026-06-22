@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">design-interview icon</title>
+  <desc id="desc">A flat dark icon: a split preview page with a copper AI-slop pane on the left and a clean teal built pane on the right, joined at a warm preserved-claim core where the interview gate sits.</desc>
+
+  <rect width="512" height="512" rx="112" fill="#020617"/>
+
+  <!-- left pane: copper = original AI slop (flat, symmetric, generic) -->
+  <path d="M256 132 H126 a30 30 0 0 0 -30 30 V350 a30 30 0 0 0 30 30 H256 Z" fill="#c46a2a"/>
+  <g fill="#6b3410">
+    <rect x="128" y="168" width="96" height="16" rx="8"/>
+    <rect x="140" y="206" width="72" height="11" rx="5.5"/>
+    <rect x="140" y="228" width="72" height="11" rx="5.5"/>
+    <rect x="140" y="250" width="72" height="11" rx="5.5"/>
+  </g>
+
+  <!-- right pane: teal = clean built page (asymmetric hierarchy, whitespace) -->
+  <path d="M256 132 H386 a30 30 0 0 1 30 30 V350 a30 30 0 0 1 -30 30 H256 Z" fill="#2dd4bf"/>
+  <g fill="#063b30">
+    <rect x="298" y="164" width="84" height="22" rx="8"/>
+    <rect x="298" y="206" width="58" height="10" rx="5"/>
+    <rect x="298" y="226" width="92" height="10" rx="5"/>
+    <rect x="298" y="300" width="46" height="12" rx="6"/>
+  </g>
+
+  <!-- preserved-claim core / interview gate at the seam -->
+  <circle cx="256" cy="256" r="36" fill="#ffe6a8" stroke="#020617" stroke-width="12"/>
+</svg>

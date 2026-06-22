@@ -1,0 +1,4 @@
+asset: design-interview-logo.svg
+source: self-authored (devswha/design-interview)
+license: MIT
+usage: design-interview 자체 브랜드 마크 — 제품 본인 식별. 명목적/주체적 사용. 손으로 작성한 벡터(생성 도구 미사용).
