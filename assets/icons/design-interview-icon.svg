@@ -1,27 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">design-interview icon</title>
-  <desc id="desc">A flat dark icon: a split preview page with a copper AI-slop pane on the left and a clean teal built pane on the right, joined at a warm preserved-claim core where the interview gate sits.</desc>
+  <desc id="desc">A dark tile with an Eye of Horus (wedjat) hieroglyph: copper slop brow, teal discerning eye, warm preserved-claim pupil, copper restoring tail.</desc>
 
   <rect width="512" height="512" rx="112" fill="#020617"/>
 
-  <!-- left pane: copper = original AI slop (flat, symmetric, generic) -->
-  <path d="M256 132 H126 a30 30 0 0 0 -30 30 V350 a30 30 0 0 0 30 30 H256 Z" fill="#c46a2a"/>
-  <g fill="#6b3410">
-    <rect x="128" y="168" width="96" height="16" rx="8"/>
-    <rect x="140" y="206" width="72" height="11" rx="5.5"/>
-    <rect x="140" y="228" width="72" height="11" rx="5.5"/>
-    <rect x="140" y="250" width="72" height="11" rx="5.5"/>
-  </g>
+  <!-- eyebrow: copper = raw slop input arching over the gaze -->
+  <path d="M130 160 Q256 92 406 142" fill="none" stroke="#c46a2a" stroke-width="28" stroke-linecap="round"/>
 
-  <!-- right pane: teal = clean built page (asymmetric hierarchy, whitespace) -->
-  <path d="M256 132 H386 a30 30 0 0 1 30 30 V350 a30 30 0 0 1 -30 30 H256 Z" fill="#2dd4bf"/>
-  <g fill="#063b30">
-    <rect x="298" y="164" width="84" height="22" rx="8"/>
-    <rect x="298" y="206" width="58" height="10" rx="5"/>
-    <rect x="298" y="226" width="92" height="10" rx="5"/>
-    <rect x="298" y="300" width="46" height="12" rx="6"/>
-  </g>
+  <!-- eye almond: teal = the clean, discerning built eye -->
+  <path d="M112 250 Q210 176 320 182 Q380 188 414 206 Q360 256 286 290 Q190 300 112 250 Z" fill="none" stroke="#2dd4bf" stroke-width="24" stroke-linejoin="round"/>
 
-  <!-- preserved-claim core / interview gate at the seam -->
-  <circle cx="256" cy="256" r="36" fill="#ffe6a8" stroke="#020617" stroke-width="12"/>
+  <!-- teardrop marking: teal -->
+  <path d="M226 300 L221 392" fill="none" stroke="#2dd4bf" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- spiral tail: copper = restoration sweeping back (wedjat = made whole) -->
+  <path d="M292 296 C362 312 396 360 374 400 C356 434 306 432 296 402 C289 382 308 366 328 378" fill="none" stroke="#c46a2a" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- preserved-claim core: warm pupil under scrutiny -->
+  <circle cx="268" cy="236" r="34" fill="#ffe6a8" stroke="#020617" stroke-width="12"/>
 </svg>

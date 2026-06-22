@@ -13,7 +13,7 @@
   <a href="#install"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode | gajae" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode%20%7C%20gajae-blueviolet"></a>
   <img alt="runtime deps: 0" src="https://img.shields.io/badge/runtime%20deps-0-brightgreen">
   <img alt="audit: deterministic" src="https://img.shields.io/badge/audit-deterministic-blue">
-  <img alt="node >= 22.12" src="https://img.shields.io/badge/node-%3E%3D22.12-339933">
+  <img alt="node &gt;= 22.12" src="https://img.shields.io/badge/node-%3E%3D22.12-339933">
 </p>
 
 slop 소스를 받아 **디자인 인터뷰**로 컨셉·방향을 사용자에게 받아낸 뒤, AI 티 안 나는 랜딩/상세/제안서 페이지를 만드는 에이전트 스킬. 금지 목록(`design-tells`)과 시니어 원칙(`design-principles`)을 양면 규율로 쓰고, 납품 직전 **결정론적 감사**로 슬롭 지문을 코드로 차단한다.

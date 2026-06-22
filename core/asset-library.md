@@ -121,7 +121,7 @@ before/after 실측(`design-principles.md` 시각 임팩트 절)의 **(a) 진짜
 | fonts (body) | `fonts/pretendard-variable.woff2` | OFL, 자가호스팅 본문 가변 폰트(한글+라틴, weight 45~920). **본문 기본** — 시스템 폰트 의존 금지 |
 | icons | `icons/{anthropic,claude-ai,openai,gemini,perplexity,notion,figma,vercel}.svg` | 실제 브랜드 로고(svgl). **트레이드마크 — 명목적 참조 한정**, "고객/파트너" 클레임 근거 없으면 S2 위반 |
 | icons | `icons/patina-{mark,badge,icon}.svg` | patina 자체 브랜드(devswha/patina, MIT). 제안서의 주체라 주체적 사용 |
-| icons | `icons/design-interview-{mark,icon,logo}.svg` | design-interview 자체 브랜드(MIT, 자작 벡터). README 헤더·repo 식별 — 주체적 사용. copper(slop)→teal(built) 스플릿 + preserved-claim 코어 |
+| icons | `icons/design-interview-{mark,icon,logo}.svg` | design-interview 자체 브랜드(MIT, 자작 벡터). README 헤더·repo 식별 — 주체적 사용. Eye of Horus(wedjat) 컨셉 — copper 슬롭 브로우 + teal 식별의 눈 + preserved-claim 동공 |
 | images | `images/patina-before-after.svg`, `images/patina-og.svg` | patina 실제 소셜/before-after 카드(MIT). **실제 산출물 증거** — 제안서 증거 섹션 임베드(`<img src>`) |
 | textures | `textures/paper-noise.svg`, `textures/dot-grid.svg`, `textures/hatch-diagonal.svg` | feTurbulence·도트그리드·대각해치 직접 생성(CC0). background-image 타일 |
 
