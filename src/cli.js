@@ -5,10 +5,11 @@
 // 에러 규율: 사용자 입력 문제(없는 파일 등)는 스택트레이스 없이 메시지 + exit 2,
 // 감사 fail은 exit 1, 시각 레인 폴백은 puppeteer 미설치(ERR_PUPPETEER_MISSING)만.
 
-import { readFile, writeFile, stat, readdir, open } from 'node:fs/promises';
+import { readFile, writeFile, stat, readdir, open, realpath } from 'node:fs/promises';
 import { constants as FS } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 import { buildPreviewHtml } from './preview.js';
+import { getAttr, isRemoteHref, isStylesheetLink } from './inert-html.js';
 import { auditHtml, formatAuditReport, combineAudits } from './audit.js';
 // 사용자가 준 경로(--out 등)에서 나오는 fs 입력 오류 → exit 2. 좁은 화이트리스트가
 // ENAMETOOLONG/EPERM/EROFS/ELOOP를 놓쳐 입력오류를 실패(exit 1)로 잘못 분류하던 것을 넓힌다.
@@ -122,6 +123,60 @@ async function readInput(path) {
     if (err.code === 'EISDIR') fail(`cannot read ${path}: is a directory`);
     fail(`cannot read ${path}: ${err.message}`);
   }
+}
+
+async function resolveLocalStylesheets(html, sourcePath) {
+  const baseDir = dirname(resolve(sourcePath));
+  let baseReal;
+  try {
+    baseReal = await realpath(baseDir);
+  } catch {
+    return { css: [], warnings: [] };
+  }
+
+  const css = [];
+  const warnings = [];
+  const head = /<head\b[^>]*>([\s\S]*?)<\/head\s*>/i.exec(html)?.[1] ?? '';
+  const links = head.match(/<link\b[^>]*>/gi) ?? [];
+  for (const link of links) {
+    if (!isStylesheetLink(link)) continue;
+    const href = getAttr(link, 'href').trim();
+    if (!href) continue;
+    const bareHref = href.split(/[?#]/, 1)[0];
+    const warn = (reason) => warnings.push(`stylesheet skipped: ${href} (${reason})`);
+    if (isRemoteHref(href) || /^(?:data|javascript):/i.test(href)) {
+      warn('remote or unsafe href');
+      continue;
+    }
+
+    const resolved = resolve(baseDir, bareHref);
+    try {
+      const fileReal = await realpath(resolved);
+      if (fileReal !== baseReal && !fileReal.startsWith(baseReal + sep)) {
+        warn('outside source dir');
+        continue;
+      }
+      const st = await stat(fileReal);
+      if (!st.isFile()) {
+        warn('not a regular file');
+        continue;
+      }
+      if (st.size > MAX_INPUT_CHARS) {
+        warn('too large');
+        continue;
+      }
+      const data = await readFile(fileReal, 'utf8');
+      if (data.length > MAX_INPUT_CHARS) {
+        warn('too large');
+        continue;
+      }
+      css.push(data);
+    } catch (err) {
+      if (err.code === 'ENOENT') warn('missing');
+      else warn(err.message);
+    }
+  }
+  return { css, warnings };
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -295,11 +350,23 @@ const args = parseArgs(rest, {
 
 const builtPath = resolve(args._[0]);
 const builtHtml = await readInput(builtPath);
-const originalHtml = args['--against'] ? await readInput(args['--against']) : null;
+const originalArg = args['--against'] ?? null;
+const originalPath = originalArg ? resolve(originalArg) : null;
+const originalHtml = originalArg ? await readInput(originalArg) : null;
+const builtStylesheets = await resolveLocalStylesheets(builtHtml, builtPath);
+const originalStylesheets = originalPath ? await resolveLocalStylesheets(originalHtml, originalPath) : { css: [], warnings: [] };
 const outPath = resolve(args['--out'] ?? builtPath.replace(/\.html?$/i, '') + '.preview.html');
 
 try {
-  const preview = buildPreviewHtml({ builtHtml, originalHtml, title: `preview — ${args._[0]}` });
+  const preview = buildPreviewHtml({
+    builtHtml,
+    originalHtml,
+    title: `preview — ${args._[0]}`,
+    builtLocalCss: builtStylesheets.css,
+    originalLocalCss: originalStylesheets.css,
+    builtLinkWarnings: builtStylesheets.warnings,
+    originalLinkWarnings: originalStylesheets.warnings,
+  });
   await writeFile(outPath, preview, 'utf8');
 } catch (err) {
   if (USER_FS_ERROR_CODES.has(err.code)) fail(`cannot write ${outPath}: ${err.message}`, 2);

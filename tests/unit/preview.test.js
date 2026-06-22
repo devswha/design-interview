@@ -35,7 +35,7 @@ test('--against adds 3-state toggle and original pane', () => {
 
 test('built head styles are carried into the preview', () => {
   const out = buildPreviewHtml({ builtHtml: BUILT });
-  assert.match(out, /h1\{color:#222\}/);
+  assert.match(out, /\.dsiv-built h1 \{ color:#222 \}/);
 });
 
 test('remote stylesheet links are stripped from preview head', () => {
@@ -46,7 +46,7 @@ test('remote stylesheet links are stripped from preview head', () => {
     </head><body><h1>x</h1></body></html>`;
   const out = buildPreviewHtml({ builtHtml: html });
   assert.ok(!out.includes('cdn.example'), 'remote stylesheet hrefs must not survive');
-  assert.match(out, /h1\{color:#222\}/, 'safe inline style remains');
+  assert.match(out, /\.dsiv-built h1 \{ color:#222 \}/, 'safe inline style remains');
 });
 
 test('stylesheet link parser ignores data-* attribute suffixes', () => {
@@ -56,8 +56,8 @@ test('stylesheet link parser ignores data-* attribute suffixes', () => {
     </head><body><h1>x</h1></body></html>`;
   const out = buildPreviewHtml({ builtHtml: html });
   assert.ok(!out.includes('favicon.ico'), 'data-rel is not rel');
-  assert.match(out, /href="local\.css"/, 'real local href is preserved');
-  assert.match(out, /data-href="https:\/\/cdn\.example\/a\.css"/, 'data-href does not make a local href remote');
+  assert.ok(!out.includes('href="local.css"'), 'dead local stylesheet links are dropped');
+  assert.ok(!out.includes('data-href="https://cdn.example/a.css"'), 'dead local stylesheet links are dropped with their tag');
 });
 
 test('inline style imports and remote CSS URLs are neutralized', () => {
@@ -67,7 +67,7 @@ test('inline style imports and remote CSS URLs are neutralized', () => {
   const out = buildPreviewHtml({ builtHtml: html });
   assert.ok(!out.includes('@import'), 'remote @import rule is removed');
   assert.ok(!out.includes('evil.example'), 'remote CSS URL is neutralized');
-  assert.match(out, /h1\{color:#222;background:url\("#"\)\}/, 'safe inline declarations remain');
+  assert.match(out, /\.dsiv-built h1 \{ color:#222;background:url\("#"\) \}/, 'safe inline declarations remain');
 });
 
 test('body-level base, remote stylesheet link, and remote media URLs are stripped', () => {
@@ -124,4 +124,90 @@ test('preview title is HTML-escaped (caller-controlled filename cannot inject ma
   // 원시 닫는 태그가 그대로 새지 않고 escape되어야 한다.
   assert.ok(!out.includes('x</title><style>'));
   assert.match(out, /&lt;\/title&gt;/);
+});
+
+test('pane styles are isolated per built and original side', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html><head><style>p{color:rgb(0,128,0)}</style></head><body><p>built</p></body></html>',
+    originalHtml: '<html><head><style>p{color:rgb(255,0,0)}</style></head><body><p>orig</p></body></html>',
+  });
+  assert.match(out, /\.dsiv-built p \{ color:rgb\(0,128,0\) \}/);
+  assert.match(out, /\.dsiv-original p \{ color:rgb\(255,0,0\) \}/);
+  assert.ok(!/\.dsiv-built p \{ color:rgb\(255,0,0\)/.test(out));
+});
+
+test('selector scoping handles root, selector-list, and root-like non-roots', () => {
+  const out = buildPreviewHtml({
+    builtHtml: `<html><head><style>
+      body{a:b}
+      body.theme .card{a:b}
+      html[data-mode]{a:b}
+      html body .chain{a:b}
+      :root{--x:1}
+      .a,.b{a:b}
+      tbody{a:b}
+      .bodyish{a:b}
+    </style></head><body>x</body></html>`,
+  });
+  assert.match(out, /\.dsiv-built \{ a:b \}/);
+  assert.match(out, /\.dsiv-built\.theme \.card \{ a:b \}/);
+  assert.match(out, /\.dsiv-built\[data-mode\] \{ a:b \}/);
+  assert.match(out, /\.dsiv-built \.chain \{ a:b \}/);
+  assert.match(out, /\.dsiv-built \{ --x:1 \}/);
+  assert.match(out, /\.dsiv-built \.a,\.dsiv-built \.b \{ a:b \}/);
+  assert.match(out, /\.dsiv-built tbody \{ a:b \}/);
+  assert.match(out, /\.dsiv-built \.bodyish \{ a:b \}/);
+});
+
+test('nested media rules are preserved with inner selectors scoped', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html><head><style>@media (max-width:600px){.card{display:block}}</style></head><body></body></html>',
+  });
+  assert.match(out, /@media \(max-width:600px\) \{ \.dsiv-built \.card \{ display:block \} \}/);
+});
+
+test('declaration at-rules remain global and unprefixed', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html><head><style>@font-face{font-family:X;src:url(./f.woff2)}@keyframes spin{from{}to{}}</style></head><body></body></html>',
+  });
+  assert.match(out, /@font-face\{font-family:X;src:url\(\.\/f\.woff2\)\}/);
+  assert.match(out, /@keyframes spin\{from\{\}to\{\}\}/);
+  assert.doesNotMatch(out, /\.dsiv-built @font-face/);
+  assert.doesNotMatch(out, /\.dsiv-built @keyframes/);
+});
+
+test('malformed CSS is stripped and reported without leaking rules', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html><head><style>.leak{color:red</style></head><body></body></html>',
+  });
+  assert.ok(!out.includes('.leak{color:red'));
+  assert.match(out, /malformed CSS stripped/);
+});
+
+test('pane root preserves safe html and body attributes', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html lang="ko" data-shell="web"><head></head><body class="theme" data-mode="x" id="bad" style="color:red" onclick="x()">ok</body></html>',
+  });
+  assert.match(out, /<div class="dsiv-pane dsiv-built theme" lang="ko" data-shell="web" data-mode="x">/);
+  assert.doesNotMatch(out, /id="bad"/);
+  assert.doesNotMatch(out, /onclick/);
+});
+
+test('local CSS inputs inline scoped and link warnings render without dead links', () => {
+  const out = buildPreviewHtml({
+    builtHtml: '<html><head><link rel="stylesheet" href="./x.css"></head><body><p>x</p></body></html>',
+    builtLocalCss: ['p{color:blue}'],
+    builtLinkWarnings: ['stylesheet skipped: ./x.css (missing)'],
+  });
+  assert.match(out, /\.dsiv-built p \{ color:blue \}/);
+  assert.match(out, /<span class="dsiv-warning">stylesheet skipped: \.\/x\.css \(missing\)<\/span>/);
+  assert.ok(!out.includes('<link'));
+});
+
+test('chrome CSS follows scoped styles, CSP is unchanged, and built-only has no original pane', () => {
+  const out = buildPreviewHtml({ builtHtml: BUILT, builtLocalCss: ['p{color:blue}'] });
+  const csp = /Content-Security-Policy" content="([^"]+)"/.exec(out)?.[1] ?? '';
+  assert.equal(csp, "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; frame-src 'none'; script-src 'none'");
+  assert.ok(out.indexOf('#dsiv-root .dsiv-bar{position') > out.indexOf('.dsiv-built p { color:blue }'));
+  assert.ok(!out.includes('dsiv-original"><span'));
 });
