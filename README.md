@@ -99,6 +99,8 @@ CLI 진입점은 `node src/cli.js <command>`. 모든 서브커맨드는 미지 �
 node src/cli.js board round2.options.json --out board.html
 #   → file:///…/board.html   (file:// 막는 호스트는 --serve로 localhost 폴백)
 node src/cli.js board round2.options.json --out board.html --serve --port 8787
+# Codex Desktop처럼 file://가 막히는 호스트는 안전한 임의 포트를 써도 된다.
+node src/cli.js board round2.options.json --out board.html --serve --port 0
 
 # Phase 4 — 검수: built ⇄ original 토글, 풀페이지 스크린샷 자기검수
 node src/cli.js preview built.html --against slop-source.html   # → built.preview.html
