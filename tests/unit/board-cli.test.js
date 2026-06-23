@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { runCli, withTempDir } from '../helpers/index.js';
+import { CLI, ROOT, runCli, withTempDir } from '../helpers/index.js';
 
 function validOptions(overrides = {}) {
   return JSON.stringify({
@@ -51,6 +52,51 @@ test('board end-to-end: exit 0, prints openable file:// link, writes inert HTML'
     assert.match(html, /script-src 'none'/);
     assert.doesNotMatch(html, /<script/i);
     assert.match(html, /board:cli-sess/); // stale marker
+  });
+});
+
+test('board --serve --port 0 prints a loopback URL on an ephemeral port', async () => {
+  await withTempDir(async (dir) => {
+    const opts = join(dir, 'o.json');
+    const out = join(dir, 'board.html');
+    await writeFile(opts, validOptions());
+    const child = spawn(process.execPath, [CLI, 'board', opts, '--out', out, '--serve', '--port', '0'], {
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    const closed = new Promise((resolvePromise) => child.once('close', resolvePromise));
+    try {
+      await new Promise((resolvePromise, reject) => {
+        const timer = setTimeout(() => reject(new Error(`timed out waiting for server URL; stderr=${stderr}`)), 3000);
+        child.stdout.on('data', () => {
+          if (/^http:\/\/127\.0\.0\.1:\d+\/\s*$/m.test(stdout)) {
+            clearTimeout(timer);
+            resolvePromise();
+          }
+        });
+        child.once('exit', (code) => {
+          clearTimeout(timer);
+          reject(new Error(`server exited before URL; code=${code}; stderr=${stderr}`));
+        });
+        child.once('error', (err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+      });
+      assert.match(stdout.trim(), /^http:\/\/127\.0\.0\.1:\d+\/$/);
+      const res = await fetch(stdout.trim());
+      assert.equal(res.status, 200);
+      assert.match(await res.text(), /id="dsiv-board-root"/);
+    } finally {
+      child.kill('SIGTERM');
+      await closed;
+    }
   });
 });
 

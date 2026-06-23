@@ -313,7 +313,7 @@ if (cmd === 'board') {
   let port = 0;
   if (a['--port'] !== undefined) {
     port = Number(a['--port']);
-    if (!Number.isInteger(port) || port < 1 || port > 65535) fail('--port must be an integer 1..65535', 2);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) fail('--port must be an integer 0..65535', 2);
   }
   try {
     const res = await renderBoardFile(optionsPath, outPath);
